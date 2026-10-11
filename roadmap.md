@@ -3,7 +3,7 @@
 ## Admin restoration
 - [x] Restore styled health dashboard, Suggestions and Errors panels
 - [x] Verify owner-only authorization rules; owner session, feedback delivery and error reporting checked end-to-end at five widths in both themes
-- [ ] Publish restored admin
+- [ ] Publish restored admin (blocked: publication declined)
 
 ## In progress (approved plan 2026-10-01)
 - [x] NASA_API_KEY stored securely; quota headers captured on every NASA call
