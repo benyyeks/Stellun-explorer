@@ -1,8 +1,8 @@
 # ORBITEX roadmap
 
 ## Admin restoration
-- [ ] Restore styled health dashboard, Suggestions and Errors panels
-- [ ] Verify owner-only admin access, feedback delivery and error reporting
+- [x] Restore styled health dashboard, Suggestions and Errors panels
+- [x] Verify owner-only authorization rules; owner session, feedback delivery and error reporting checked end-to-end at five widths in both themes
 - [ ] Publish restored admin
 
 ## In progress (approved plan 2026-10-01)
