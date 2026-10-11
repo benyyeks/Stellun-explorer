@@ -1,5 +1,14 @@
 # ORBITEX roadmap
 
+## Feature batch 2026-10-11
+- [ ] Multi-satellite compare and high-orbit camera framing from supplied files
+- [ ] Mars surface map, preserving the gallery
+- [ ] Rename requested assistant surfaces to Orbitex AI
+- [ ] Study uploads with required book title and inline study-context assistant
+- [ ] Mission agency/target filters and T-60 live launch links
+- [ ] Verify free OpenRouter model and clear 402 handling
+- [ ] Verify affected flows and publish green build
+
 ## Admin restoration
 - [x] Restore styled health dashboard, Suggestions and Errors panels
 - [x] Verify owner-only authorization rules; owner session, feedback delivery and error reporting checked end-to-end at five widths in both themes
