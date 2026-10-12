@@ -268,7 +268,7 @@ export function SiteHeader() {
               About
             </Link>
             <Link to="/ask" aria-current={isMatch(pathname, "/ask") ? "page" : undefined}>
-              Ask ORBITEX
+              Orbitex AI
             </Link>
           </div>
         )}

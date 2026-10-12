@@ -1,4 +1,4 @@
-// Ask ORBITEX: a space-only study assistant. Four modes (chat, practice
+// Orbitex AI: a space-only study assistant. Four modes (chat, practice
 // quizzes, explanations, resource guidance) all post to /api/ask, which
 // grounds answers in live ORBITEX telemetry and enforces the space-only
 // scope. Replies stream token by token.
@@ -13,13 +13,13 @@ import { consumeAskPrefill } from "@/lib/study-workspace";
 export const Route = createFileRoute("/_authenticated/ask")({
   head: () => ({
     meta: [
-      { title: "Ask ORBITEX - ORBITEX" },
+      { title: "Orbitex AI - ORBITEX" },
       {
         name: "description",
         content:
           "A space-only study assistant. Ask questions, generate practice quizzes from aerospace topics, get explanations at your level, and find the right resources.",
       },
-      { property: "og:title", content: "Ask ORBITEX - ORBITEX" },
+      { property: "og:title", content: "Orbitex AI - ORBITEX" },
       {
         property: "og:description",
         content:
@@ -76,13 +76,13 @@ const DIFFICULTIES = [
 const NEAR_BOTTOM_PX = 96;
 
 function errorCopy(status: number, code: string | undefined): string {
-  if (status === 429 || code === "rate_limited") {
-    return "ORBITEX is answering a high volume of questions right now. Please try again in a moment.";
+  if (status === 402 || status === 429 || code === "free_model_unavailable" || code === "rate_limited") {
+    return "Orbitex AI is offline until a free model is available.";
   }
   if (status === 401 || code === "unauthorized") {
     return "Your session has expired. Sign in again to continue the conversation.";
   }
-  if (status === 402 || status === 503 || code === "assistant_unavailable") {
+  if (status === 503 || code === "assistant_unavailable") {
     return "The assistant is temporarily unavailable. Please try again later.";
   }
   if (status === 502) {
@@ -290,7 +290,7 @@ function AskPage() {
   return (
     <main className="container page-scaffold">
       <section className="page-hero">
-        <h1>Ask ORBITEX</h1>
+        <h1>Orbitex AI</h1>
         <p className="tagline">
           A study assistant for space and astronomy, grounded in live ORBITEX
           data. It answers space questions only, and labels estimates rather

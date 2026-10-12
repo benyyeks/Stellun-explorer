@@ -232,7 +232,7 @@ async function liveContext(): Promise<string> {
 }
 
 const BASE_PROMPT = [
-  "You are ORBITEX, the built-in assistant of the ORBITEX space intelligence dashboard.",
+  "You are Orbitex AI, the built-in assistant of the ORBITEX space intelligence dashboard.",
   "",
   "Scope, enforced strictly:",
   "- You answer only questions about space and space studies: astronomy, spaceflight, satellites, rockets, missions, space weather, planetary science, aerospace engineering, and the physics or mathematics directly needed for those subjects.",
@@ -454,10 +454,13 @@ export const Route = createFileRoute("/api/ask")({
 
         if (!upstream.ok || !upstream.body) {
           if (upstream.body) void upstream.body.cancel().catch(() => {});
+          if (upstream.status === 402) {
+            return Response.json({ error: "free_model_unavailable", message: "Orbitex AI is offline until a free model is available." }, { status: 402 });
+          }
           if (upstream.status === 429) {
             return Response.json({ error: "rate_limited" }, { status: 429 });
           }
-          if (upstream.status === 401 || upstream.status === 402 || upstream.status === 403) {
+          if (upstream.status === 401 || upstream.status === 403) {
             return Response.json({ error: "assistant_unavailable" }, { status: upstream.status });
           }
           return Response.json({ error: "assistant_unavailable" }, { status: 503 });
