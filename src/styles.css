@@ -3175,3 +3175,14 @@ html, body { overflow-x: clip; }
   gap: 8px;
   align-items: center;
 }
+
+/* Feature batch: study forms and mission selectors use existing tokens. */
+.study-upload-panel, .study-ai-box { min-width: 0; }
+.study-upload-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-block: 8px; border-bottom: 1px solid var(--color-border); }
+.study-upload-row > span { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.study-upload-row small { display: block; }
+.study-upload-panel input[type=file] { width: 100%; min-width: 0; }
+.study-ai-box .answer-body { overflow-wrap: anywhere; }
+.mission-filter-selects { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 16px; }
+.mission-filter-selects .input { width: 100%; margin-top: 6px; }
+@media (max-width: 640px) { .mission-filter-selects { grid-template-columns: minmax(0,1fr); } }
