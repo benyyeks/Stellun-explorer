@@ -1,5 +1,5 @@
 // Academy Study desk: personal workspaces with notes, checklists, and
-// one-click handoff to Ask ORBITEX. Data stays in the browser (localStorage).
+// one-click handoff to Orbitex AI. Data stays in the browser (localStorage).
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { BOOK_TOPICS, bookById } from "@/lib/books";
@@ -13,6 +13,7 @@ import {
   type ChecklistItem,
   type StudyWorkspace,
 } from "@/lib/study-workspace";
+import { StudyUploadPanel } from "@/components/academy/study-upload-panel";
 import { SkeletonImage } from "@/components/site/skeleton-image";
 
 function bookCoverUrl(isbn13: string): string {
@@ -80,7 +81,7 @@ export function StudyDeskTab() {
           <h2>Study desk</h2>
           <p>
             Create a workspace for each topic you are studying. Keep notes, track a short
-            checklist, and send context to Ask ORBITEX when you need a clearer explanation.
+            checklist, and send context to Orbitex AI when you need a clearer explanation.
             Workspaces stay in this browser until you clear site data.
           </p>
         </div>
@@ -171,6 +172,7 @@ export function StudyDeskTab() {
           </aside>
 
           <div className="study-desk-main">
+            <StudyUploadPanel workspace={active} />
             {!active ? (
               <div className="glass glass-card scaffold-card">
                 <p className="ask-hint">Select or create a workspace to take notes and track progress.</p>
@@ -234,7 +236,7 @@ export function StudyDeskTab() {
                       className="btn btn-primary"
                       onClick={() => openAsk(active)}
                     >
-                      Ask ORBITEX about this
+                      Ask Orbitex AI about this
                     </button>
                     {bookById(active.bookId)?.freeUrl && (
                       <a

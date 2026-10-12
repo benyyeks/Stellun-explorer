@@ -3064,3 +3064,125 @@ html, body { overflow-x: clip; }
   margin-top: 10px;
   justify-self: start;
 }
+
+/* Append to src/styles.css */
+.compare-chip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.compare-chip-list li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 4px 8px 4px 12px;
+  font-size: 0.84rem;
+}
+.compare-chip-name { font-weight: 600; }
+.compare-grid-multi {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.side-item-compare {
+  border-color: var(--color-accent) !important;
+  background: var(--color-accent-soft);
+}
+
+/* Append to src/styles.css — Mars surface map */
+.mars-map { margin-top: 24px; }
+.mars-map-head { margin-bottom: 12px; }
+.mars-map-viewport {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: #1a0f0a;
+}
+.mars-map-base {
+  position: absolute;
+  inset: 0;
+}
+.mars-map-bands {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 45%, #8b4513 0%, transparent 55%),
+    linear-gradient(180deg, #3d2314 0%, #6b3a22 35%, #a0522d 55%, #5c3317 78%, #2a1810 100%);
+  opacity: 0.95;
+}
+.mars-map-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 220, 180, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 220, 180, 0.07) 1px, transparent 1px);
+  background-size: 10% 11.11%;
+  pointer-events: none;
+}
+.mars-map-pin {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mars-map-pin:hover { transform: translate(-50%, -50%) scale(1.25); }
+.mars-map-pin.selected {
+  transform: translate(-50%, -50%) scale(1.4);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 55%, transparent);
+  z-index: 3;
+}
+.mars-map-controls {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.mars-map-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+}
+.mars-map-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.mars-map-detail {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+.mars-map-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Feature batch: study forms and mission selectors use existing tokens. */
+.study-upload-panel, .study-ai-box { min-width: 0; }
+.study-upload-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-block: 8px; border-bottom: 1px solid var(--color-border); }
+.study-upload-row > span { flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.study-upload-row small { display: block; }
+.study-upload-panel input[type=file] { width: 100%; min-width: 0; }
+.study-ai-box .answer-body { overflow-wrap: anywhere; }
+.mission-filter-selects { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 16px; }
+.mission-filter-selects .input { width: 100%; margin-top: 6px; }
+@media (max-width: 640px) { .mission-filter-selects { grid-template-columns: minmax(0,1fr); } }

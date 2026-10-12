@@ -10,6 +10,7 @@ import {
 import { fmtAU, fmtKm, fmtNum, lightTimeFromAU } from "@/lib/format";
 import { MapSkeleton } from "@/components/site/page-skeleton";
 import { useNow } from "@/hooks/use-now";
+import { MarsSurfaceMap } from "@/components/mars/mars-surface-map";
 import { MarsImageGallery } from "@/components/mars/mars-image-gallery";
 
 export const Route = createFileRoute("/_authenticated/mars")({
@@ -226,6 +227,7 @@ function MarsPage() {
         </div>
       </section>
 
+      <section><div className="container"><MarsSurfaceMap /></div></section>
       <MarsImageGallery />
     </main>
   );

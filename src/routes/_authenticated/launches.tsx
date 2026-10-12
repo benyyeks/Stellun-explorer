@@ -7,6 +7,8 @@ import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { FeedError, EmptyState } from "@/components/site/data-state";
 import { SkeletonImage } from "@/components/site/skeleton-image";
 import { PastLaunches } from "@/components/launches/past-launches";
+import { useNow } from "@/hooks/use-now";
+import { launchStreamUrl } from "@/lib/launch-live";
 import { PageHeroSkeleton, StatGridSkeleton, LaunchListSkeleton } from "@/components/site/page-skeleton";
 
 export const Route = createFileRoute("/_authenticated/launches")({
@@ -76,6 +78,7 @@ type Launch = {
   location: string;
   country: string;
   webcastLive: boolean;
+  vidURLs: unknown;
   image: string | null;
 };
 
@@ -96,6 +99,7 @@ function parseLaunches(raw: unknown): Launch[] {
     location: safeText(l?.pad?.location?.name, 100),
     country: safeText(l?.pad?.country_code, 6),
     webcastLive: Boolean(l?.webcast_live),
+    vidURLs: l?.vidURLs ?? l?.vid_urls ?? [],
     image:
       typeof l?.image === "string" && l.image
         ? l.image
@@ -239,6 +243,7 @@ function LaunchesError({ reset }: { reset: () => void }) {
 }
 
 function LaunchesPage() {
+  const now = useNow(1000);
   const { data: res } = useSuspenseQuery(launchesQueryOptions);
   const launches = parseLaunches(res?.data);
   const next = launches[0] ?? null;
@@ -316,6 +321,9 @@ function LaunchesPage() {
                     {next.missionType && <div><dt>Mission type</dt><dd>{next.missionType}</dd></div>}
                   </dl>
                   {next.missionDesc && <p className="next-launch-desc">{next.missionDesc}</p>}
+                  {now && launchStreamUrl(next.vidURLs, next.net, now.getTime(), next.webcastLive) ? (
+                    <a className="btn btn-primary btn-sm" href={launchStreamUrl(next.vidURLs, next.net, now.getTime(), next.webcastLive) ?? undefined} target="_blank" rel="noopener noreferrer">Watch live</a>
+                  ) : null}
                 </div>
                 <div className="next-launch-count">
                   <div className="stat-label">Time until launch (NET)</div>
@@ -345,6 +353,9 @@ function LaunchesPage() {
                           .join(" · ")}
                       </p>
                       {l.missionDesc && <p className="launch-desc">{l.missionDesc}</p>}
+                      {now && launchStreamUrl(l.vidURLs, l.net, now.getTime(), l.webcastLive) ? (
+                        <a className="btn btn-primary btn-sm" href={launchStreamUrl(l.vidURLs, l.net, now.getTime(), l.webcastLive) ?? undefined} target="_blank" rel="noopener noreferrer">Watch live</a>
+                      ) : null}
                     </div>
                   </article>
                 ))}

@@ -103,12 +103,13 @@ type SatellitesProps = {
   tles: TLE[];
   color: string;
   selectedId: string | null;
+  highlightIds: string[];
   onSelect: (tle: TLE | null) => void;
   altitudeScale: number;
   pointSize: number;
 };
 
-function Satellites({ tles, color, selectedId, onSelect, altitudeScale, pointSize }: SatellitesProps) {
+function Satellites({ tles, color, selectedId, highlightIds, onSelect, altitudeScale, pointSize }: SatellitesProps) {
   const geomRef = useRef<THREE.BufferGeometry>(null);
   const acc = useRef(1);
   const sprite = useMemo(() => makeDotTexture(), []);
@@ -299,7 +300,30 @@ export type TrackerGlobeProps = {
   pointSize?: number;
   resetKey?: number;
   observer?: { lat: number; lon: number } | null;
+  /** NORAD ids to highlight with orbit paths (compare mode). */
+  highlightIds?: string[];
+  /** When set, pull camera back to fit this altitude (km). */
+  frameAltKm?: number | null;
 };
+
+
+// Pull the camera out so a given orbital altitude (km) stays in frame.
+function FrameCamera({ altKm, altitudeScale, tick }: { altKm: number | null | undefined; altitudeScale: number; tick: number }) {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as { target?: THREE.Vector3; update?: () => void } | null;
+  useEffect(() => {
+    if (altKm == null || !Number.isFinite(altKm)) return;
+    _altScale = altitudeScale;
+    const r = EARTH_R + (altKm * altitudeScale) / KM_PER_UNIT;
+    const dist = Math.min(28, Math.max(3.2, r * 1.45 + 1.4));
+    const dir = camera.position.clone().normalize();
+    if (dir.lengthSq() < 1e-6) dir.set(0, 0.22, 1).normalize();
+    camera.position.copy(dir.multiplyScalar(dist));
+    camera.lookAt(0, 0, 0);
+    controls?.update?.();
+  }, [altKm, altitudeScale, tick, camera, controls]);
+  return null;
+}
 
 export default function TrackerGlobe({
   tles,
@@ -311,6 +335,8 @@ export default function TrackerGlobe({
   pointSize = 0.075,
   resetKey = 0,
   observer = null,
+  highlightIds = [],
+  frameAltKm = null,
 }: TrackerGlobeProps) {
   return (
     <Canvas
@@ -323,6 +349,7 @@ export default function TrackerGlobe({
       onPointerMissed={() => onSelect(null)}
     >
       <FitCamera />
+      <FrameCamera altKm={frameAltKm} altitudeScale={altitudeScale} tick={resetKey} />
       <ResetView resetKey={resetKey} />
       <color attach="background" args={["#04060d"]} />
       <ambientLight intensity={0.55} />
@@ -335,12 +362,20 @@ export default function TrackerGlobe({
         tles={tles}
         color={color}
         selectedId={selected?.noradId ?? null}
+        highlightIds={highlightIds}
         onSelect={onSelect}
         altitudeScale={altitudeScale}
         pointSize={pointSize}
       />
       {observer ? <ObserverPin lat={observer.lat} lon={observer.lon} /> : null}
-      {selected ? <SelectedSatellite tle={selected} altitudeScale={altitudeScale} /> : null}
+      {(highlightIds.length
+        ? tles.filter((t) => highlightIds.includes(t.noradId))
+        : selected
+          ? [selected]
+          : []
+      ).map((t) => (
+        <SelectedSatellite key={t.noradId} tle={t} altitudeScale={altitudeScale} />
+      ))}
       <OrbitControls
         makeDefault
         enablePan={false}

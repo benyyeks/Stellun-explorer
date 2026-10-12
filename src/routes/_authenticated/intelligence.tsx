@@ -32,6 +32,7 @@ export const Route = createFileRoute("/_authenticated/intelligence")({
           "Active, in transit, planned, and completed space missions listed with launch dates, vehicles, destinations, and verified results.",
       },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: IntelligencePage,
@@ -75,6 +76,10 @@ const EXPORT_COLUMNS = [
 function IntelligencePage() {
   const [status, setStatus] = useState<MissionStatus | "all">("all");
   const [category, setCategory] = useState<MissionCategory | "all">("all");
+  const [agency, setAgency] = useState("all");
+  const [target, setTarget] = useState("all");
+  const agencies = [...new Set(MISSIONS.map((m) => m.agency))].sort();
+  const targets = [...new Set(MISSIONS.map((m) => m.destination))].sort();
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -84,12 +89,14 @@ function IntelligencePage() {
       (m) =>
         (status === "all" || m.status === status) &&
         (category === "all" || m.category === category) &&
+        (agency === "all" || m.agency === agency) &&
+        (target === "all" || m.destination === target) &&
         (q === "" ||
           m.name.toLowerCase().includes(q) ||
           m.destination.toLowerCase().includes(q) ||
           m.agency.toLowerCase().includes(q))
     ).sort((a, b) => a.name.localeCompare(b.name));
-  }, [status, category, query]);
+  }, [status, category, agency, target, query]);
 
   // Alphabetical grouping so the directory reads as an A to Z list.
   const groups = useMemo(() => {
@@ -209,6 +216,14 @@ function IntelligencePage() {
           ))}
         </div>
 
+        <div className="mission-filter-selects">
+          <label className="field-label" htmlFor="mission-agency">Agency
+            <select id="mission-agency" className="input" value={agency} onChange={(e) => setAgency(e.target.value)}><option value="all">All agencies</option>{agencies.map((a) => <option key={a} value={a}>{a}</option>)}</select>
+          </label>
+          <label className="field-label" htmlFor="mission-target">Target
+            <select id="mission-target" className="input" value={target} onChange={(e) => setTarget(e.target.value)}><option value="all">All targets</option>{targets.map((t) => <option key={t} value={t}>{t}</option>)}</select>
+          </label>
+        </div>
         <p className="roman-note" role="status">
           Showing {filtered.length} of {MISSIONS.length} missions.
         </p>

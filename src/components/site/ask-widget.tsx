@@ -1,4 +1,4 @@
-// Floating Ask ORBITEX widget, bottom right on every page except the Ask page.
+// Floating Orbitex AI widget, bottom right on every page except the Ask page.
 // One continuing conversation follows the user across pages (id in localStorage).
 // Opening the Ask page archives the widget thread into saved chats.
 import { useEffect, useRef, useState } from "react";
@@ -12,9 +12,9 @@ const KEY = "orbitex-widget-conversation";
 const NEAR_BOTTOM_PX = 72;
 
 function errorCopy(status: number): string {
-  if (status === 429) return "ORBITEX is answering many questions right now. Try again in a moment.";
+  if (status === 429 || status === 402) return "Orbitex AI is offline until a free model is available.";
   if (status === 401) return "Your session expired. Sign in again to continue.";
-  if (status === 402 || status === 503) return "Ask ORBITEX is paused. Check the model key or try later.";
+  if (status === 503) return "Orbitex AI is temporarily unavailable. Please try again later.";
   if (status === 502) return "The model did not respond in time. Retry the same question.";
   return "The answer link failed. Check your connection and retry.";
 }
@@ -180,10 +180,10 @@ export function AskWidget() {
   return (
     <div className="ask-widget">
       {open && (
-        <div className="ask-widget-panel glass" role="dialog" aria-label="Ask ORBITEX">
+        <div className="ask-widget-panel glass" role="dialog" aria-label="Orbitex AI">
           <div className="ask-widget-head">
             <div>
-              <strong>Ask ORBITEX</strong>
+              <strong>Orbitex AI</strong>
               <span>{streaming ? "Writing…" : "Live feeds and agency sources"}</span>
             </div>
             <div className="ask-widget-actions">
@@ -196,7 +196,7 @@ export function AskWidget() {
                 type="button"
                 className="btn btn-ghost btn-sm"
                 onClick={() => setOpen(false)}
-                aria-label="Close Ask ORBITEX"
+                aria-label="Close Orbitex AI"
               >
                 Close
               </button>
@@ -311,13 +311,13 @@ export function AskWidget() {
         className="ask-widget-fab"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-label={open ? "Close Ask ORBITEX" : "Open Ask ORBITEX"}
+        aria-label={open ? "Close Orbitex AI" : "Open Orbitex AI"}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
           <ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-25 12 12)" />
           <circle cx="12" cy="12" r="2.4" fill="currentColor" />
         </svg>
-        <span>Ask ORBITEX</span>
+        <span>Orbitex AI</span>
       </button>
     </div>
   );
