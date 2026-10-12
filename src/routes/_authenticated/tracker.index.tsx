@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { parseOMMArray, propagateSat, type TLE } from "@/lib/satellite";
-import { satByIdQuery, satGroupQuery, type SatGroup } from "@/lib/sat-queries";
+import { satGroupQuery, type SatGroup } from "@/lib/sat-queries";
 import { fmtNum, timeAgo } from "@/lib/format";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { FeedError, FeedLoading, EmptyState } from "@/components/site/data-state";
@@ -38,12 +38,12 @@ export const Route = createFileRoute("/_authenticated/tracker/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  // The compare pair lives in the URL so a comparison can be shared or
+  // The comparison lives in the URL so a comparison can be shared or
   // bookmarked and reopened exactly as it was left.
   validateSearch: (search: Record<string, unknown>): { compare?: string | undefined } => {
     const c = search["compare"];
     return {
-      compare: typeof c === "string" && /^\d{1,6}(,\d{1,6})?$/.test(c) ? c : undefined,
+      compare: typeof c === "string" && /^\d{1,6}(,\d{1,6}){0,19}$/.test(c) ? c : undefined,
     };
   },
   component: TrackerPage,
@@ -319,7 +319,7 @@ function TrackerPage() {
   const [isFs, setIsFs] = useState(false);
   const [pseudoFs, setPseudoFs] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
-  const [compareIds, setCompareIds] = useState<[string | null, string | null]>([null, null]);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
   const [compareNote, setCompareNote] = useState("");
   const shellRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<HTMLUListElement>(null);
@@ -336,9 +336,8 @@ function TrackerPage() {
     if (initRef.current) return;
     initRef.current = true;
     if (!search.compare) return;
-    const [a, b] = search.compare.split(",");
     setCompareMode(true);
-    setCompareIds([a ?? null, b ?? null]);
+    setCompareIds(search.compare.split(",").filter(Boolean).slice(0, 12));
     setCompareNote("Comparison restored from the shared link.");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -373,67 +372,39 @@ function TrackerPage() {
     [tles, selectedId]
   );
 
-  // Compare slots resolve from the visible catalog first; an object outside
-  // the current group (for example from a shared link) is fetched by catalog
-  // number so the comparison still renders.
-  const catalogA = compareIds[0] ? tles.find((t) => t.noradId === compareIds[0]) ?? null : null;
-  const catalogB = compareIds[1] ? tles.find((t) => t.noradId === compareIds[1]) ?? null : null;
-  const queryA = useQuery({
-    ...satByIdQuery(compareIds[0] ?? "0"),
-    enabled: !!compareIds[0] && !catalogA,
-  });
-  const queryB = useQuery({
-    ...satByIdQuery(compareIds[1] ?? "0"),
-    enabled: !!compareIds[1] && !catalogB,
-  });
-  const fetchedA = useMemo(
-    () => (queryA.data?.data ? parseOMMArray(queryA.data.data)[0] ?? null : null),
-    [queryA.data]
-  );
-  const fetchedB = useMemo(
-    () => (queryB.data?.data ? parseOMMArray(queryB.data.data)[0] ?? null : null),
-    [queryB.data]
-  );
-  const compareA = catalogA ?? fetchedA;
-  const compareB = catalogB ?? fetchedB;
+  const compareTles: TLE[] = compareIds
+    .map((id) => tles.find((t) => t.noradId === id))
+    .filter((t): t is TLE => !!t);
 
-  const assignCompare = (t: TLE) => {
-    const [a, b] = compareIds;
-    if (a === t.noradId) {
-      setCompareIds([null, b]);
-      setCompareNote(`${t.name} removed from the comparison.`);
-    } else if (b === t.noradId) {
-      setCompareIds([a, null]);
-      setCompareNote(`${t.name} removed from the comparison.`);
-    } else if (!a) {
-      setCompareIds([t.noradId, b]);
-      setCompareNote(`${t.name} selected as object A.`);
-    } else if (!b) {
-      setCompareIds([a, t.noradId]);
-      setCompareNote(`${t.name} selected as object B.`);
-    } else {
-      setCompareIds([b, t.noradId]);
-      setCompareNote(`${t.name} selected as object B, replacing the previous object A.`);
-    }
+  const toggleCompare = (t: TLE) => {
+    setCompareIds((prev) => {
+      if (prev.includes(t.noradId)) {
+        setCompareNote(`${t.name} removed from the comparison.`);
+        return prev.filter((id) => id !== t.noradId);
+      }
+      if (prev.length >= 12) {
+        setCompareNote("Compare limit is 12 objects. Remove one to add another.");
+        return prev;
+      }
+      setCompareNote(`${t.name} added to the comparison.`);
+      return [...prev, t.noradId];
+    });
   };
 
   const handlePick = (t: TLE) => {
-    if (compareMode) assignCompare(t);
+    if (compareMode) toggleCompare(t);
     else setSelectedId(t.noradId);
   };
 
   const exitCompare = () => {
     setCompareMode(false);
-    setCompareIds([null, null]);
+    setCompareIds([]);
     setCompareNote("Compare mode off.");
   };
 
-  // Keep the address bar in step with the compare pair so the current view
-  // can be bookmarked or shared.
   useEffect(() => {
-    const [a, b] = compareIds;
-    if (compareMode && a && b) {
-      const value = `${a},${b}`;
+    if (compareMode && compareIds.length >= 1) {
+      const value = compareIds.join(",");
       if (search.compare !== value) {
         void navigate({ to: "/tracker", search: { compare: value }, replace: true });
       }
@@ -442,19 +413,27 @@ function TrackerPage() {
     }
   }, [compareMode, compareIds, search.compare, navigate]);
 
+  const frameAltKm = useMemo(() => {
+    if (selected) return (selected.apogeeAlt + selected.perigeeAlt) / 2;
+    if (tles.length === 0) return null;
+    let max = 0;
+    for (const t of tles) {
+      const m = (t.apogeeAlt + t.perigeeAlt) / 2;
+      if (m > max) max = m;
+    }
+    return max;
+  }, [selected, tles]);
+
   const copyCompareLink = async () => {
-    const [a, b] = compareIds;
-    if (!a || !b) return;
-    const url = `${window.location.origin}/tracker?compare=${a},${b}`;
+    if (compareIds.length === 0) return;
+    const url = `${window.location.origin}/tracker?compare=${compareIds.join(",")}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setCompareNote("Comparison link copied to the clipboard.");
       window.setTimeout(() => setCopied(false), 2500);
     } catch {
-      setCompareNote(
-        "Copy was blocked by the browser. The address bar already holds this comparison link."
-      );
+      setCompareNote("Copy was blocked by the browser. The address bar already holds this comparison link.");
     }
   };
 
@@ -565,7 +544,7 @@ function TrackerPage() {
                           const first = r.groups[0]!;
                           setGroup(first.id);
                           setFilter("");
-                          setCompareIds([null, null]);
+                          setCompareIds([]);
                         }}
                       >
                         {r.label}
@@ -582,7 +561,7 @@ function TrackerPage() {
                         onClick={() => {
                           setGroup(g.id);
                           setFilter("");
-                          setCompareIds([null, null]);
+                          setCompareIds([]);
                         }}
                       >
                         {g.label}
@@ -609,7 +588,7 @@ function TrackerPage() {
                       exitCompare();
                     } else {
                       setCompareMode(true);
-                      setCompareNote("Compare mode on. Pick two objects to compare them side by side.");
+                      setCompareNote("Compare mode on. Pick objects to compare them side by side.");
                     }
                   }}
                 >
@@ -660,7 +639,7 @@ function TrackerPage() {
             Every satellite you see is positioned from its latest published orbital
             elements, propagated in real time with a Kepler solver corrected for Earth's
             oblateness. Click any satellite for live telemetry, save favorites, or compare
-            two orbits side by side.
+            multiple orbits side by side.
           </p>
         </div>
       </section>
@@ -687,6 +666,8 @@ function TrackerPage() {
                     autoRotate={autoRotate}
                     resetKey={resetKey}
                     observer={loc.location}
+                    highlightIds={compareMode ? compareIds : []}
+                    frameAltKm={frameAltKm}
                     altitudeScale={regimeDef.altScale}
                     pointSize={regimeDef.pointSize}
                     onSelect={(t) => {
@@ -711,7 +692,7 @@ function TrackerPage() {
               {tles.length > 0 && (
                 <div className="scene-hint">
                   {compareMode
-                    ? "Click satellites to fill compare slots A and B"
+                    ? "Click satellites to add or remove them from the comparison (highlighted in 3D)"
                     : "Drag to rotate · scroll to zoom · click a satellite"}
                 </div>
               )}
@@ -752,45 +733,17 @@ function TrackerPage() {
                   <div className="side-item-top">
                     <h3>Compare objects</h3>
                   </div>
-                  <p className="detail-note" style={{ marginTop: 0 }}>
-                    Pick two objects from the globe or the catalog to compare their orbits
-                    side by side.
-                  </p>
-                  <div className="compare-slots">
-                    {([0, 1] as const).map((i) => {
-                      const t = i === 0 ? compareA : compareB;
-                      const label = i === 0 ? "A" : "B";
-                      return (
-                        <div className="compare-slot" key={label}>
-                          <span className="compare-badge" aria-hidden="true">
-                            {label}
-                          </span>
-                          <span className="compare-slot-name">
-                            {t ? t.name : `Object ${label}: not selected`}
-                          </span>
-                          {t ? (
-                            <button
-                              type="button"
-                              className="compare-slot-clear"
-                              aria-label={`Clear object ${label} (${t.name})`}
-                              onClick={() => {
-                                setCompareIds((prev) => {
-                                  const next: [string | null, string | null] = [...prev];
-                                  next[i] = null;
-                                  return next;
-                                });
-                                setCompareNote(`${t.name} removed from the comparison.`);
-                              }}
-                            >
-                              ×
-                            </button>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <p className="detail-note">Select up to 12 objects from the globe or catalog.</p>
+                  <ul className="side-list">
+                    {compareTles.map((t) => (
+                      <li className="side-item-row" key={t.noradId}>
+                        <span className="side-item-name">{t.name}</span>
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => toggleCompare(t)} aria-label={`Remove ${t.name} from selection`}>Remove</button>
+                      </li>
+                    ))}
+                  </ul>
                   <div className="compare-actions">
-                    {compareIds[0] && compareIds[1] ? (
+                    {compareIds.length >= 1 ? (
                       <button
                         type="button"
                         className="btn btn-sm"
@@ -957,22 +910,21 @@ function TrackerPage() {
                       onKeyDown={onCatalogKeyDown}
                     >
                       {visibleCatalog.map((t) => {
-                        const slot =
-                          compareIds[0] === t.noradId ? "A" : compareIds[1] === t.noradId ? "B" : null;
+                        const inCompare = compareIds.includes(t.noradId);
                         return (
                           <li key={t.noradId}>
                             <div className="side-item-row">
                               <button
                                 type="button"
                                 data-catalog-item
-                                className={`side-item ${!compareMode && selectedId === t.noradId ? "side-item-active" : ""} ${slot ? "side-item-compare" : ""}`}
+                                className={`side-item ${!compareMode && selectedId === t.noradId ? "side-item-active" : ""} ${inCompare ? "side-item-compare" : ""}`}
                                 aria-current={!compareMode && selectedId === t.noradId ? "true" : undefined}
                                 onClick={() => handlePick(t)}
                               >
                                 <span className="side-item-name">
-                                  {slot ? (
+                                  {inCompare ? (
                                     <span className="compare-badge" aria-hidden="true">
-                                      {slot}
+                                      {compareIds.indexOf(t.noradId) + 1}
                                     </span>
                                   ) : null}
                                   <span>{t.name}</span>
@@ -1005,7 +957,7 @@ function TrackerPage() {
           </div>
           )}
 
-          {compareMode && (compareA || compareB) ? <ComparePanel a={compareA} b={compareB} /> : null}
+          {compareMode ? <ComparePanel items={compareTles} onRemove={(id) => setCompareIds((prev) => prev.filter((x) => x !== id))} /> : null}
 
           <p className="scaffold-note" style={{ marginTop: 18 }}>
             Elements source: CelesTrak, refreshed regularly. Positions are computed, not
