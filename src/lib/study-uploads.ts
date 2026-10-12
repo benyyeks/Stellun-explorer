@@ -61,8 +61,8 @@ export function addUploadedBook(input: {
     title,
     authors: (input.authors ?? "").trim().slice(0, 120),
     topicId: input.topicId,
-    fileName: input.fileName,
-    objectUrl: input.objectUrl,
+    ...(input.fileName !== undefined ? { fileName: input.fileName } : {}),
+    ...(input.objectUrl !== undefined ? { objectUrl: input.objectUrl } : {}),
     addedAt: Date.now(),
     notes: "",
   };
