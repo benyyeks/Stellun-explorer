@@ -7,7 +7,8 @@
 - [x] Study uploads with required book title and inline study-context assistant
 - [x] Mission agency/target filters and T-60 live launch links
 - [x] Verify free OpenRouter model and clear 402 handling
-- [ ] Verify affected flows and publish green build
+- [x] Verify affected flows: seven rule tests, signed-in study answer, Mars selection, mixed-group shared comparison, and six pages at five widths in both themes
+- [ ] Publish green build
 
 ## Admin restoration
 - [x] Restore styled health dashboard, Suggestions and Errors panels
