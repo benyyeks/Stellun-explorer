@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { parseOMMArray, propagateSat, type TLE } from "@/lib/satellite";
-import { satGroupQuery, type SatGroup } from "@/lib/sat-queries";
+import { satByIdQuery, satGroupQuery, type SatGroup } from "@/lib/sat-queries";
 import { fmtNum, timeAgo } from "@/lib/format";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { FeedError, FeedLoading, EmptyState } from "@/components/site/data-state";
@@ -372,9 +372,17 @@ function TrackerPage() {
     [tles, selectedId]
   );
 
+  const comparisonQueries = useQueries({
+    queries: compareIds.map((id) => ({
+      ...satByIdQuery(id),
+      enabled: !tles.some((t) => t.noradId === id),
+    })),
+  });
   const compareTles: TLE[] = compareIds
-    .map((id) => tles.find((t) => t.noradId === id))
+    .map((id, index) => tles.find((t) => t.noradId === id)
+      ?? parseOMMArray(comparisonQueries[index]?.data?.data ?? []).find((t) => t.noradId === id))
     .filter((t): t is TLE => !!t);
+  const sceneTles = [...tles, ...compareTles.filter((t) => !tles.some((item) => item.noradId === t.noradId))];
 
   const toggleCompare = (t: TLE) => {
     setCompareIds((prev) => {
@@ -660,7 +668,7 @@ function TrackerPage() {
               {mounted && tles.length > 0 ? (
                 <Suspense fallback={<SceneBootOverlay label="Loading the 3D engine" />}>
                   <TrackerGlobe
-                    tles={tles}
+                    tles={sceneTles}
                     color={groupMeta.color}
                     selected={selected}
                     autoRotate={autoRotate}
