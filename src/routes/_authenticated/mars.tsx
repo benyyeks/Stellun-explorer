@@ -135,6 +135,8 @@ function MarsPage() {
         </div>
       </section>
 
+      <section><div className="container"><MarsSurfaceMap /></div></section>
+
       <section>
         <div className="container">
           <div className="stat-grid" style={{ marginBottom: 24 }}>
@@ -227,7 +229,6 @@ function MarsPage() {
         </div>
       </section>
 
-      <section><div className="container"><MarsSurfaceMap /></div></section>
       <MarsImageGallery />
     </main>
   );

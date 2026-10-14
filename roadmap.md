@@ -1,5 +1,10 @@
 # ORBITEX roadmap
 
+## Mars map v3 2026-10-14
+- [ ] Supplied mosaic, v3 data and styles, map first below banner
+- [ ] Minimal wheel/pinch corrections, fixed frame verification, filters and NASA links
+- [ ] Test light/dark layouts and publish
+
 ## Feature batch 2026-10-11
 - [x] Multi-satellite compare and high-orbit camera framing from supplied files
 - [x] Mars surface map, preserving the gallery

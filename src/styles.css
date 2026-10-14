@@ -3095,74 +3095,159 @@ html, body { overflow-x: clip; }
 }
 
 /* Append to src/styles.css — Mars surface map */
-.mars-map { margin-top: 24px; }
+/* Mars surface map — fixed frame + magnifier zoom */
+.mars-map { margin-top: 0; margin-bottom: 24px; }
 .mars-map-head { margin-bottom: 12px; }
+
+/* CRITICAL: fixed frame — never grows when zooming */
 .mars-map-viewport {
   position: relative;
   width: 100%;
   aspect-ratio: 2 / 1;
+  max-height: min(70vh, 640px);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: hidden; /* clips magnified content */
   border: 1px solid var(--color-border);
   background: #1a0f0a;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
 }
-.mars-map-base {
+.mars-map-viewport:active { cursor: grabbing; }
+.mars-map-viewport.is-fs {
+  aspect-ratio: auto;
+  max-height: none;
+  height: calc(100vh - 200px);
+  border-radius: 0;
+}
+.mars-map:fullscreen {
+  padding: 16px;
+  overflow: auto;
+  background: var(--color-bg, #0b0f14);
+}
+.mars-map:fullscreen .mars-map-viewport {
+  height: calc(100vh - 240px);
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+/* Stage is exactly viewport size; transform scales content inside the clip */
+.mars-map-stage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+.mars-map-base-img {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
 }
-.mars-map-bands {
+.mars-map-base-fallback {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 50% 45%, #8b4513 0%, transparent 55%),
-    linear-gradient(180deg, #3d2314 0%, #6b3a22 35%, #a0522d 55%, #5c3317 78%, #2a1810 100%);
-  opacity: 0.95;
+    radial-gradient(ellipse 70% 45% at 30% 48%, #8b4513 0%, transparent 55%),
+    linear-gradient(180deg, #3d2314 0%, #6b3a22 40%, #a0522d 58%, #5c3317 80%, #2a1810 100%);
 }
 .mars-map-grid {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 220, 180, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 220, 180, 0.07) 1px, transparent 1px);
+    linear-gradient(rgba(255, 230, 200, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 230, 200, 0.07) 1px, transparent 1px);
   background-size: 10% 11.11%;
   pointer-events: none;
 }
+.mars-map-tracks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
 .mars-map-pin {
   position: absolute;
-  width: 12px;
-  height: 12px;
   border-radius: 50%;
   border: 2px solid #fff;
   transform: translate(-50%, -50%);
   cursor: pointer;
   padding: 0;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
   z-index: 2;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  min-width: 8px;
+  min-height: 8px;
 }
-.mars-map-pin:hover { transform: translate(-50%, -50%) scale(1.25); }
 .mars-map-pin.selected {
-  transform: translate(-50%, -50%) scale(1.4);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 55%, transparent);
-  z-index: 3;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent, #6eb6ff) 55%, transparent);
+  z-index: 4;
 }
-.mars-map-controls {
-  display: grid;
-  gap: 10px;
-  margin-top: 12px;
+.mars-map-label {
+  position: absolute;
+  transform: translate(8px, -50%);
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px #000, 0 0 6px #000;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 3;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mars-map-controls { display: grid; gap: 10px; margin-top: 12px; }
+.mars-map-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.mars-map-zoom-readout {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #8a94a6);
+  min-width: 3rem;
 }
 .mars-map-toggles {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
   font-size: 0.86rem;
-  color: var(--color-text-muted);
+  color: var(--color-text-muted, #8a94a6);
 }
 .mars-map-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
+}
+.mars-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #8a94a6);
+}
+.mars-leg-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.mars-leg-line {
+  display: inline-block;
+  width: 16px;
+  height: 3px;
+  margin-right: 4px;
+  vertical-align: middle;
+  background: linear-gradient(90deg, #3ecf8e, #6eb6ff);
+  border-radius: 2px;
 }
 .mars-map-detail {
   margin-top: 14px;
@@ -3174,6 +3259,18 @@ html, body { overflow-x: clip; }
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+.mars-map-missions { margin-bottom: 10px; }
+.mars-map-discoveries {
+  margin: 0 0 12px;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.mars-map-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 /* Feature batch: study forms and mission selectors use existing tokens. */
