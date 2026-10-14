@@ -20,8 +20,14 @@ const BASE_CANDIDATES = [
   "/textures/mars-mdim.jpeg",
 ];
 
-const MIN_SCALE = 1;
-const MAX_SCALE = 12;
+export function zoomView(view: { scale: number; tx: number; ty: number }, factor: number, cx: number, cy: number, w: number, h: number) {
+  const scale = Math.min(12, Math.max(1, view.scale * factor));
+  return { scale,
+    tx: Math.max(w - w * scale, Math.min(0, cx - (cx - view.tx) * scale / view.scale)),
+    ty: Math.max(h - h * scale, Math.min(0, cy - (cy - view.ty) * scale / view.scale)),
+  };
+}
+
 
 function project(lat: number, lonE: number): { x: number; y: number } {
   const lon = lonToEast(lonE);
@@ -55,14 +61,16 @@ export function MarsSurfaceMap() {
   const [showEnded, setShowEnded] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [showTracks, setShowTracks] = useState(true);
-  const [baseSrc, setBaseSrc] = useState(BASE_CANDIDATES[0]!);
+  const [baseSrc, setBaseSrc] = useState(BASE_CANDIDATES[0] ?? "/textures/mars-mdim.jpg");
   const [baseFailed, setBaseFailed] = useState(false);
   const [vpSize, setVpSize] = useState({ w: 800, h: 400 });
 
   // Fixed-frame view: scale + pan in content coordinates
-  const [scale, setScale] = useState(1);
-  const [tx, setTx] = useState(0);
-  const [ty, setTy] = useState(0);
+  const [view, setView] = useState({ scale: 1, tx: 0, ty: 0 });
+  const { scale, tx, ty } = view;
+  const viewRef = useRef(view);
+  const applyView = useCallback((next: typeof view) => { viewRef.current = next; setView(next); }, []);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
   const drag = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
   const [isFs, setIsFs] = useState(false);
 
@@ -118,68 +126,67 @@ export function MarsSurfaceMap() {
   );
 
   const resetView = useCallback(() => {
-    setScale(1);
-    setTx(0);
-    setTy(0);
+    applyView({ scale: 1, tx: 0, ty: 0 });
+  }, [applyView]);
+
+  const zoomAt = useCallback((factor: number, clientX?: number, clientY?: number) => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    applyView(zoomView(viewRef.current, factor,
+      clientX != null ? clientX - rect.left - el.clientLeft : el.clientWidth / 2,
+      clientY != null ? clientY - rect.top - el.clientTop : el.clientHeight / 2,
+      el.clientWidth, el.clientHeight));
+  }, [applyView]);
+  const wheelRef = useRef(zoomAt);
+  wheelRef.current = zoomAt;
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1);
+      wheelRef.current(Math.exp(-dy * 0.0015), e.clientX, e.clientY);
+    };
+    el.addEventListener("wheel", wheel, { passive: false });
+    return () => el.removeEventListener("wheel", wheel);
   }, []);
 
-  /** Magnifier zoom toward a point in viewport coordinates (client relative). */
-  const zoomAt = useCallback(
-    (factor: number, clientX?: number, clientY?: number) => {
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0 || (e.target as HTMLElement).closest("button")) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const current = viewRef.current;
+    drag.current = { x: e.clientX, y: e.clientY, tx: current.tx, ty: current.ty };
+  }, []);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!pointers.current.has(e.pointerId)) return;
+    const before = [...pointers.current.values()];
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const after = [...pointers.current.values()];
+    const a = before[0], b = before[1], c = after[0], d = after[1];
+    if (a && b && c && d) {
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
       const el = viewportRef.current;
-      if (!el) return;
+      if (!el || distance < 1) return;
       const rect = el.getBoundingClientRect();
-      const cx = clientX != null ? clientX - rect.left : rect.width / 2;
-      const cy = clientY != null ? clientY - rect.top : rect.height / 2;
-      setScale((prev) => {
-        const next = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev * factor));
-        // Point under cursor in content space before zoom
-        const contentX = (cx - tx) / prev;
-        const contentY = (cy - ty) / prev;
-        // After zoom, keep that content point under the cursor
-        let nextTx = cx - contentX * next;
-        let nextTy = cy - contentY * next;
-        const clamped = clampPan(next, nextTx, nextTy);
-        setTx(clamped.tx);
-        setTy(clamped.ty);
-        return next;
-      });
-    },
-    [tx, ty, clampPan]
-  );
+      const next = zoomView(viewRef.current, Math.hypot(c.x - d.x, c.y - d.y) / distance,
+        (a.x + b.x) / 2 - rect.left - el.clientLeft, (a.y + b.y) / 2 - rect.top - el.clientTop,
+        el.clientWidth, el.clientHeight);
+      const pan = clampPan(next.scale, next.tx + (c.x + d.x - a.x - b.x) / 2, next.ty + (c.y + d.y - a.y - b.y) / 2);
+      applyView({ scale: next.scale, ...pan });
+    } else if (drag.current) {
+      const current = viewRef.current;
+      applyView({ scale: current.scale, ...clampPan(current.scale,
+        drag.current.tx + e.clientX - drag.current.x, drag.current.ty + e.clientY - drag.current.y) });
+    }
+  }, [applyView, clampPan]);
 
-  const onWheel = useCallback(
-    (e: React.WheelEvent) => {
-      e.preventDefault();
-      const factor = e.deltaY > 0 ? 1 / 1.12 : 1.12;
-      zoomAt(factor, e.clientX, e.clientY);
-    },
-    [zoomAt]
-  );
-
-  const onPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      if (e.button !== 0) return;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      drag.current = { x: e.clientX, y: e.clientY, tx, ty };
-    },
-    [tx, ty]
-  );
-
-  const onPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!drag.current) return;
-      const nextTx = drag.current.tx + (e.clientX - drag.current.x);
-      const nextTy = drag.current.ty + (e.clientY - drag.current.y);
-      const c = clampPan(scale, nextTx, nextTy);
-      setTx(c.tx);
-      setTy(c.ty);
-    },
-    [scale, clampPan]
-  );
-
-  const onPointerUp = useCallback(() => {
-    drag.current = null;
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId);
+    const remaining = [...pointers.current.values()][0];
+    drag.current = remaining ? { ...remaining, tx: viewRef.current.tx, ty: viewRef.current.ty } : null;
   }, []);
 
   const toggleFullscreen = async () => {
@@ -209,15 +216,13 @@ export function MarsSurfaceMap() {
     let nextTx = w / 2 - x * w * nextScale;
     let nextTy = h / 2 - y * h * nextScale;
     const c = clampPan(nextScale, nextTx, nextTy);
-    setScale(nextScale);
-    setTx(c.tx);
-    setTy(c.ty);
+    applyView({ scale: nextScale, ...c });
   };
 
   const onBaseError = () => {
     const idx = BASE_CANDIDATES.indexOf(baseSrc);
     if (idx >= 0 && idx < BASE_CANDIDATES.length - 1) {
-      setBaseSrc(BASE_CANDIDATES[idx + 1]!);
+      setBaseSrc(BASE_CANDIDATES[idx + 1] ?? "/textures/mars-mdim.jpg");
       return;
     }
     setBaseFailed(true);
@@ -229,7 +234,7 @@ export function MarsSurfaceMap() {
   return (
     <div className="mars-map glass glass-card scaffold-card" ref={shellRef}>
       <div className="mars-map-head">
-        <h2 style={{ margin: 0 }}>Surface map — landers, rovers &amp; tracks</h2>
+        <h2 style={{ margin: 0 }}>Surface map: landers, rovers &amp; tracks</h2>
         <p className="text-muted" style={{ margin: "6px 0 0", fontSize: "0.9rem" }}>
           Fixed map frame with magnifier zoom. Drag to pan, scroll or use buttons to zoom into the
           surface. Colored lines show simplified rover tracks from landing toward later positions.
@@ -240,8 +245,7 @@ export function MarsSurfaceMap() {
       <div
         className={`mars-map-viewport${isFs ? " is-fs" : ""}`}
         ref={viewportRef}
-        onWheel={onWheel}
-        role="img"
+        role="region"
         aria-label="Interactive Mars surface map"
       >
         <div
@@ -438,8 +442,7 @@ export function MarsSurfaceMap() {
         Base mosaic: Viking MDIM family (NASA / JPL / USGS), public domain. Tracks on this global
         chart are simplified paths for orientation; they are not full sol-by-sol odometry. For live
         Curiosity and Perseverance positions and full drive history, use the NASA map links in each
-        site card. Place the mosaic at{" "}
-        <code className="mono">public/textures/mars-mdim.jpg</code>.
+        site card.
       </p>
     </div>
   );

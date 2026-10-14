@@ -14,3 +14,5 @@
 - Launch watch-link eligibility is computed by a shared browser-safe timing helper so cards and boundary tests apply the same launch window.
 - Tracker comparisons resolve out-of-group IDs through the shared satellite query cache so saved comparisons survive group changes and reopening.
 - Admin inbox operations use authenticated server functions with both verified email allowlisting and the protected admin role; the shell mounts one signed-in error reporter to collect failures without duplicating listeners.
+
+- Mars map interactions transform only the inner stage with synchronized view state and non-passive cursor-anchored wheel/touch zoom so the outer frame stays fixed.
