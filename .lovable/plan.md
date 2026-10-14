@@ -4,8 +4,8 @@
 Replace the Mars map with the supplied v3 design, directly below the Mars banner. Keep the existing distance statistics and gallery after it. Do not modify admin, tracker, or unrelated pages.
 
 ## Implementation
-1. Use the supplied `mars-sites.ts` and `mars-traverses.ts` contents as-is. Replace the map component with the supplied version, allowing only the agreed minimal interaction and compatibility fixes.
-2. Save your forthcoming equirectangular mosaic to `public/textures/mars-mdim.jpg`, preserving its full rectangular projection without cropping. The uploaded ZIP contains no image; the mosaic remains required before image verification and publication.
+1. Use the latest `mars-map-v3-2.zip`, confirmed identical to the earlier v3 archive. Use its `mars-sites.ts` and `mars-traverses.ts` contents as-is. Replace the map component with the supplied version, allowing only the agreed minimal interaction and compatibility fixes.
+2. Save your attached 1920 × 960 equirectangular mosaic to `public/textures/mars-mdim.jpg`, preserving its full rectangular projection without cropping or regenerating it.
 3. Replace old `.mars-map*` styles with the complete supplied `mars-map.css`, including its map legend styles. Preserve all unrelated styles and existing ORBITEX glass presentation.
 4. Move the single map instance into the first section after the page banner. Preserve the existing statistics, orbital information, and image gallery below it.
 5. Correct wheel handling with a non-passive listener, delta-sensitive zoom, and current-state cursor anchoring. Add touch pinch using the same anchoring math. Zoom buttons anchor at the viewport center. Keep all scaling and translation inside the clipped, fixed-size frame.
@@ -22,7 +22,7 @@ Replace the Mars map with the supplied v3 design, directly below the Mars banner
 - List every changed file and publish after successful verification. Publication also includes the previously completed, unpublished feature batch.
 
 ## Technical files
-- `public/textures/mars-mdim.jpg` (awaiting your image attachment)
+- `public/textures/mars-mdim.jpg` (your supplied 1920 × 960 mosaic)
 - `src/lib/mars-sites.ts`
 - `src/lib/mars-traverses.ts`
 - `src/components/mars/mars-surface-map.tsx`
