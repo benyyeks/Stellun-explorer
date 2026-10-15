@@ -42,7 +42,8 @@ export function AskWidget() {
     if (saved) {
       setConvId(saved);
       void history.loadMessages(saved).then((m) => {
-        if (m.length) setMessages(m);
+        const kept = m.filter((x) => x.content.trim().length > 0);
+        if (kept.length) setMessages(kept);
         else localStorage.removeItem(KEY);
       });
     }
