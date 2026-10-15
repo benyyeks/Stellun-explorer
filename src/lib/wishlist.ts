@@ -12,13 +12,13 @@ import { runWrite } from "@/lib/supabase-write";
 
 export type WishlistEntry = { id: string; addedAt: number; note?: string };
 
-const KEY = "orbitex:reading-list";
+const KEY = "stellun:reading-list";
 const MAX_BOOKS = 30;
 export const MAX_NOTE = 1200;
 
 // Payload shape of an exported list. The app tag lets us recognize our own
 // files on import; a bare array of ids or { id } entries is accepted too.
-export const WISHLIST_FILE_APP = "orbitex-reading-list";
+export const WISHLIST_FILE_APP = "stellun-reading-list";
 
 function isEntry(v: unknown): v is WishlistEntry {
   return (

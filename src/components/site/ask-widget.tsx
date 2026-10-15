@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useAskHistory, type AskMsg } from "@/lib/ask-history";
 import { AnswerText } from "@/components/site/answer-text";
 
-const KEY = "orbitex-widget-conversation";
+const KEY = "stellun-widget-conversation";
 const NEAR_BOTTOM_PX = 72;
 
 function errorCopy(status: number, code?: string): string {

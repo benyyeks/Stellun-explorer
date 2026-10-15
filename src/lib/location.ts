@@ -16,7 +16,7 @@ export type ObserverLocation = {
 
 export type GeoRequestStatus = "idle" | "requesting" | "error";
 
-const KEY = "orbitex:observer-location";
+const KEY = "stellun:observer-location";
 
 function read(): ObserverLocation | null {
   try {

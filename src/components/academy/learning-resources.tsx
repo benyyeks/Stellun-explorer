@@ -152,7 +152,7 @@ export function LearningResourcesTab({ sharedParam }: { sharedParam?: string | u
     });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "orbitex-reading-list.json";
+    a.download = "stellun-reading-list.json";
     a.click();
     URL.revokeObjectURL(a.href);
     setNotice("Reading list exported as a JSON file.");
@@ -680,7 +680,7 @@ function fmtDeadline(d: string | null) {
 }
 
 function CompetitionGrid() {
-  const q = useQuery({ queryKey: ["orbitex", "competitions"], queryFn: () => getCompetitions() });
+  const q = useQuery({ queryKey: ["stellun", "competitions"], queryFn: () => getCompetitions() });
   if (q.isLoading) return <p className="academy-count">Loading competitions.</p>;
   const items = q.data?.items ?? [];
   if (items.length === 0) {

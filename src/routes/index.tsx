@@ -10,7 +10,7 @@ import {
   type NewsItem,
   type CompetitionItem,
 } from "@/lib/news.functions";
-import { getLaunches, getNEO, getEarthWeather } from "@/lib/orbitex-data.functions";
+import { getLaunches, getNEO, getEarthWeather } from "@/lib/stellun-data.functions";
 import { timeAgo, safeText, plainText, pad2, utcDateStr } from "@/lib/format";
 import {
   heliocentricEcliptic,
@@ -55,12 +55,12 @@ export const Route = createFileRoute("/")({
 });
 
 const newsQueryOptions = queryOptions({
-  queryKey: ["orbitex", "news", "latest"],
+  queryKey: ["stellun", "news", "latest"],
   queryFn: () => getLatestNews(),
 });
 
 const competitionsQueryOptions = queryOptions({
-  queryKey: ["orbitex", "competitions"],
+  queryKey: ["stellun", "competitions"],
   queryFn: () => getCompetitions(),
 });
 
@@ -284,12 +284,12 @@ function parseLaunchBriefs(payload: unknown): LaunchBrief[] {
 
 function OverviewStrip() {
   const launchesQ = useQuery({
-    queryKey: ["orbitex", "launches", "overview"],
+    queryKey: ["stellun", "launches", "overview"],
     queryFn: () => getLaunches(),
     staleTime: 5 * 60_000,
   });
   const neoQ = useQuery({
-    queryKey: ["orbitex", "neo", "overview"],
+    queryKey: ["stellun", "neo", "overview"],
     queryFn: () => getNEO(),
     staleTime: 60 * 60_000,
   });
@@ -532,7 +532,7 @@ const NEWS_FILTERS = [
 function NewsSection() {
   const { data: newsResult } = useSuspenseQuery(newsQueryOptions);
   const launchesQ = useQuery({
-    queryKey: ["orbitex", "launches", "overview"],
+    queryKey: ["stellun", "launches", "overview"],
     queryFn: () => getLaunches(),
     staleTime: 5 * 60_000,
   });

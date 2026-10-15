@@ -18,11 +18,11 @@ export type StudyWorkspace = {
   updatedAt: number;
 };
 
-const KEY = "orbitex:study-workspaces";
+const KEY = "stellun:study-workspaces";
 const MAX_WORKSPACES = 12;
 export const MAX_NOTES = 8000;
 export const MAX_FOCUS = 200;
-export const ASK_PREFILL_KEY = "orbitex-ask-prefill";
+export const ASK_PREFILL_KEY = "stellun-ask-prefill";
 
 export type AskPrefill = {
   mode?: "chat" | "quiz" | "explain" | "resources";

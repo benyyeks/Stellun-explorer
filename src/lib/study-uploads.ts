@@ -15,7 +15,7 @@ export type UploadedBook = {
   notes: string;
 };
 
-const KEY = "orbitex:study-uploads";
+const KEY = "stellun:study-uploads";
 export const MAX_UPLOADS = 20;
 export const MAX_TITLE = 200;
 

@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { getLaunches } from "@/lib/orbitex-data.functions";
+import { getLaunches } from "@/lib/stellun-data.functions";
 import { fmtNum, safeText, pad2 } from "@/lib/format";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { FeedError, EmptyState } from "@/components/site/data-state";
@@ -56,7 +56,7 @@ function LaunchesSkeleton() {
 }
 
 const launchesQueryOptions = queryOptions({
-  queryKey: ["orbitex", "launches"],
+  queryKey: ["stellun", "launches"],
   queryFn: () => getLaunches(),
   retry: false,
   staleTime: 120_000,

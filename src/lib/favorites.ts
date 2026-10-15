@@ -12,12 +12,12 @@ import { runWrite } from "@/lib/supabase-write";
 export type FavoriteSat = { noradId: string; name: string; addedAt: number };
 export type FavoriteInput = { noradId: string; name: string };
 
-const KEY = "orbitex:favorites";
+const KEY = "stellun:favorites";
 const MAX_FAVORITES = 30;
 
 // Payload shape of an exported list. The app tag lets us recognize our own
 // files on import; a bare array of { noradId, name } entries is accepted too.
-export const FAVORITES_FILE_APP = "orbitex-saved-satellites";
+export const FAVORITES_FILE_APP = "stellun-saved-satellites";
 
 function isFavoriteEntry(v: unknown): v is FavoriteSat {
   return (

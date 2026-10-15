@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { getKpIndex, getSolarWind, getXrayFlux, getDONKI } from "@/lib/orbitex-data.functions";
+import { getKpIndex, getSolarWind, getXrayFlux, getDONKI } from "@/lib/stellun-data.functions";
 import { fmtNum, safeText } from "@/lib/format";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { FeedError, EmptyState } from "@/components/site/data-state";
@@ -57,25 +57,25 @@ function WeatherSkeleton() {
 }
 
 const kpQueryOptions = queryOptions({
-  queryKey: ["orbitex", "kp-index"],
+  queryKey: ["stellun", "kp-index"],
   queryFn: () => getKpIndex(),
   retry: false,
   staleTime: 60_000,
 });
 const windQueryOptions = queryOptions({
-  queryKey: ["orbitex", "solar-wind"],
+  queryKey: ["stellun", "solar-wind"],
   queryFn: () => getSolarWind(),
   retry: false,
   staleTime: 60_000,
 });
 const xrayQueryOptions = queryOptions({
-  queryKey: ["orbitex", "xray-flux"],
+  queryKey: ["stellun", "xray-flux"],
   queryFn: () => getXrayFlux(),
   retry: false,
   staleTime: 60_000,
 });
 const donkiQueryOptions = queryOptions({
-  queryKey: ["orbitex", "donki"],
+  queryKey: ["stellun", "donki"],
   queryFn: () => getDONKI(),
   retry: false,
   staleTime: 300_000,

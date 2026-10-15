@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export type Profile = { displayName: string | null; avatarUrl: string | null };
 
-const EVENT = "orbitex:profile-changed";
+const EVENT = "stellun:profile-changed";
 
 async function signedUrl(path: string | null): Promise<string | null> {
   if (!path) return null;

@@ -2,7 +2,7 @@
 // nothing here calls the upstream feed from the browser.
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getRomanNews } from "@/lib/orbitex-data.functions";
+import { getRomanNews } from "@/lib/stellun-data.functions";
 import { FeedStatus } from "@/components/site/feed-status";
 import { SkeletonImage } from "@/components/site/skeleton-image";
 
