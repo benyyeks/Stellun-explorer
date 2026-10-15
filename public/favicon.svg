@@ -1,19 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <style>
     .orbit { stroke: #96601f; }
-    .star-fill { fill: #ffffff; }
-    .star-stroke { stroke: #1f3555; }
+    .star { fill: #1f3555; }
+    .core { fill: #ffffff; stroke: #1f3555; }
     @media (prefers-color-scheme: dark) {
       .orbit { stroke: #dda05f; }
-      .star-fill { fill: #ffffff; }
-      .star-stroke { stroke: #8ca5d6; }
+      .star { fill: #8ca5d6; }
+      .core { stroke: #8ca5d6; }
     }
   </style>
-  <g class="orbit" fill="none" stroke-width="2.4" stroke-linecap="round">
-    <ellipse cx="32" cy="32" rx="26" ry="10" transform="rotate(0 32 32)"/>
-    <ellipse cx="32" cy="32" rx="26" ry="10" transform="rotate(60 32 32)"/>
-    <ellipse cx="32" cy="32" rx="26" ry="10" transform="rotate(-60 32 32)"/>
+  <g class="orbit" fill="none" stroke-width="2.6">
+    <ellipse cx="32" cy="32" rx="28" ry="13" transform="rotate(45 32 32)"/>
+    <ellipse cx="32" cy="32" rx="28" ry="13" transform="rotate(-45 32 32)"/>
   </g>
-  <path class="star-fill star-stroke" stroke-width="1.6" stroke-linejoin="round"
-    d="M32 18 L34.2 27.2 L43.5 25.5 L36.4 31.2 L42 38.5 L32 34.2 L22 38.5 L27.6 31.2 L20.5 25.5 L29.8 27.2 Z"/>
+  <path class="star" d="M32 32 L41 23 L36.2 32 L41 41 L32 36.2 L23 41 L27.8 32 L23 23 L32 27.8 L36.2 32 Z"/>
+  <path class="core" stroke-width="1.8" stroke-linejoin="round" d="M32 14 L34.6 29.4 L50 32 L34.6 34.6 L32 50 L29.4 34.6 L14 32 L29.4 29.4 Z"/>
 </svg>
