@@ -3354,3 +3354,14 @@ html, body { overflow-x: clip; }
   pointer-events: none;
   overflow: visible;
 }
+
+/* Stellun logo lettering (official artwork, theme-swapped) */
+.brand-word-img { display: inline-flex; align-items: center; height: 20px; }
+.brand-word-img img { height: 100%; width: auto; display: block; }
+.brand-word-dark { display: none !important; }
+@media (prefers-color-scheme: dark) {
+  .brand-word-light { display: none !important; }
+  .brand-word-dark { display: block !important; }
+}
+.accent-panel .brand-word-light { display: none !important; }
+.accent-panel .brand-word-dark { display: block !important; }

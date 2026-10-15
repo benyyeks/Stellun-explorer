@@ -2,7 +2,7 @@
 // with outcome, vehicle, and pad, plus CSV and JSON download. Loaded separately
 // from the upcoming schedule so a slow archive never delays the countdown.
 import { useQuery } from "@tanstack/react-query";
-import { getPastLaunches } from "@/lib/orbitex-data.functions";
+import { getPastLaunches } from "@/lib/stellun-data.functions";
 import { safeText, pad2 } from "@/lib/format";
 import { ExportButtons } from "@/components/site/export-buttons";
 import { FeedStatus } from "@/components/site/feed-status";
@@ -64,7 +64,7 @@ const COLUMNS = [
 
 export function PastLaunches() {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["orbitex", "launches", "previous"],
+    queryKey: ["stellun", "launches", "previous"],
     queryFn: () => getPastLaunches(),
     retry: false,
     staleTime: 30 * 60_000,

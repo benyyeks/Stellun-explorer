@@ -13,7 +13,7 @@ import { FavButton } from "@/components/tracker/fav-button";
 import { ComparePanel } from "@/components/tracker/compare-panel";
 import { FavoritesTransfer } from "@/components/tracker/favorites-transfer";
 import { TIME_RATES, setSimRate, simNow, useSimRate } from "@/lib/sim-clock";
-import { getISSPosition } from "@/lib/orbitex-data.functions";
+import { getISSPosition } from "@/lib/stellun-data.functions";
 import { SceneSkeleton, SceneBootOverlay } from "@/components/site/page-skeleton";
 
 // three.js is browser-only; the globe mounts after hydration.

@@ -108,7 +108,7 @@ All pairs verified against real WCAG contrast math; lowest ratio 4.62:1 (AA mini
 
 
 
-Light/dark follows OS `prefers-color-scheme` by default; manual toggle persists via `localStorage` (`orbitex-theme`). A separate non-module blocking script (`theme-boot.js`) applies stored overrides before first paint — `type="module"` is deferred and runs too late, a real bug that was caught and fixed.
+Light/dark follows OS `prefers-color-scheme` by default; manual toggle persists via `localStorage` (`stellun-theme`). A separate non-module blocking script (`theme-boot.js`) applies stored overrides before first paint — `type="module"` is deferred and runs too late, a real bug that was caught and fixed.
 
 
 

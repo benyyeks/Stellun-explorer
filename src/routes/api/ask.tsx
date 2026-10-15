@@ -4,12 +4,12 @@
 // Knowledge is dynamic and controlled:
 // 1. Live feeds fetched on every request (ISS, space weather, launches, news,
 //    Mars raw-frame sols, NEO window).
-// 2. Verified mission milestones from orbitex-knowledge.ts (slow-moving facts).
+// 2. Verified mission milestones from stellun-knowledge.ts (slow-moving facts).
 // 3. Optional web search restricted to official agency domains.
 // Training memory is never the source of truth for current figures.
 // The OpenRouter secret never leaves the server; the browser talks only here.
 import { createFileRoute } from "@tanstack/react-router";
-import { knowledgeBlock } from "@/lib/orbitex-knowledge";
+import { knowledgeBlock } from "@/lib/stellun-knowledge";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";

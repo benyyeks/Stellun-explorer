@@ -8,7 +8,7 @@ import {
   getSatellitesSSO,
   getSatnogsSatellite,
   getSatnogsTransmitters,
-} from "@/lib/orbitex-data.functions";
+} from "@/lib/stellun-data.functions";
 
 export type SatGroup =
   | "stations"
@@ -31,7 +31,7 @@ export type SatGroup =
 export function satGroupQuery(group: SatGroup) {
   if (group === "sso") return satSSOQuery();
   return queryOptions({
-    queryKey: ["orbitex", "sats", group],
+    queryKey: ["stellun", "sats", group],
     queryFn: () => getSatellites({ data: { group } }),
     staleTime: 30 * 60_000,
     retry: 1,
@@ -40,7 +40,7 @@ export function satGroupQuery(group: SatGroup) {
 
 export function satSSOQuery() {
   return queryOptions({
-    queryKey: ["orbitex", "sats", "sso"],
+    queryKey: ["stellun", "sats", "sso"],
     queryFn: () => getSatellitesSSO(),
     staleTime: 30 * 60_000,
     retry: 1,
@@ -49,7 +49,7 @@ export function satSSOQuery() {
 
 export function satByIdQuery(noradId: string) {
   return queryOptions({
-    queryKey: ["orbitex", "sat", noradId],
+    queryKey: ["stellun", "sat", noradId],
     queryFn: () => getSatellite({ data: { noradId } }),
     staleTime: 30 * 60_000,
     retry: 1,
@@ -60,7 +60,7 @@ export function satByIdQuery(noradId: string) {
 // for a single catalog object. Long stale time; entries change rarely.
 export function satnogsProfileQuery(noradId: string) {
   return queryOptions({
-    queryKey: ["orbitex", "satnogs", noradId],
+    queryKey: ["stellun", "satnogs", noradId],
     queryFn: () => getSatnogsSatellite({ data: { noradId } }),
     staleTime: 6 * 60 * 60_000,
     retry: 1,
@@ -69,7 +69,7 @@ export function satnogsProfileQuery(noradId: string) {
 
 export function satnogsTransmittersQuery(noradId: string) {
   return queryOptions({
-    queryKey: ["orbitex", "satnogs-tx", noradId],
+    queryKey: ["stellun", "satnogs-tx", noradId],
     queryFn: () => getSatnogsTransmitters({ data: { noradId } }),
     staleTime: 6 * 60 * 60_000,
     retry: 1,

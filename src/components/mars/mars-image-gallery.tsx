@@ -8,7 +8,7 @@ import {
   type DataResult,
   type MarsFrame,
   type MarsGalleryPayload,
-} from "@/lib/orbitex-data.functions";
+} from "@/lib/stellun-data.functions";
 import {
   ACTIVE_CRAFT,
   ALL_CRAFT,
@@ -28,7 +28,7 @@ import { PhotoGridSkeleton, DetailRowsSkeleton } from "@/components/site/page-sk
 
 const galleryQuery = (craft: CraftKey, sol: number | null) =>
   queryOptions({
-    queryKey: ["orbitex", "mars-gallery", craft, sol],
+    queryKey: ["stellun", "mars-gallery", craft, sol],
     queryFn: () => getMarsGallery({ data: { craft, sol, page: 0 } }),
     retry: 1,
     staleTime: 30 * 60_000,

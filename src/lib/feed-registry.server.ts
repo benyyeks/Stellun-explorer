@@ -7,7 +7,7 @@
 // diagnostics_events for the admin health panel.
 
 import { cached } from "@/lib/api-cache.server";
-import { fetchJson, isoDate, nasaKey } from "@/lib/orbitex-fetch.server";
+import { fetchJson, isoDate, nasaKey } from "@/lib/stellun-fetch.server";
 
 type Feed = { name: string; run: () => Promise<{ source: string }> };
 

@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { getHorizons } from "@/lib/orbitex-data.functions";
+import { getHorizons } from "@/lib/stellun-data.functions";
 import { AU_KM } from "@/lib/astronomy";
 import type { ProbeKey } from "@/lib/satellite";
 

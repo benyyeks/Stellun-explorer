@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CATALOGUE_ROWS } from "@/lib/roman";
-import { getArchiveObservations, type ArchiveObservation } from "@/lib/orbitex-data.functions";
+import { getArchiveObservations, type ArchiveObservation } from "@/lib/stellun-data.functions";
 import { ExportButtons } from "@/components/site/export-buttons";
 import { FeedStatus } from "@/components/site/feed-status";
 

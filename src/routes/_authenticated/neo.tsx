@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { getNEO } from "@/lib/orbitex-data.functions";
+import { getNEO } from "@/lib/stellun-data.functions";
 import { fmtNum, safeText } from "@/lib/format";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
 import { FeedError, EmptyState } from "@/components/site/data-state";
@@ -52,7 +52,7 @@ function NeoSkeleton() {
 }
 
 const neoQueryOptions = queryOptions({
-  queryKey: ["orbitex", "neo-week"],
+  queryKey: ["stellun", "neo-week"],
   queryFn: () => getNEO(),
   retry: false,
   staleTime: 600_000,
