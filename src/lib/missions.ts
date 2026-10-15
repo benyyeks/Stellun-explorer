@@ -7,7 +7,7 @@
 // rather than a guess about how long it will continue.
 //
 // Each entry carries an official link so a reader can verify any figure
-// against the source, and, where ORBITEX tracks the spacecraft live, an
+// against the source, and, where STELLUN tracks the spacecraft live, an
 // internal cross-link.
 
 export type MissionStatus = "active" | "extended" | "cruise" | "planned" | "completed";
@@ -36,7 +36,7 @@ export type MissionProfile = {
   highlights: string[];
   /** Official mission page. */
   url: string;
-  /** Internal ORBITEX page that shows this spacecraft live, when one exists. */
+  /** Internal STELLUN page that shows this spacecraft live, when one exists. */
   internal?: { label: string; to: string };
   /** Set when the mission has ended, so the card can show the operating span. */
   ended?: string;

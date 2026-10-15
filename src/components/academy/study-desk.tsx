@@ -1,5 +1,5 @@
 // Academy Study desk: personal workspaces with notes, checklists, and
-// one-click handoff to Orbitex AI. Data stays in the browser (localStorage).
+// one-click handoff to Stellun AI. Data stays in the browser (localStorage).
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { BOOK_TOPICS, bookById } from "@/lib/books";
@@ -81,7 +81,7 @@ export function StudyDeskTab() {
           <h2>Study desk</h2>
           <p>
             Create a workspace for each topic you are studying. Keep notes, track a short
-            checklist, and send context to Orbitex AI when you need a clearer explanation.
+            checklist, and send context to Stellun AI when you need a clearer explanation.
             Workspaces stay in this browser until you clear site data.
           </p>
         </div>
@@ -236,7 +236,7 @@ export function StudyDeskTab() {
                       className="btn btn-primary"
                       onClick={() => openAsk(active)}
                     >
-                      Ask Orbitex AI about this
+                      Ask Stellun AI about this
                     </button>
                     {bookById(active.bookId)?.freeUrl && (
                       <a

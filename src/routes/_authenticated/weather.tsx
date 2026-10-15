@@ -10,13 +10,13 @@ import { PageHeroSkeleton, StatGridSkeleton, PanelSkeleton } from "@/components/
 export const Route = createFileRoute("/_authenticated/weather")({
   head: () => ({
     meta: [
-      { title: "Space Weather - ORBITEX" },
+      { title: "Space Weather - STELLUN" },
       {
         name: "description",
         content:
           "Live solar wind speed and density, the planetary Kp index, GOES X-ray flux class, and the last 7 days of space weather alerts from NOAA SWPC and NASA DONKI.",
       },
-      { property: "og:title", content: "Space Weather - ORBITEX" },
+      { property: "og:title", content: "Space Weather - STELLUN" },
       {
         property: "og:description",
         content: "Live solar wind, Kp index, X-ray flux, and space weather alerts from NOAA and NASA.",

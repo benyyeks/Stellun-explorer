@@ -1,20 +1,20 @@
-# Orbitex
+# Stellun
 
 Hi so I was recently working on a project and I would like you to finish it I already built something section of it , so I want you to lick finish up the project for me . I also created an hand over document, which I would be providing by copying and pasting , fit understand the whole project concept, goal.... Before actually doing anything, it there are any thing missing let me know so I can provide them 
 
-# ORBITEX — Project Handover & Master Specification
+# STELLUN — Project Handover & Master Specification
 
 
 
-**Purpose:** A complete, standalone spec for ORBITEX so any developer or AI tool can pick this up cold and continue correctly. Read Section 2 first.
+**Purpose:** A complete, standalone spec for STELLUN so any developer or AI tool can pick this up cold and continue correctly. Read Section 2 first.
 
 
 
-## 1. What ORBITEX Is
+## 1. What STELLUN Is
 
 
 
-ORBITEX is an independent, research-grade space intelligence dashboard for students, researchers, and space enthusiasts. Not affiliated with NASA, NOAA, ESA, or any space agency.
+STELLUN is an independent, research-grade space intelligence dashboard for students, researchers, and space enthusiasts. Not affiliated with NASA, NOAA, ESA, or any space agency.
 
 
 
@@ -256,7 +256,7 @@ Moon phase uses an abbreviated lunar theory (largest periodic terms only), cross
 
 | Launches | `/launches` | Next launch with live countdown, upcoming schedule, detail dialog | Launch Library 2 |
 
-| Ask ORBITEX | `/ask` | Grounded AI chat using live ISS/Kp context | OpenRouter (via `ask-ai.js`) |
+| Stellun AI | `/ask` | Grounded AI chat using live ISS/Kp context | OpenRouter (via `ask-ai.js`) |
 
 | About & Sources | `/about` | Full data source list, methodology transparency for every computed figure | Static content, references live sources |
 
@@ -298,7 +298,7 @@ Moon phase uses an abbreviated lunar theory (largest periodic terms only), cross
 
 `news.js` — Spaceflight News API live proxy (fallback path when Supabase is unavailable).
 
-`ask-ai.js` — OpenRouter proxy for Ask ORBITEX, POST-only, validates/caps input length.
+`ask-ai.js` — OpenRouter proxy for Stellun AI, POST-only, validates/caps input length.
 
 `refresh-news.js` — scheduled (`@daily`), fetches fresh news, upserts into Supabase, prunes anything older than 60 days.
 
@@ -342,7 +342,7 @@ Given the sandbox reset issues (Section 2, Rule 6), status should always be re-v
 
 
 
-**Built previously, lost to sandbox resets, needs rebuilding from this spec (or from conversation history if available):** About, Privacy, Space Weather, Asteroid Watch, Launches, Mars, Sky Tonight, Ask ORBITEX, Orbit Tracker, `assets/` folder contents.
+**Built previously, lost to sandbox resets, needs rebuilding from this spec (or from conversation history if available):** About, Privacy, Space Weather, Asteroid Watch, Launches, Mars, Sky Tonight, Stellun AI, Orbit Tracker, `assets/` folder contents.
 
 
 

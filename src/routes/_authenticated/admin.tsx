@@ -21,13 +21,13 @@ import { timeAgo } from "@/lib/format";
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
-      { title: "Site health | ORBITEX" },
+      { title: "Site health | STELLUN" },
       {
         name: "description",
-        content: "Live health of every ORBITEX data feed, for site administrators.",
+        content: "Live health of every STELLUN data feed, for site administrators.",
       },
-      { property: "og:title", content: "Site health | ORBITEX" },
-      { property: "og:description", content: "Live health of every ORBITEX data feed." },
+      { property: "og:title", content: "Site health | STELLUN" },
+      { property: "og:description", content: "Live health of every STELLUN data feed." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },

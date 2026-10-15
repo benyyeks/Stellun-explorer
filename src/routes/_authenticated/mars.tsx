@@ -16,13 +16,13 @@ import { MarsImageGallery } from "@/components/mars/mars-image-gallery";
 export const Route = createFileRoute("/_authenticated/mars")({
   head: () => ({
     meta: [
-      { title: "Mars - ORBITEX" },
+      { title: "Mars - STELLUN" },
       {
         name: "description",
         content:
           "The live Earth-Mars distance and one-way light time computed from JPL Keplerian elements, Curiosity and Perseverance mission status, and the latest surface imagery from NASA's rovers.",
       },
-      { property: "og:title", content: "Mars - ORBITEX" },
+      { property: "og:title", content: "Mars - STELLUN" },
       {
         property: "og:description",
         content:

@@ -1,4 +1,4 @@
-// Verified milestones for Ask ORBITEX. Irreversible or slow-moving facts
+// Verified milestones for Stellun AI. Irreversible or slow-moving facts
 // checked against official agency sources on VERIFIED_ON.
 //
 // Day-to-day numbers (current sol, ISS lat/lon, Kp, next launch NET, headlines)
@@ -29,7 +29,7 @@ export const MISSION_BRIEF: readonly string[] = [
   "Curiosity / MSL (NASA): landed 2012 in Gale Crater; climbing Mount Sharp since 2014. Still active in the sulfate-bearing unit on the lower slopes of Mount Sharp.",
   "Curiosity elevation milestone (NASA/JPL, 2026): on about 26 August 2026 (near sol 4996) the rover reached 1 kilometre of elevation above the Gale Crater floor, the greatest climb of any vehicle on Mars. Yardang-layer science is a later goal (roughly 2027 to 2028).",
   "Curiosity sol 5000 (NASA/JPL, 2026): the mission marked its 5,000th Martian day around 30 August 2026, with panoramas from a sandy ridge (Chocolatal) published in early September. A look-back panorama toward the crater floor was taken about sol 5006 (5 September 2026).",
-  "Curiosity status rule: region is Mount Sharp / sulfate unit in Gale Crater. Exact current sol and map cell change daily. Prefer the live ORBITEX Mars raw-frame sol from the telemetry block over any static sol number in this list.",
+  "Curiosity status rule: region is Mount Sharp / sulfate unit in Gale Crater. Exact current sol and map cell change daily. Prefer the live STELLUN Mars raw-frame sol from the telemetry block over any static sol number in this list.",
   "Perseverance / Mars 2020 (NASA): landed 18 February 2021 in Jezero Crater; active; sample caching ongoing along crater margin terrain. Exact sol changes daily; use live Mars feed.",
   "Ingenuity (NASA): Mars helicopter technology demonstration at Jezero; flight campaign completed after an extended series of flights (historical milestone).",
   "ExoMars Trace Gas Orbiter (ESA): operational Mars orbiter and data relay since 2016.",
@@ -94,8 +94,8 @@ export const MISSION_BRIEF: readonly string[] = [
   "Long March family (CNSA): operational Chinese launch fleet for Tiangong, lunar and planetary missions.",
 
   // -------------------- Environment and catalogues --------------------
-  "Space weather: NOAA SWPC leads public Kp, solar wind and GOES X-ray products; ESA and NASA contribute solar and heliophysics assets. ORBITEX displays these live.",
-  "Orbital catalogue: CelesTrak and related public element sets power the ORBITEX Orbit Tracker.",
+  "Space weather: NOAA SWPC leads public Kp, solar wind and GOES X-ray products; ESA and NASA contribute solar and heliophysics assets. STELLUN displays these live.",
+  "Orbital catalogue: CelesTrak and related public element sets power the STELLUN Orbit Tracker.",
   "Planetary defence: DART demonstrated kinetic deflection in 2022; Hera provides the European characterisation of Dimorphos.",
 ];
 
@@ -103,6 +103,6 @@ export function knowledgeBlock(): string {
   return [
     `Verified mission milestones (checked on ${VERIFIED_ON} against NASA, JPL, ESA, JAXA, ISRO, CNSA, NOAA and related official sources). These override training memory. They are not a live position, sol, or weather feed:`,
     ...MISSION_BRIEF.map((l) => `- ${l}`),
-    "Self-updating data rule: for current Curiosity or Perseverance sol, ISS coordinates, Kp, next launch, flares, or headlines, use only the live ORBITEX telemetry block injected with this prompt (and official web results if provided). Never invent a sol, coordinate, crew count, or date that is not in those live sources.",
+    "Self-updating data rule: for current Curiosity or Perseverance sol, ISS coordinates, Kp, next launch, flares, or headlines, use only the live STELLUN telemetry block injected with this prompt (and official web results if provided). Never invent a sol, coordinate, crew count, or date that is not in those live sources.",
   ].join("\n");
 }

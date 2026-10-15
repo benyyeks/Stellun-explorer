@@ -1,5 +1,5 @@
 // Local-only study book uploads metadata (no full PDF storage in cloud).
-// Users name the book; optional notes/file name help Orbitex AI context.
+// Users name the book; optional notes/file name help Stellun AI context.
 // File content stays in the browser as a blob URL for reading reference only.
 
 export type UploadedBook = {

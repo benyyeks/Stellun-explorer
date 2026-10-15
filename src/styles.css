@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ORBITEX Design System
+   STELLUN Design System
    Academic, minimal, glass. Color is used sparingly and functionally.
    Light is the base palette; dark mode follows the visitor's system setting
    through prefers-color-scheme. There is no manual override.
@@ -1736,7 +1736,7 @@ a.side-item { text-decoration: none; color: inherit; }
 }
 .auth-meta { font-size: 0.85rem; color: var(--color-text-muted); margin: 0; }
 
-/* ---------- Ask ORBITEX ---------- */
+/* ---------- Stellun AI ---------- */
 .ask-modes {
   display: flex;
   flex-wrap: wrap;
@@ -1890,7 +1890,7 @@ a.side-item { text-decoration: none; color: inherit; }
 .checkline { display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem; }
 .checkline input { margin-top: 2px; accent-color: var(--color-accent); }
 
-/* ---------------- Ask ORBITEX: saved conversations sidebar ---------------- */
+/* ---------------- Stellun AI: saved conversations sidebar ---------------- */
 .ask-layout {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
@@ -2647,7 +2647,7 @@ html, body { overflow-x: clip; }
 .container.page-scaffold { padding-left: 20px; padding-right: 20px; }
 .academy-page { padding-top: 68px; }
 
-/* ---- Floating Ask ORBITEX widget ---- */
+/* ---- Floating Stellun AI widget ---- */
 .ask-widget { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
 .ask-widget-fab {
   display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 999px;
@@ -2705,7 +2705,7 @@ html, body { overflow-x: clip; }
 .competition-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 0.8rem; flex-wrap: wrap; }
 
 /* ==========================================================================
-   Ask ORBITEX UI patch — append to src/styles.css
+   Stellun AI UI patch — append to src/styles.css
    Compact tables, message actions, smart error bar, refined widget panel
    ========================================================================== */
 

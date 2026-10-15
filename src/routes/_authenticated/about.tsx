@@ -4,17 +4,17 @@ import { FeedbackForm } from "@/components/site/feedback-form";
 export const Route = createFileRoute("/_authenticated/about")({
   head: () => ({
     meta: [
-      { title: "About & Data Sources — ORBITEX" },
+      { title: "About & Data Sources — STELLUN" },
       {
         name: "description",
         content:
-          "How ORBITEX gets its numbers: every figure is fetched live from NASA, NOAA, CelesTrak, JPL, The Space Devs, and Open-Meteo, or computed from documented formulas. Nothing is invented.",
+          "How STELLUN gets its numbers: every figure is fetched live from NASA, NOAA, CelesTrak, JPL, The Space Devs, and Open-Meteo, or computed from documented formulas. Nothing is invented.",
       },
-      { property: "og:title", content: "About & Data Sources — ORBITEX" },
+      { property: "og:title", content: "About & Data Sources — STELLUN" },
       {
         property: "og:description",
         content:
-          "Every ORBITEX figure is fetched live or computed from a documented formula. See the full source list and methodology.",
+          "Every STELLUN figure is fetched live or computed from a documented formula. See the full source list and methodology.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -53,7 +53,7 @@ function AboutPage() {
             <span className="eyebrow">Methodology</span>
             <h1>Data sources & how the numbers work</h1>
             <p className="tagline">
-              ORBITEX is an independent, research-grade space intelligence dashboard.
+              STELLUN is an independent, research-grade space intelligence dashboard.
               Every number is either fetched live from a named, credible source or
               computed from a documented, verifiable formula. Nothing is invented,
               and unverifiable values are labeled as estimates.
@@ -64,19 +64,19 @@ function AboutPage() {
             <h2>The core promise</h2>
             <p>
               If a figure cannot be traced to a source or a formula, it does not appear
-              on ORBITEX. If a source is temporarily unreachable, the page shows the most
+              on STELLUN. If a source is temporarily unreachable, the page shows the most
               recent verified reading with its timestamp, rather than a blank space or an
               invented value.
             </p>
             <p>
-              ORBITEX is not affiliated with NASA, NOAA, ESA, or any space agency. It
+              STELLUN is not affiliated with NASA, NOAA, ESA, or any space agency. It
               aggregates publicly available data for education and research.
             </p>
           </div>
 
           <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
             <h2>Verified data sources</h2>
-            <p>Each table row names the upstream provider and what ORBITEX uses it for.</p>
+            <p>Each table row names the upstream provider and what STELLUN uses it for.</p>
             <div className="source-table-wrap">
               <table className="data-table">
                 <thead>
@@ -117,7 +117,7 @@ function AboutPage() {
               </li>
               <li>
                 <strong>Deep-space probes:</strong> positions are queried from JPL Horizons.
-                When a live position is unavailable, ORBITEX extrapolates from the probe's
+                When a live position is unavailable, STELLUN extrapolates from the probe's
                 last known state using documented orbital mechanics, and labels the result
                 as an estimate.
               </li>

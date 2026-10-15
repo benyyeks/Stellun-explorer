@@ -11,13 +11,13 @@ import { PageHeroSkeleton, StatGridSkeleton, TableSkeleton } from "@/components/
 export const Route = createFileRoute("/_authenticated/neo")({
   head: () => ({
     meta: [
-      { title: "Asteroid Watch - ORBITEX" },
+      { title: "Asteroid Watch - STELLUN" },
       {
         name: "description",
         content:
           "Near-Earth objects making close approaches this week: size, velocity, and miss distance in lunar distances, from NASA's NeoWs feed.",
       },
-      { property: "og:title", content: "Asteroid Watch - ORBITEX" },
+      { property: "og:title", content: "Asteroid Watch - STELLUN" },
       {
         property: "og:description",
         content: "This week's near-Earth asteroid approaches with verified size, speed, and miss distance from NASA NeoWs.",

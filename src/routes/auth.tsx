@@ -1,5 +1,5 @@
 // Account page: sign in, create an account, or manage the signed-in session.
-// An ORBITEX account is required for every page except the landing page, and
+// An STELLUN account is required for every page except the landing page, and
 // it keeps the reading list, saved satellites, and observing location in sync.
 import { useEffect, useState, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -23,17 +23,17 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in - ORBITEX" },
+      { title: "Sign in - STELLUN" },
       {
         name: "description",
         content:
-          "Sign in to ORBITEX to open the live tracking, mission, and study tools, and to sync your reading list and saved objects across devices.",
+          "Sign in to STELLUN to open the live tracking, mission, and study tools, and to sync your reading list and saved objects across devices.",
       },
-      { property: "og:title", content: "Sign in - ORBITEX" },
+      { property: "og:title", content: "Sign in - STELLUN" },
       {
         property: "og:description",
         content:
-          "An ORBITEX account unlocks the dashboard and keeps your reading list, saved satellites, and observing location in sync.",
+          "An STELLUN account unlocks the dashboard and keeps your reading list, saved satellites, and observing location in sync.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -118,7 +118,7 @@ function AccountView({ email }: { email: string }) {
           <li>Your observing location for sky and pass predictions</li>
         </ul>
         <p className="auth-note">
-          Your account details are never used by the ORBITEX assistant, and it has
+          Your account details are never used by the STELLUN assistant, and it has
           no access to accounts, saved lists, or notes.
         </p>
         <div className="auth-actions">
@@ -131,7 +131,7 @@ function AccountView({ email }: { email: string }) {
             {busy ? "Signing out..." : "Sign out"}
           </button>
           <Link to="/" className="btn btn-primary">
-            Back to ORBITEX
+            Back to STELLUN
           </Link>
         </div>
       </section>
@@ -196,8 +196,8 @@ function SignInView({ gated }: { gated: boolean }) {
         <h1>{mode === "signin" ? "Sign in" : "Create your account"}</h1>
         <p className="tagline">
           {gated
-            ? "That page is part of the ORBITEX dashboard. Sign in to continue, and you will be taken straight there."
-            : "An ORBITEX account opens the live tracking, mission, and study tools, and keeps your reading list, saved objects, and observing location in sync across devices."}
+            ? "That page is part of the STELLUN dashboard. Sign in to continue, and you will be taken straight there."
+            : "An STELLUN account opens the live tracking, mission, and study tools, and keeps your reading list, saved objects, and observing location in sync across devices."}
         </p>
       </section>
 

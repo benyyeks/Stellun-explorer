@@ -1,5 +1,5 @@
 // Academy tab 1: aerospace terminology reference with search, category
-// filters, expandable definition cards, and one-click Ask ORBITEX explain.
+// filters, expandable definition cards, and one-click Stellun AI explain.
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -154,7 +154,7 @@ export function TerminologiesTab() {
                             className="btn btn-ghost btn-sm glossary-ask-btn"
                             onClick={() => explainTerm(e.term, e.short)}
                           >
-                            Explain in Ask ORBITEX
+                            Explain in Stellun AI
                           </button>
                         </div>
                       )}

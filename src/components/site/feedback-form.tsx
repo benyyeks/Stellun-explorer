@@ -40,7 +40,7 @@ export function FeedbackForm() {
           <Link to="/auth" className="text-accent">
             Sign in
           </Link>{" "}
-          to send a feature suggestion or report a problem to the ORBITEX admin.
+          to send a feature suggestion or report a problem to the STELLUN admin.
         </p>
       </div>
     );

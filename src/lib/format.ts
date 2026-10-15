@@ -1,4 +1,4 @@
-// Client-safe formatting helpers ported from the original ORBITEX
+// Client-safe formatting helpers ported from the original STELLUN
 // format-utils.js. Used across every page for consistent number, date,
 // distance, and light-travel-time formatting.
 

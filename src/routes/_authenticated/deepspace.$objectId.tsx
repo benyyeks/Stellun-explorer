@@ -54,20 +54,20 @@ export const Route = createFileRoute("/_authenticated/deepspace/$objectId")({
     const name = r ? displayName(r) : "Object";
     return {
       meta: [
-        { title: `${name} - Deep Space - ORBITEX` },
+        { title: `${name} - Deep Space - STELLUN` },
         {
           name: "description",
           content: r
-            ? `${name}: live position, orbital elements, and telemetry in the ORBITEX deep space model.`
-            : "Object profile in the ORBITEX deep space model.",
+            ? `${name}: live position, orbital elements, and telemetry in the STELLUN deep space model.`
+            : "Object profile in the STELLUN deep space model.",
         },
         { property: "og:type", content: "website" },
-        { property: "og:title", content: `${name} - Deep Space - ORBITEX` },
+        { property: "og:title", content: `${name} - Deep Space - STELLUN` },
         {
           property: "og:description",
           content: r
-            ? `${name}: live position, orbital elements, and telemetry in the ORBITEX deep space model.`
-            : "Object profile in the ORBITEX deep space model.",
+            ? `${name}: live position, orbital elements, and telemetry in the STELLUN deep space model.`
+            : "Object profile in the STELLUN deep space model.",
         },
         { name: "twitter:card", content: "summary" },
       ],
@@ -392,7 +392,7 @@ function DeepSpaceObjectPage() {
             <h1>Object not found</h1>
             <p className="tagline">
               This object is not part of the deep space catalog. Browse the full model to
-              explore the planets and probes ORBITEX tracks.
+              explore the planets and probes STELLUN tracks.
             </p>
             <div className="hero-cta">
               <Link to="/deepspace" className="btn btn-primary">
@@ -418,7 +418,7 @@ function DeepSpaceObjectPage() {
               ? `Live geometry, sky position, and orbital elements for ${name}, computed from NASA JPL Keplerian elements.`
               : resolved.kind === "probe"
                 ? `Live telemetry and mission profile for ${name}, with distances from JPL Horizons.`
-                : "Reference data for the Sun, the anchor of the ORBITEX deep space model."}
+                : "Reference data for the Sun, the anchor of the STELLUN deep space model."}
           </p>
           <div className="hero-cta">
             <Link to="/deepspace" className="btn btn-primary">

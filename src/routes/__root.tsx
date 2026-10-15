@@ -72,16 +72,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ORBITEX - Space Intelligence Dashboard" },
+      { title: "STELLUN - Space Intelligence Dashboard" },
       {
         name: "description",
         content:
           "An independent space intelligence dashboard. Live data from NASA, NOAA, CelesTrak, and JPL, with nothing invented.",
       },
-      { name: "author", content: "ORBITEX" },
+      { name: "author", content: "STELLUN" },
       { name: "theme-color", content: "#f2f0ea", media: "(prefers-color-scheme: light)" },
       { name: "theme-color", content: "#16140f", media: "(prefers-color-scheme: dark)" },
-      { property: "og:title", content: "ORBITEX - Space Intelligence Dashboard" },
+      { property: "og:title", content: "STELLUN - Space Intelligence Dashboard" },
       {
         property: "og:description",
         content:

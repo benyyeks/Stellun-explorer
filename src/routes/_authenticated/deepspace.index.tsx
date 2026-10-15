@@ -28,14 +28,14 @@ const SolarSystemScene = lazy(() => import("@/components/deepspace/solar-system"
 export const Route = createFileRoute("/_authenticated/deepspace/")({
   head: () => ({
     meta: [
-      { title: "Deep Space - ORBITEX" },
+      { title: "Deep Space - STELLUN" },
       {
         name: "description",
         content:
           "A to-scale 3D model of the solar system with true planetary positions from JPL elements and live deep-space probe distances from JPL Horizons.",
       },
       { property: "og:type", content: "website" },
-      { property: "og:title", content: "Deep Space - ORBITEX" },
+      { property: "og:title", content: "Deep Space - STELLUN" },
       {
         property: "og:description",
         content:

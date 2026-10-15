@@ -1,10 +1,10 @@
-// Server-only: relays a feedback submission to the ORBITEX team inbox through
+// Server-only: relays a feedback submission to the STELLUN team inbox through
 // the linked Resend connection. Failures are reported to the caller but never
 // block the stored feedback row.
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/resend";
 const ADMIN_INBOX = "noreplyobitex@gmail.com";
-const FROM_ADDRESS = "ORBITEX <onboarding@resend.dev>";
+const FROM_ADDRESS = "STELLUN <onboarding@resend.dev>";
 
 const TYPE_LABEL: Record<string, string> = {
   suggestion: "Feature suggestion",
@@ -38,7 +38,7 @@ export async function sendFeedbackEmail(input: {
   const reply = input.email || "not provided";
   const html = `
     <div style="font-family:Arial,Helvetica,sans-serif;color:#1f2430;line-height:1.55">
-      <h2 style="margin:0 0 12px">New ORBITEX feedback</h2>
+      <h2 style="margin:0 0 12px">New STELLUN feedback</h2>
       <p style="margin:0 0 4px"><strong>Type:</strong> ${escapeHtml(label)}</p>
       <p style="margin:0 0 4px"><strong>From:</strong> ${escapeHtml(from)}</p>
       <p style="margin:0 0 16px"><strong>Reply to:</strong> ${escapeHtml(reply)}</p>
@@ -59,7 +59,7 @@ export async function sendFeedbackEmail(input: {
       body: JSON.stringify({
         from: FROM_ADDRESS,
         to: [ADMIN_INBOX],
-        subject: `ORBITEX feedback: ${label}`,
+        subject: `STELLUN feedback: ${label}`,
         html,
         ...(input.email ? { reply_to: input.email } : {}),
       }),

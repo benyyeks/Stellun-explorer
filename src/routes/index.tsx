@@ -26,13 +26,13 @@ import { LandingSkeleton } from "@/components/site/page-skeleton";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ORBITEX - Space Intelligence Platform" },
+      { title: "STELLUN - Space Intelligence Platform" },
       {
         name: "description",
         content:
           "Live satellite tracking, verified space weather, near-Earth object watch, and deep-space mission data from NASA, NOAA, CelesTrak, and JPL, in one research-grade dashboard.",
       },
-      { property: "og:title", content: "ORBITEX - Space Intelligence Platform" },
+      { property: "og:title", content: "STELLUN - Space Intelligence Platform" },
       {
         property: "og:description",
         content:
@@ -75,7 +75,7 @@ const EXPLORE: ExploreCard[] = [
   { to: "/weather", icon: "weather", title: "Space Weather", blurb: "Geomagnetic index, solar wind, and aurora outlook from NOAA SWPC." },
   { to: "/neo", icon: "neo", title: "Asteroid Watch", blurb: "Upcoming close approaches, ranked by miss distance." },
   { to: "/launches", icon: "launches", title: "Launches", blurb: "Upcoming orbital launches worldwide with live countdowns." },
-  { to: "/ask", icon: "ask", title: "Ask ORBITEX", blurb: "A grounded assistant that answers from this session's live data." },
+  { to: "/ask", icon: "ask", title: "Stellun AI", blurb: "A grounded assistant that answers from this session's live data." },
 ];
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -685,7 +685,7 @@ function FeedbackSection() {
     <section className="tight">
       <div className="container">
         <div className="glass glass-card suggestion-form-wrap">
-          <span className="eyebrow">Help shape ORBITEX</span>
+          <span className="eyebrow">Help shape STELLUN</span>
           <h2>Suggestions &amp; feedback</h2>
           <p className="text-muted">
             Found something wrong, or want a feature added? Tell us directly, it goes
@@ -752,7 +752,7 @@ function LandingPage() {
             </span>
             <h1>See beyond the <span>sky</span></h1>
             <p className="hero-lede">
-              ORBITEX brings live satellite tracking, space weather, near-Earth object
+              STELLUN brings live satellite tracking, space weather, near-Earth object
               watch, and deep-space mission data into one dashboard built for
               students, researchers, and anyone who wants the real numbers, not a
               simulation.
@@ -805,7 +805,7 @@ function LandingPage() {
               that record reaches the people who are curious about it. The orbit of a
               satellite lives in one agency feed, the solar wind speed in another, the
               next launch window in a third, and the asteroid passing Earth tomorrow in a
-              database most people will never open. ORBITEX was built to close that gap.
+              database most people will never open. STELLUN was built to close that gap.
             </p>
             <p>
               Every figure here comes from a named source or a documented formula: NASA,

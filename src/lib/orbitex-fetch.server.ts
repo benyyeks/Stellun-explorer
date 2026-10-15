@@ -1,4 +1,4 @@
-// Server-only fetch helpers for ORBITEX upstream API proxies: a timeout-
+// Server-only fetch helpers for STELLUN upstream API proxies: a timeout-
 // guarded fetch, plus the small validators used to keep client-supplied
 // query params from ever reaching an upstream URL unsanitized. Ported
 // from netlify/functions/_shared/utils.js.
@@ -15,7 +15,7 @@ export async function fetchJson<T = any>(url: string, opts: { timeoutMs?: number
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { "User-Agent": "ORBITEX-SpaceIntelligence/1.0", ...(opts.headers ?? {}) },
+      headers: { "User-Agent": "STELLUN-SpaceIntelligence/1.0", ...(opts.headers ?? {}) },
     });
     if (!res.ok) {
       throw new Error(`Upstream returned HTTP ${res.status}.`);
@@ -57,7 +57,7 @@ export async function fetchText(url: string, opts: { timeoutMs?: number; headers
   try {
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { "User-Agent": "ORBITEX-SpaceIntelligence/1.0", ...(opts.headers ?? {}) },
+      headers: { "User-Agent": "STELLUN-SpaceIntelligence/1.0", ...(opts.headers ?? {}) },
     });
     if (!res.ok) {
       throw new Error(`Upstream returned HTTP ${res.status}.`);

@@ -1,5 +1,5 @@
 // Server-only read-through cache for upstream API responses, backed by the
-// public.api_cache table. Used by every ORBITEX data page to avoid
+// public.api_cache table. Used by every STELLUN data page to avoid
 // re-fetching the same upstream payload on every request, and to fall back
 // to a slightly stale copy if the upstream source is temporarily down.
 //
