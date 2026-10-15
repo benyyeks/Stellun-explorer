@@ -11,10 +11,12 @@ import { AnswerText } from "@/components/site/answer-text";
 const KEY = "orbitex-widget-conversation";
 const NEAR_BOTTOM_PX = 72;
 
-function errorCopy(status: number): string {
-  if (status === 429 || status === 402) return "Orbitex AI is offline until a free model is available.";
-  if (status === 401) return "Your session expired. Sign in again to continue.";
-  if (status === 503) return "Orbitex AI is temporarily unavailable. Please try again later.";
+function errorCopy(status: number, code?: string): string {
+  if (status === 402 || code === "free_model_unavailable") return "Orbitex AI is offline until a free model is available.";
+  if (status === 429 || code === "rate_limited") return "Too many questions in a short time. Wait a moment, then retry.";
+  if (status === 401 || code === "unauthorized") return "Your session expired. Sign in again to continue.";
+  if (status === 400 || code === "bad_request") return "That question could not be sent. Start a new chat and try again.";
+  if (status === 503 || code === "assistant_unavailable") return "Orbitex AI is temporarily unavailable. Please try again later.";
   if (status === 502) return "The model did not respond in time. Retry the same question.";
   return "The answer link failed. Check your connection and retry.";
 }
@@ -88,16 +90,24 @@ export function AskWidget() {
     setError(null);
 
     const userMsg: AskMsg = { role: "user", content: text };
-    const thread = [...messages, userMsg];
+    // Drop empty or failed turns so one bad answer never breaks the next question.
+    const clean = messages.filter((m) => m.content.trim().length > 0);
+    const thread = [...clean, userMsg];
     setMessages([...thread, { role: "assistant", content: "" }]);
     setStreaming(true);
 
-    const id = await ensureConversation();
+    const id = await ensureConversation().catch(() => null);
     const controller = new AbortController();
     abortRef.current = controller;
 
     try {
-      const { data } = await supabase.auth.getSession();
+      // Use a fresh session token; the widget can stay open long after sign-in.
+      let { data } = await supabase.auth.getSession();
+      const exp = data.session?.expires_at ?? 0;
+      if (data.session && exp * 1000 - Date.now() < 60_000) {
+        const refreshed = await supabase.auth.refreshSession();
+        if (refreshed.data.session) data = { session: refreshed.data.session };
+      }
       const token = data.session?.access_token;
       const res = await fetch("/api/ask", {
         method: "POST",
@@ -108,11 +118,14 @@ export function AskWidget() {
         body: JSON.stringify({
           mode: "chat",
           messages: thread.slice(-20),
-          conversationId: id,
+          ...(id ? { conversationId: id } : {}),
         }),
         signal: controller.signal,
       });
-      if (!res.ok || !res.body) throw new Error(errorCopy(res.status));
+      if (!res.ok || !res.body) {
+        const body = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
+        throw new Error(body?.message || errorCopy(res.status, body?.error));
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
