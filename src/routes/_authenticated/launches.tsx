@@ -14,13 +14,13 @@ import { PageHeroSkeleton, StatGridSkeleton, LaunchListSkeleton } from "@/compon
 export const Route = createFileRoute("/_authenticated/launches")({
   head: () => ({
     meta: [
-      { title: "Launch Schedule - ORBITEX" },
+      { title: "Launch Schedule - STELLUN" },
       {
         name: "description",
         content:
           "Upcoming orbital launches worldwide with live countdowns: rocket, provider, pad, and mission details from The Space Devs Launch Library 2.",
       },
-      { property: "og:title", content: "Launch Schedule - ORBITEX" },
+      { property: "og:title", content: "Launch Schedule - STELLUN" },
       {
         property: "og:description",
         content: "Upcoming orbital launches with live countdowns, from The Space Devs Launch Library 2.",

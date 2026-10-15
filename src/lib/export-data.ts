@@ -52,7 +52,7 @@ export function exportCsv<T>(rows: T[], columns: ExportColumn<T>[], meta: Export
     `# ${meta.dataset}`,
     `# Source: ${meta.source}`,
     `# Retrieved: ${meta.retrievedAt ?? new Date().toISOString()}`,
-    `# Exported from ORBITEX`,
+    `# Exported from STELLUN`,
   ].join("\n");
   const body = [
     columns.map((c) => csvCell(c.label)).join(","),
@@ -66,7 +66,7 @@ export function exportJson<T>(rows: T[], columns: ExportColumn<T>[], meta: Expor
     dataset: meta.dataset,
     source: meta.source,
     retrievedAt: meta.retrievedAt ?? new Date().toISOString(),
-    exportedFrom: "ORBITEX",
+    exportedFrom: "STELLUN",
     rowCount: rows.length,
     rows: rows.map((row) =>
       Object.fromEntries(columns.map((c) => [c.key, c.value(row) ?? null]))

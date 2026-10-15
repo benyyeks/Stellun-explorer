@@ -29,7 +29,7 @@ export function SiteFooter() {
             <h4>More</h4>
             <Link to="/neo">Asteroid Watch</Link>
             <Link to="/launches">Launches</Link>
-            <Link to="/ask">Ask ORBITEX</Link>
+            <Link to="/ask">Stellun AI</Link>
             <Link to="/about">Data sources & methodology</Link>
           </div>
           <div className="footer-col">
@@ -46,7 +46,7 @@ export function SiteFooter() {
         </div>
         <div className="footer-bottom">
           <span>
-            &copy; {year} ORBITEX. Data courtesy of NASA, NOAA, CelesTrak, and
+            &copy; {year} STELLUN. Data courtesy of NASA, NOAA, CelesTrak, and
             JPL.
           </span>
           <span className="mono">Built with real, verified data. No filler numbers.</span>

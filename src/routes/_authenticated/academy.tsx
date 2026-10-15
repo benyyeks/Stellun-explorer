@@ -32,15 +32,15 @@ export const Route = createFileRoute("/_authenticated/academy")({
   }),
   head: () => ({
     meta: [
-      { title: "The Academy - Aerospace Terminology, Research and Learning - ORBITEX" },
+      { title: "The Academy - Aerospace Terminology, Research and Learning - STELLUN" },
       {
         name: "description",
         content:
-          "An aerospace reference desk: terminology, research archives, curated learning resources, and a personal Study desk linked to Ask ORBITEX.",
+          "An aerospace reference desk: terminology, research archives, curated learning resources, and a personal Study desk linked to Stellun AI.",
       },
       {
         property: "og:title",
-        content: "The Academy - Aerospace Terminology, Research and Learning - ORBITEX",
+        content: "The Academy - Aerospace Terminology, Research and Learning - STELLUN",
       },
       {
         property: "og:description",
@@ -64,7 +64,7 @@ function AcademyPage() {
         <h1>The Academy</h1>
         <p className="tagline">
           Look up the vocabulary, follow primary sources, follow a study path, and keep notes
-          on the Study desk. Ask ORBITEX when a concept needs a clearer explanation.
+          on the Study desk. Stellun AI when a concept needs a clearer explanation.
         </p>
       </section>
 

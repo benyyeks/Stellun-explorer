@@ -45,7 +45,7 @@ export function PageScaffold({
           </div>
         </div>
         <p className="scaffold-note">
-          This module is completing final verification. ORBITEX publishes a
+          This module is completing final verification. STELLUN publishes a
           figure only when it can be traced to a named source, so this view
           opens once its data meets that standard.
         </p>

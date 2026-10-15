@@ -1,4 +1,4 @@
-// ORBITEX Deep Space: browser-only 3D solar system (three.js via
+// STELLUN Deep Space: browser-only 3D solar system (three.js via
 // react-three-fiber). Loaded exclusively through React.lazy behind a
 // client-only gate in src/routes/deepspace.tsx; never import this module
 // from an SSR path.

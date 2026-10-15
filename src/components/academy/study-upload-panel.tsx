@@ -46,7 +46,7 @@ export function StudyUploadPanel({ workspace }: { workspace: StudyWorkspace | nu
       const token = data.session?.access_token;
       if (!token) throw new Error("Sign in again to continue studying.");
       const response = await fetch("/api/ask", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ mode: "explain", messages: [{ role: "user", content: `${context.slice(0, 1300)}\nThe book file has not been provided. Use only these references and notes, not unseen pages.\nQuestion: ${question.trim().slice(0, 450)}` }] }), signal: controller.signal });
-      if (!response.ok || !response.body) throw new Error(response.status === 402 || response.status === 429 ? "Orbitex AI is offline until a free model is available." : "Orbitex AI is temporarily unavailable. Please try again later.");
+      if (!response.ok || !response.body) throw new Error(response.status === 402 || response.status === 429 ? "Stellun AI is offline until a free model is available." : "Stellun AI is temporarily unavailable. Please try again later.");
       const reader = response.body.getReader(); const decoder = new TextDecoder(); let text = "";
       for (;;) { const { done, value } = await reader.read(); if (done) break; text += decoder.decode(value, { stream: true }); setAnswer(text); }
       if (!text.trim()) throw new Error("No answer came back. Please retry your question.");
@@ -58,7 +58,7 @@ export function StudyUploadPanel({ workspace }: { workspace: StudyWorkspace | nu
     <>
       <div className="glass glass-card scaffold-card study-upload-panel">
         <h3>Your books</h3>
-        <p className="detail-note">Book references stay in this browser. Reading links last for this visit; Orbitex AI receives titles and study notes, not the file contents.</p>
+        <p className="detail-note">Book references stay in this browser. Reading links last for this visit; Stellun AI receives titles and study notes, not the file contents.</p>
         <form className="study-desk-create" onSubmit={upload}>
           <label className="field-label" htmlFor="upload-book-title">Book title (required)</label>
           <input id="upload-book-title" className="input" required minLength={2} maxLength={MAX_TITLE} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -73,13 +73,13 @@ export function StudyUploadPanel({ workspace }: { workspace: StudyWorkspace | nu
         <ul className="study-ws-list">{books.map((book) => <li key={book.id} className="study-upload-row"><span><b>{book.title}</b><small className="study-ws-meta">{book.authors}{book.fileName ? ` · ${book.fileName}` : ""}</small></span>{book.objectUrl && <a href={book.objectUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">Read</a>}<button type="button" className="btn btn-ghost btn-sm" aria-label={`Remove ${book.title}`} onClick={() => { removeUploadedBook(book.id); if (book.objectUrl) { URL.revokeObjectURL(book.objectUrl); urls.current.delete(book.objectUrl); } setBooks((prev) => prev.filter((b) => b.id !== book.id)); if (referenceId === book.id) setReferenceId(""); }}>Remove</button></li>)}</ul>
       </div>
       <div className="glass glass-card scaffold-card study-ai-box">
-        <h3>Orbitex AI</h3>
+        <h3>Stellun AI</h3>
         <form className="study-desk-create" onSubmit={(e) => void ask(e)}>
           <label className="field-label" htmlFor="study-ai-reference">Additional book reference</label>
           <select id="study-ai-reference" className="input" value={referenceId} onChange={(e) => setReferenceId(e.target.value)}><option value="">Current workspace only</option>{books.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}</select>
           <label className="field-label" htmlFor="study-ai-question">Study question</label>
           <textarea id="study-ai-question" className="input" rows={3} value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={450} required disabled={busy} />
-          {busy ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => abortRef.current?.abort()}>Stop</button> : <button type="submit" className="btn btn-primary btn-sm" disabled={!question.trim() || (!workspace && !referenceId)}>Ask Orbitex AI</button>}
+          {busy ? <button type="button" className="btn btn-ghost btn-sm" onClick={() => abortRef.current?.abort()}>Stop</button> : <button type="submit" className="btn btn-primary btn-sm" disabled={!question.trim() || (!workspace && !referenceId)}>Stellun AI</button>}
         </form>
         {error && <div className="ask-error-bar" role="alert"><p>{error}</p></div>}
         <div aria-live="polite" aria-busy={busy}>{answer ? <AnswerText text={answer} /> : busy ? <span className="live-dot" aria-label="Thinking" /> : null}</div>

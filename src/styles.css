@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ORBITEX Design System
+   STELLUN Design System
    Academic, minimal, glass. Color is used sparingly and functionally.
    Light is the base palette; dark mode follows the visitor's system setting
    through prefers-color-scheme. There is no manual override.
@@ -1736,7 +1736,7 @@ a.side-item { text-decoration: none; color: inherit; }
 }
 .auth-meta { font-size: 0.85rem; color: var(--color-text-muted); margin: 0; }
 
-/* ---------- Ask ORBITEX ---------- */
+/* ---------- Stellun AI ---------- */
 .ask-modes {
   display: flex;
   flex-wrap: wrap;
@@ -1890,7 +1890,7 @@ a.side-item { text-decoration: none; color: inherit; }
 .checkline { display: flex; align-items: flex-start; gap: 10px; font-size: 0.88rem; }
 .checkline input { margin-top: 2px; accent-color: var(--color-accent); }
 
-/* ---------------- Ask ORBITEX: saved conversations sidebar ---------------- */
+/* ---------------- Stellun AI: saved conversations sidebar ---------------- */
 .ask-layout {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
@@ -2647,7 +2647,7 @@ html, body { overflow-x: clip; }
 .container.page-scaffold { padding-left: 20px; padding-right: 20px; }
 .academy-page { padding-top: 68px; }
 
-/* ---- Floating Ask ORBITEX widget ---- */
+/* ---- Floating Stellun AI widget ---- */
 .ask-widget { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
 .ask-widget-fab {
   display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 999px;
@@ -2705,7 +2705,7 @@ html, body { overflow-x: clip; }
 .competition-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: 0.8rem; flex-wrap: wrap; }
 
 /* ==========================================================================
-   Ask ORBITEX UI patch — append to src/styles.css
+   Stellun AI UI patch — append to src/styles.css
    Compact tables, message actions, smart error bar, refined widget panel
    ========================================================================== */
 
@@ -3283,3 +3283,74 @@ html, body { overflow-x: clip; }
 .mission-filter-selects { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 16px; }
 .mission-filter-selects .input { width: 100%; margin-top: 6px; }
 @media (max-width: 640px) { .mission-filter-selects { grid-template-columns: minmax(0,1fr); } }
+
+/* STELLUN logo color system — merge into src/styles.css :root blocks */
+
+:root {
+  --logo-orbit: #96601f;
+  --logo-star: #1f3555;
+  --logo-star-core: #ffffff;
+  --logo-u-arc: #7a92c4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --logo-orbit: #dda05f;
+    --logo-star: #8ca5d6;
+    --logo-star-core: #ffffff;
+    --logo-u-arc: #8ca5d6;
+  }
+}
+
+.accent-panel .brand-mark,
+.accent-panel .brand-word {
+  --logo-orbit: #dda05f;
+  --logo-star: #a9bee3;
+  --logo-star-core: #ffffff;
+  --logo-u-arc: #a9bee3;
+}
+
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  color: var(--logo-orbit);
+}
+
+.brand-word {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.brand-word-text {
+  color: var(--color-text);
+}
+
+.brand-word-u {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.brand-word-u-letter {
+  position: relative;
+  z-index: 1;
+}
+
+.brand-word-u-arc {
+  position: absolute;
+  left: 50%;
+  bottom: 42%;
+  width: 1.35em;
+  height: 0.85em;
+  transform: translateX(-50%);
+  pointer-events: none;
+  overflow: visible;
+}

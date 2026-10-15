@@ -1,4 +1,4 @@
-// ORBITEX Orbit Tracker: browser-only 3D globe (three.js via react-three-fiber).
+// STELLUN Orbit Tracker: browser-only 3D globe (three.js via react-three-fiber).
 // Loaded exclusively through React.lazy behind a client-only gate in
 // src/routes/tracker.tsx; never import this module from an SSR path.
 //

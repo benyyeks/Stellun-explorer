@@ -1,4 +1,4 @@
-# ORBITEX roadmap
+# STELLUN roadmap
 
 ## Mars map v3 2026-10-14
 - [x] Supplied mosaic, v3 data and styles, map first below banner
@@ -10,7 +10,7 @@
 ## Feature batch 2026-10-11
 - [x] Multi-satellite compare and high-orbit camera framing from supplied files
 - [x] Mars surface map, preserving the gallery
-- [x] Rename requested assistant surfaces to Orbitex AI
+- [x] Rename requested assistant surfaces to Stellun AI
 - [x] Study uploads with required book title and inline study-context assistant
 - [x] Mission agency/target filters and T-60 live launch links
 - [x] Verify free OpenRouter model and clear 402 handling
@@ -28,7 +28,7 @@
 - [x] Live satellite motion: live ISS feed, 1x/10x/60x speed, pulsing beacon + heading arrow (3D and 2D)
 - [x] Move 3D controls below the canvas on Tracker and Deep Space, Reset zoom added
 - [x] Palette utilization: alternating light/dark sections, reactive buttons, stronger type hierarchy (no gradients)
-- [x] Ask ORBITEX knowledge overhaul: verified 2026 brief, live telemetry + flares, live web search, server-saved replies
+- [x] Stellun AI knowledge overhaul: verified 2026 brief, live telemetry + flares, live web search, server-saved replies
 
 ## Done
 - [x] Roman WFI telescope simulator (filters, magnification, exposure)
@@ -68,4 +68,4 @@
 - [ ] Launch live stream an hour before liftoff (also check YouTube)
 - [ ] Tracker compare below map, 5 objects; retired probes listed but not in 3D
 - [x] Learning workspace: textbook-linked Study desk with persistent notes, checklists, study paths, and prefilled Ask handoffs
-- [x] ORBITEX AI on Lovable AI, accuracy pass
+- [x] Stellun AI on Lovable AI, accuracy pass

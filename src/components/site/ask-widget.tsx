@@ -1,4 +1,4 @@
-// Floating Orbitex AI widget, bottom right on every page except the Ask page.
+// Floating Stellun AI widget, bottom right on every page except the Ask page.
 // One continuing conversation follows the user across pages (id in localStorage).
 // Opening the Ask page archives the widget thread into saved chats.
 import { useEffect, useRef, useState } from "react";
@@ -12,11 +12,11 @@ const KEY = "orbitex-widget-conversation";
 const NEAR_BOTTOM_PX = 72;
 
 function errorCopy(status: number, code?: string): string {
-  if (status === 402 || code === "free_model_unavailable") return "Orbitex AI is offline until a free model is available.";
+  if (status === 402 || code === "free_model_unavailable") return "Stellun AI is offline until a free model is available.";
   if (status === 429 || code === "rate_limited") return "Too many questions in a short time. Wait a moment, then retry.";
   if (status === 401 || code === "unauthorized") return "Your session expired. Sign in again to continue.";
   if (status === 400 || code === "bad_request") return "That question could not be sent. Start a new chat and try again.";
-  if (status === 503 || code === "assistant_unavailable") return "Orbitex AI is temporarily unavailable. Please try again later.";
+  if (status === 503 || code === "assistant_unavailable") return "Stellun AI is temporarily unavailable. Please try again later.";
   if (status === 502) return "The model did not respond in time. Retry the same question.";
   return "The answer link failed. Check your connection and retry.";
 }
@@ -194,10 +194,10 @@ export function AskWidget() {
   return (
     <div className="ask-widget">
       {open && (
-        <div className="ask-widget-panel glass" role="dialog" aria-label="Orbitex AI">
+        <div className="ask-widget-panel glass" role="dialog" aria-label="Stellun AI">
           <div className="ask-widget-head">
             <div>
-              <strong>Orbitex AI</strong>
+              <strong>Stellun AI</strong>
               <span>{streaming ? "Writing…" : "Live feeds and agency sources"}</span>
             </div>
             <div className="ask-widget-actions">
@@ -210,7 +210,7 @@ export function AskWidget() {
                 type="button"
                 className="btn btn-ghost btn-sm"
                 onClick={() => setOpen(false)}
-                aria-label="Close Orbitex AI"
+                aria-label="Close Stellun AI"
               >
                 Close
               </button>
@@ -325,13 +325,13 @@ export function AskWidget() {
         className="ask-widget-fab"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        aria-label={open ? "Close Orbitex AI" : "Open Orbitex AI"}
+        aria-label={open ? "Close Stellun AI" : "Open Stellun AI"}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
           <ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-25 12 12)" />
           <circle cx="12" cy="12" r="2.4" fill="currentColor" />
         </svg>
-        <span>Orbitex AI</span>
+        <span>Stellun AI</span>
       </button>
     </div>
   );

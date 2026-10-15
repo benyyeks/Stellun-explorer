@@ -1,4 +1,4 @@
-// ORBITEX Astronomy Engine (TypeScript port)
+// STELLUN Astronomy Engine (TypeScript port)
 // Pure celestial-mechanics functions: planetary positions, Sun/Moon
 // position and phase, sidereal time, altitude-azimuth transforms.
 // Verified against known reference values (Earth's distance from the Sun

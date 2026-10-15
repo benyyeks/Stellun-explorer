@@ -1,5 +1,5 @@
 // Study paths block for the Learning resources tab: ordered book sequences
-// plus a one-click Ask ORBITEX seed and optional live ORBITEX page link.
+// plus a one-click Stellun AI seed and optional live STELLUN page link.
 import { Link, useNavigate } from "@tanstack/react-router";
 import { BOOK_TOPICS, bookById } from "@/lib/books";
 import { STUDY_PATHS } from "@/lib/study-paths";
@@ -18,7 +18,7 @@ export function StudyPathsPanel() {
       <h2>Study paths</h2>
       <p>
         Short sequences through the textbook shelf. Follow a path in order, keep notes on the
-        Study desk, and use Ask ORBITEX when a concept needs a clearer explanation.
+        Study desk, and use Stellun AI when a concept needs a clearer explanation.
       </p>
 
       <div className="study-path-grid">
@@ -56,7 +56,7 @@ export function StudyPathsPanel() {
               </ol>
               <div className="study-path-actions">
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => openAsk(path.askSeed)}>
-                  Ask ORBITEX
+                  Stellun AI
                 </button>
                 <Link
                   to="/academy"

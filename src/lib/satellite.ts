@@ -1,4 +1,4 @@
-// ORBITEX Satellite Propagation Engine (TypeScript port)
+// STELLUN Satellite Propagation Engine (TypeScript port)
 // TLE and CelesTrak OMM (JSON) parsing plus a Kepler + J2 secular-
 // perturbation propagator. Verified against known ISS parameters
 // (~400-430km altitude, ~7.66km/s, ~92-93min period). This is a

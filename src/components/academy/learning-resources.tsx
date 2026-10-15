@@ -325,7 +325,7 @@ export function LearningResourcesTab({ sharedParam }: { sharedParam?: string | u
               <h2>A reading list was shared with you</h2>
               <p>
                 Someone sent you {sharedBooks.length}{" "}
-                {sharedBooks.length === 1 ? "book" : "books"} from the ORBITEX
+                {sharedBooks.length === 1 ? "book" : "books"} from the STELLUN
                 textbook shelf. Save them to keep the list in this browser.
               </p>
               <ul className="feature-list">
@@ -626,10 +626,10 @@ export function LearningResourcesTab({ sharedParam }: { sharedParam?: string | u
           </div>
 
           <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
-            <h2>Hands-on learning with ORBITEX</h2>
+            <h2>Hands-on learning with STELLUN</h2>
             <p>
               The best way to understand orbital mechanics is to see it in
-              action. These ORBITEX tools put real data in your hands.
+              action. These STELLUN tools put real data in your hands.
             </p>
             <ul className="feature-list">
               <li>

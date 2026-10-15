@@ -1,4 +1,4 @@
-// ORBITEX data server functions: typed, cached proxies over the upstream
+// STELLUN data server functions: typed, cached proxies over the upstream
 // APIs (NASA, NOAA, CelesTrak, JPL Horizons, The Space Devs, Open-Meteo,
 // Spaceflight News API). Each is a thin wrapper: read env inside the
 // handler, call the shared fetch helpers, wrap the call in cached() for
@@ -198,7 +198,7 @@ export const getEarthWeather = createServerFn({ method: "GET" })
   });
 
 // ----------------------------- JPL: Horizons ------------------------------
-// Fixed NAIF/SPICE ID lookup for the deep-space probes ORBITEX tracks.
+// Fixed NAIF/SPICE ID lookup for the deep-space probes STELLUN tracks.
 // COMMAND is never taken from the client, so this can never be used as an
 // open relay to query arbitrary Horizons targets.
 const PROBES: Record<string, string> = {
@@ -387,7 +387,7 @@ export const getArchiveObservations = createServerFn({ method: "GET" })
             signal: controller.signal,
             headers: {
               "Content-Type": "application/x-www-form-urlencoded",
-              "User-Agent": "ORBITEX-SpaceIntelligence/1.0",
+              "User-Agent": "STELLUN-SpaceIntelligence/1.0",
             },
             body: `request=${encodeURIComponent(JSON.stringify(request))}`,
           });

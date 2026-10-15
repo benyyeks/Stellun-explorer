@@ -18,7 +18,7 @@ function context(email, role, metadataEmail) {
   };
 }
 
-describe("ORBITEX admin access", () => {
+describe("STELLUN admin access", () => {
   test("allows benyyeks@gmail.com with admin role", async () => {
     await expect(assertAdmin(context("benyyeks@gmail.com", true))).resolves.toBeUndefined();
   });

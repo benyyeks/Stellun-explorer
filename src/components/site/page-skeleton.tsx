@@ -273,7 +273,7 @@ export function LaunchListSkeleton() {
 export function LandingSkeleton() {
   return (
     <main className="page-main">
-      <Status label="Loading ORBITEX">
+      <Status label="Loading STELLUN">
         <section className="hero">
           <div className="container hero-grid" aria-hidden="true">
             <div>

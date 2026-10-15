@@ -22,13 +22,13 @@ const TrackerGlobe = lazy(() => import("@/components/tracker/tracker-globe"));
 export const Route = createFileRoute("/_authenticated/tracker/")({
   head: () => ({
     meta: [
-      { title: "Orbit Tracker - ORBITEX" },
+      { title: "Orbit Tracker - STELLUN" },
       {
         name: "description",
         content:
           "Real-time 3D tracking of the ISS and satellite constellations, propagated from live CelesTrak orbital elements on an interactive Earth globe.",
       },
-      { property: "og:title", content: "Orbit Tracker - ORBITEX" },
+      { property: "og:title", content: "Orbit Tracker - STELLUN" },
       {
         property: "og:description",
         content:

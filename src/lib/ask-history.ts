@@ -1,4 +1,4 @@
-// Saved Ask ORBITEX conversations. Signed-in accounts keep their threads in the
+// Saved Stellun AI conversations. Signed-in accounts keep their threads in the
 // cloud so the same questions and answers appear on every device. Signed out,
 // nothing is stored and the page stays session only.
 import { useCallback, useEffect, useState } from "react";

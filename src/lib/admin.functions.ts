@@ -110,7 +110,7 @@ function diagnoseCause(
   if (source === "stale" || (error && /last saved copy/i.test(error))) {
     return {
       cause:
-        "Upstream source failed or timed out. ORBITEX is showing the last saved copy so the page still works. Check CelesTrak, NOAA, NASA, or Launch Library reachability.",
+        "Upstream source failed or timed out. STELLUN is showing the last saved copy so the page still works. Check CelesTrak, NOAA, NASA, or Launch Library reachability.",
       integrity: "stale",
     };
   }
@@ -503,7 +503,7 @@ export const submitSuggestion = createServerFn({ method: "POST" })
     try {
       const { sendFeedbackEmail } = await import("@/lib/feedback-mail.server");
       await sendFeedbackEmail({
-        name: row.name ?? "ORBITEX user",
+        name: row.name ?? "STELLUN user",
         email: row.email ?? "",
         type: row.type,
         message: row.message,

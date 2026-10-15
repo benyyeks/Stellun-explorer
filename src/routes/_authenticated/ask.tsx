@@ -1,6 +1,6 @@
-// Orbitex AI: a space-only study assistant. Four modes (chat, practice
+// Stellun AI: a space-only study assistant. Four modes (chat, practice
 // quizzes, explanations, resource guidance) all post to /api/ask, which
-// grounds answers in live ORBITEX telemetry and enforces the space-only
+// grounds answers in live STELLUN telemetry and enforces the space-only
 // scope. Replies stream token by token.
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,17 +13,17 @@ import { consumeAskPrefill } from "@/lib/study-workspace";
 export const Route = createFileRoute("/_authenticated/ask")({
   head: () => ({
     meta: [
-      { title: "Orbitex AI - ORBITEX" },
+      { title: "Stellun AI - STELLUN" },
       {
         name: "description",
         content:
           "A space-only study assistant. Ask questions, generate practice quizzes from aerospace topics, get explanations at your level, and find the right resources.",
       },
-      { property: "og:title", content: "Orbitex AI - ORBITEX" },
+      { property: "og:title", content: "Stellun AI - STELLUN" },
       {
         property: "og:description",
         content:
-          "A space-only study assistant: answers, practice quizzes, explanations, and resource guidance, grounded in live ORBITEX data.",
+          "A space-only study assistant: answers, practice quizzes, explanations, and resource guidance, grounded in live STELLUN data.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -77,7 +77,7 @@ const NEAR_BOTTOM_PX = 96;
 
 function errorCopy(status: number, code: string | undefined): string {
   if (status === 402 || status === 429 || code === "free_model_unavailable" || code === "rate_limited") {
-    return "Orbitex AI is offline until a free model is available.";
+    return "Stellun AI is offline until a free model is available.";
   }
   if (status === 401 || code === "unauthorized") {
     return "Your session has expired. Sign in again to continue the conversation.";
@@ -290,9 +290,9 @@ function AskPage() {
   return (
     <main className="container page-scaffold">
       <section className="page-hero">
-        <h1>Orbitex AI</h1>
+        <h1>Stellun AI</h1>
         <p className="tagline">
-          A study assistant for space and astronomy, grounded in live ORBITEX
+          A study assistant for space and astronomy, grounded in live STELLUN
           data. It answers space questions only, and labels estimates rather
           than inventing figures.
         </p>
@@ -489,9 +489,9 @@ function AskPage() {
                   {mode === "quiz"
                     ? "Pick a topic and difficulty, then generate a practice set."
                     : mode === "explain"
-                      ? "Name a concept and ORBITEX will explain it at your level."
+                      ? "Name a concept and STELLUN will explain it at your level."
                       : mode === "resources"
-                        ? "Describe what you want to learn and ORBITEX will map out a study path."
+                        ? "Describe what you want to learn and STELLUN will map out a study path."
                         : "Ask anything about space, missions, satellites, or space weather."}
                 </p>
                 {SUGGESTIONS[mode].length > 0 && (
@@ -516,7 +516,7 @@ function AskPage() {
                   m.role === "user" && !messages.slice(i + 1).some((x) => x.role === "user");
                 return (
                   <div key={i} className={m.role === "user" ? "msg msg-user" : "msg msg-ai"}>
-                    {m.role === "assistant" && <span className="msg-who">ORBITEX</span>}
+                    {m.role === "assistant" && <span className="msg-who">STELLUN</span>}
                     {m.role === "assistant" ? (
                       m.content ? (
                         <AnswerText text={m.content} />
@@ -621,7 +621,7 @@ function AskPage() {
             )}
           </form>
           <p className="ask-scope-note">
-            ORBITEX answers questions about space and space studies only.
+            STELLUN answers questions about space and space studies only.
             {history.signedIn
               ? " Saved chats stay on your account and can be deleted at any time."
               : ""}

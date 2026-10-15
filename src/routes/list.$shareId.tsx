@@ -18,12 +18,12 @@ export const Route = createFileRoute("/list/$shareId")({
   },
   head: ({ loaderData }) => {
     const title = loaderData?.found
-      ? `${loaderData.title || "Shared reading list"} — ORBITEX`
-      : "Reading list unavailable — ORBITEX";
+      ? `${loaderData.title || "Shared reading list"} — STELLUN`
+      : "Reading list unavailable — STELLUN";
     const description = loaderData?.found
       ? `A shared aerospace reading list of ${loaderData.books.length} ${
           loaderData.books.length === 1 ? "textbook" : "textbooks"
-        } from the ORBITEX shelf.`
+        } from the STELLUN shelf.`
       : "This reading list is not available. The owner may have turned sharing off.";
     return {
       meta: [
@@ -101,7 +101,7 @@ function SharedListPage() {
             <h1>{view.title || "An aerospace reading list"}</h1>
             <p className="tagline">
               {items.length} {items.length === 1 ? "textbook" : "textbooks"} from
-              the ORBITEX shelf, selected by the person who shared this link.
+              the STELLUN shelf, selected by the person who shared this link.
             </p>
           </div>
 

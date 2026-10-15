@@ -153,7 +153,7 @@ export function SiteHeader() {
     <>
       <header className="site-header">
         <div className="container">
-          <Link to="/" className="brand" aria-label="ORBITEX home">
+          <Link to="/" className="brand" aria-label="STELLUN home">
             <LogoMark className="brand-mark" />
             <BrandWord />
           </Link>
@@ -268,7 +268,7 @@ export function SiteHeader() {
               About
             </Link>
             <Link to="/ask" aria-current={isMatch(pathname, "/ask") ? "page" : undefined}>
-              Orbitex AI
+              Stellun AI
             </Link>
           </div>
         )}

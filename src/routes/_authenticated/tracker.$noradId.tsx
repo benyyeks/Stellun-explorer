@@ -22,12 +22,12 @@ import { useNow } from "@/hooks/use-now";
 export const Route = createFileRoute("/_authenticated/tracker/$noradId")({
   head: ({ params }) => ({
     meta: [
-      { title: `Catalog Object ${params.noradId} - ORBITEX` },
+      { title: `Catalog Object ${params.noradId} - STELLUN` },
       {
         name: "description",
         content: `Live position, ground track, and orbital elements for satellite catalog object ${params.noradId}, propagated from the latest published element set.`,
       },
-      { property: "og:title", content: `Catalog Object ${params.noradId} - ORBITEX` },
+      { property: "og:title", content: `Catalog Object ${params.noradId} - STELLUN` },
       {
         property: "og:description",
         content: `Live position, ground track, and orbital elements for catalog object ${params.noradId}.`,

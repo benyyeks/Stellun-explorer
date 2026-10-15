@@ -138,7 +138,7 @@ export function RomanHub() {
       <section className="roman-section">
         <h3>Reading shelf</h3>
         <p className="roman-note">
-          Standard references from the ORBITEX textbook shelf, chosen for what each one
+          Standard references from the STELLUN textbook shelf, chosen for what each one
           explains about this observatory.
         </p>
         <div className="shelf-grid">

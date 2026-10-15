@@ -19,13 +19,13 @@ import { ExportButtons } from "@/components/site/export-buttons";
 export const Route = createFileRoute("/_authenticated/intelligence")({
   head: () => ({
     meta: [
-      { title: "Mission Intelligence - Space Mission Directory - ORBITEX" },
+      { title: "Mission Intelligence - Space Mission Directory - STELLUN" },
       {
         name: "description",
         content:
           "An inline directory of active, in transit, planned, and completed space missions, each with launch date, vehicle, destination, objectives, and verified results.",
       },
-      { property: "og:title", content: "Mission Intelligence - Space Mission Directory - ORBITEX" },
+      { property: "og:title", content: "Mission Intelligence - Space Mission Directory - STELLUN" },
       {
         property: "og:description",
         content:
@@ -152,7 +152,7 @@ function IntelligencePage() {
             rows={filtered}
             columns={EXPORT_COLUMNS}
             meta={{
-              dataset: "ORBITEX mission directory",
+              dataset: "STELLUN mission directory",
               source: "NASA and partner agency mission pages",
             }}
           />
