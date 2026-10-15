@@ -1,12 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <style>
-    .mark { color: #1f3555; }
+    .orbit { stroke: #96601f; }
+    .star-fill { fill: #ffffff; }
+    .star-stroke { stroke: #1f3555; }
     @media (prefers-color-scheme: dark) {
-      .mark { color: #8ca5d6; }
+      .orbit { stroke: #dda05f; }
+      .star-fill { fill: #ffffff; }
+      .star-stroke { stroke: #8ca5d6; }
     }
   </style>
-  <g class="mark" fill="none" stroke="currentColor">
-    <ellipse cx="16" cy="16" rx="12.5" ry="7.5" stroke-width="2.1" transform="rotate(-20 16 16)"/>
-    <circle cx="25.3" cy="10.9" r="3" fill="currentColor" stroke="none"/>
+  <g class="orbit" fill="none" stroke-width="2.4" stroke-linecap="round">
+    <ellipse cx="32" cy="32" rx="26" ry="10" transform="rotate(0 32 32)"/>
+    <ellipse cx="32" cy="32" rx="26" ry="10" transform="rotate(60 32 32)"/>
+    <ellipse cx="32" cy="32" rx="26" ry="10" transform="rotate(-60 32 32)"/>
   </g>
+  <path class="star-fill star-stroke" stroke-width="1.6" stroke-linejoin="round"
+    d="M32 18 L34.2 27.2 L43.5 25.5 L36.4 31.2 L42 38.5 L32 34.2 L22 38.5 L27.6 31.2 L20.5 25.5 L29.8 27.2 Z"/>
 </svg>

@@ -3284,3 +3284,73 @@ html, body { overflow-x: clip; }
 .mission-filter-selects .input { width: 100%; margin-top: 6px; }
 @media (max-width: 640px) { .mission-filter-selects { grid-template-columns: minmax(0,1fr); } }
 
+/* STELLUN logo color system — merge into src/styles.css :root blocks */
+
+:root {
+  --logo-orbit: #96601f;
+  --logo-star: #1f3555;
+  --logo-star-core: #ffffff;
+  --logo-u-arc: #7a92c4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --logo-orbit: #dda05f;
+    --logo-star: #8ca5d6;
+    --logo-star-core: #ffffff;
+    --logo-u-arc: #8ca5d6;
+  }
+}
+
+.accent-panel .brand-mark,
+.accent-panel .brand-word {
+  --logo-orbit: #dda05f;
+  --logo-star: #a9bee3;
+  --logo-star-core: #ffffff;
+  --logo-u-arc: #a9bee3;
+}
+
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  color: var(--logo-orbit);
+}
+
+.brand-word {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.brand-word-text {
+  color: var(--color-text);
+}
+
+.brand-word-u {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+  color: var(--color-text);
+}
+
+.brand-word-u-letter {
+  position: relative;
+  z-index: 1;
+}
+
+.brand-word-u-arc {
+  position: absolute;
+  left: 50%;
+  bottom: 42%;
+  width: 1.35em;
+  height: 0.85em;
+  transform: translateX(-50%);
+  pointer-events: none;
+  overflow: visible;
+}
