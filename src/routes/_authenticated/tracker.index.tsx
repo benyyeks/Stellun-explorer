@@ -344,7 +344,10 @@ function TrackerPage() {
 
   // Keep the previous group's data while a new group loads so the globe and
   // catalog never blank out between selections.
-  const query = useQuery({ ...satGroupQuery(group), placeholderData: keepPreviousData, refetchInterval: 30_000 });
+  // No refetchInterval: the server caches catalog data for 1-6 hours and
+  // positions are propagated client-side each frame, so polling only
+  // re-downloads and re-parses the identical payload.
+  const query = useQuery({ ...satGroupQuery(group), placeholderData: keepPreviousData });
   // The full scene skeleton shows only on first boot; once any catalog
   // response (success or failure) arrives, the real layout takes over.
   const [booted, setBooted] = useState(false);
