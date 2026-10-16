@@ -56,7 +56,8 @@ export function cacheKey(endpoint: string, params: unknown): string {
 // Read a cached payload. Returns null when no row exists or the row is older
 // than ttlSeconds (a stale copy is still returned separately for fallback).
 async function readCache<T>(key: string, ttlSeconds: number) {
-  const supabase = publishableClient();
+  // api_cache has no public read rule; only server code reads it.
+  const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
   const { data } = await supabase
     .from("api_cache")
     .select("payload,fetched_at,ttl_seconds")
