@@ -16,6 +16,9 @@ import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
 import { AskWidget } from "@/components/site/ask-widget";
 import { ErrorReporter } from "@/components/site/error-reporter";
+import { migrateLegacyStorage } from "@/lib/storage-migrate";
+
+migrateLegacyStorage();
 
 function NotFoundComponent() {
   return (
