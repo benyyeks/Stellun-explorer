@@ -40,7 +40,9 @@ export const getLatestNews = createServerFn({ method: "GET" }).handler(async () 
     return { items: [], error: "News is unavailable right now." } satisfies NewsResult;
   }
 
-  const supabase = publishableClient();
+  // space_news has no public read rule; this server-only read returns
+  // just the published-story columns below.
+  const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
   // Only stories from the last 30 days reach the feed.
   const cutoff = new Date(Date.now() - 30 * 86400000).toISOString();
   const { data, error } = await supabase
