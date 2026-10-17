@@ -1,37 +1,31 @@
-// STELLUN brand: SVG orbital mark + wordmark PNGs (light/dark).
-// Wordmarks live in /public as stellun-wordmark-*.png
+// STELLUN brand lockup: PNG icon + PNG wordmark, light/dark auto-swap.
+// Files in /public:
+//   stellun-icon-light.png, stellun-icon-dark.png
+//   stellun-wordmark-light.png, stellun-wordmark-dark.png
 
-const STAR =
-  "M32 14 L34.6 29.4 L50 32 L34.6 34.6 L32 50 L29.4 34.6 L14 32 L29.4 29.4 Z";
-const STAR_SMALL =
-  "M32 32 L41 23 L36.2 32 L41 41 L32 36.2 L23 41 L27.8 32 L23 23 L32 27.8 L36.2 32 Z";
-
+/** Orbital mark (square PNG). Swaps with light / dark theme. */
 export function LogoMark({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 64 64"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <g stroke="var(--logo-orbit, #96601f)" strokeWidth="2.6">
-        <ellipse cx="32" cy="32" rx="28" ry="13" transform="rotate(45 32 32)" />
-        <ellipse cx="32" cy="32" rx="28" ry="13" transform="rotate(-45 32 32)" />
-      </g>
-      <path d={STAR_SMALL} fill="var(--logo-star, #1f3555)" />
-      <path
-        d={STAR}
-        fill="var(--logo-star-core, #ffffff)"
-        stroke="var(--logo-star, #1f3555)"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
+    <span className={`brand-mark-img ${className ?? ""}`} aria-hidden="true">
+      <img
+        src="/stellun-icon-light.png"
+        alt=""
+        className="brand-mark-light"
+        width={128}
+        height={128}
       />
-    </svg>
+      <img
+        src="/stellun-icon-dark.png"
+        alt=""
+        className="brand-mark-dark"
+        width={128}
+        height={128}
+      />
+    </span>
   );
 }
 
-/** Official STELLUN lettering; swaps with light / dark theme. */
+/** STELLUN lettering (wide PNG). Swaps with light / dark theme. */
 export function BrandWord() {
   return (
     <span className="brand-word-img" role="img" aria-label="Stellun">
