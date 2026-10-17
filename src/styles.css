@@ -3284,84 +3284,78 @@ html, body { overflow-x: clip; }
 .mission-filter-selects .input { width: 100%; margin-top: 6px; }
 @media (max-width: 640px) { .mission-filter-selects { grid-template-columns: minmax(0,1fr); } }
 
-/* STELLUN logo color system — merge into src/styles.css :root blocks */
+/* ── STELLUN brand lockup (PNG icon + PNG wordmark) ── */
 
-:root {
-  --logo-orbit: #96601f;
-  --logo-star: #1f3555;
-  --logo-star-core: #ffffff;
-  --logo-u-arc: #7a92c4;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
+
+/* Icon: fixed square; only one theme variant visible */
+.brand-mark,
+.brand-mark-img {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-mark-img img,
+.brand-mark img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Default = light theme: show light icon, hide dark */
+.brand-mark-light { display: block !important; }
+.brand-mark-dark { display: none !important; }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --logo-orbit: #dda05f;
-    --logo-star: #8ca5d6;
-    --logo-star-core: #ffffff;
-    --logo-u-arc: #8ca5d6;
-  }
+  .brand-mark-light { display: none !important; }
+  .brand-mark-dark { display: block !important; }
 }
 
-.accent-panel .brand-mark,
-.accent-panel .brand-word {
-  --logo-orbit: #dda05f;
-  --logo-star: #a9bee3;
-  --logo-star-core: #ffffff;
-  --logo-u-arc: #a9bee3;
-}
+/* Navy panels always use the dark icon */
+.accent-panel .brand-mark-light { display: none !important; }
+.accent-panel .brand-mark-dark { display: block !important; }
 
-.brand-mark {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  color: var(--logo-orbit);
-}
-
-.brand-word {
-  display: inline-flex;
-  align-items: baseline;
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 1.05rem;
-  letter-spacing: 0.08em;
-  color: var(--color-text);
-  line-height: 1;
-}
-
-.brand-word-text {
-  color: var(--color-text);
-}
-
-.brand-word-u {
+/* Wordmark: wide rectangle, only one theme variant visible */
+.brand-word-img {
+  display: block;
+  height: 22px;
+  width: auto;
+  max-width: min(150px, 40vw);
+  flex-shrink: 1;
+  min-width: 0;
   position: relative;
-  display: inline-block;
-  line-height: 1;
-  color: var(--color-text);
+  overflow: hidden;
 }
 
-.brand-word-u-letter {
-  position: relative;
-  z-index: 1;
+.brand-word-img img {
+  height: 22px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: left center;
+  display: block;
 }
 
-.brand-word-u-arc {
-  position: absolute;
-  left: 50%;
-  bottom: 42%;
-  width: 1.35em;
-  height: 0.85em;
-  transform: translateX(-50%);
-  pointer-events: none;
-  overflow: visible;
-}
-
-/* Stellun logo lettering (official artwork, theme-swapped) */
-.brand-word-img { display: inline-flex; align-items: center; height: 20px; }
-.brand-word-img img { height: 100%; width: auto; display: block; }
+/* Default = light theme */
+.brand-word-light { display: block !important; }
 .brand-word-dark { display: none !important; }
+
 @media (prefers-color-scheme: dark) {
   .brand-word-light { display: none !important; }
   .brand-word-dark { display: block !important; }
 }
+
 .accent-panel .brand-word-light { display: none !important; }
 .accent-panel .brand-word-dark { display: block !important; }
