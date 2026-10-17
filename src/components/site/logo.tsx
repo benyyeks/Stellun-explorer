@@ -1,7 +1,6 @@
 // STELLUN brand: two crossed orbital ellipses around an 8-point star (SVG),
 // plus the official STELLUN logo lettering (light and dark versions).
-import logoLight from "@/assets/stellun-logo-light.png.asset.json";
-import logoDark from "@/assets/stellun-logo-dark.png.asset.json";
+
 
 const STAR =
   "M32 14 L34.6 29.4 L50 32 L34.6 34.6 L32 50 L29.4 34.6 L14 32 L29.4 29.4 Z";
