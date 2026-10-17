@@ -3327,7 +3327,29 @@ html, body { overflow-x: clip; }
 .accent-panel .brand-mark-light { display: none !important; }
 .accent-panel .brand-mark-dark { display: block !important; }
 
-/* Wordmark: wide rectangle, only one theme variant visible */
+/** STELLUN lettering (wide PNG). Swaps with light / dark theme. */
+export function BrandWord() {
+  return (
+    <span className="brand-word-img" role="img" aria-label="Stellun">
+      <img
+        src="/stellun-wordmark-light.png"
+        alt=""
+        className="brand-word-light"
+        width={409}
+        height={80}
+      />
+      <img
+        src="/stellun-wordmark-dark.png"
+        alt=""
+        className="brand-word-dark"
+        width={409}
+        height={80}
+      />
+    </span>
+  );
+   }
+   
+./* Wordmark: wide rectangle, only one theme variant visible */
 .brand-word-img {
   display: block;
   height: 22px;
