@@ -1,6 +1,5 @@
-// STELLUN brand: two crossed orbital ellipses around an 8-point star (SVG),
-// plus the official STELLUN logo lettering (light and dark versions).
-
+// STELLUN brand: SVG orbital mark + wordmark PNGs (light/dark).
+// Wordmarks live in /public as stellun-wordmark-*.png
 
 const STAR =
   "M32 14 L34.6 29.4 L50 32 L34.6 34.6 L32 50 L29.4 34.6 L14 32 L29.4 29.4 Z";
@@ -9,23 +8,47 @@ const STAR_SMALL =
 
 export function LogoMark({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg
+      className={className}
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
       <g stroke="var(--logo-orbit, #96601f)" strokeWidth="2.6">
         <ellipse cx="32" cy="32" rx="28" ry="13" transform="rotate(45 32 32)" />
         <ellipse cx="32" cy="32" rx="28" ry="13" transform="rotate(-45 32 32)" />
       </g>
       <path d={STAR_SMALL} fill="var(--logo-star, #1f3555)" />
-      <path d={STAR} fill="var(--logo-star-core, #ffffff)" stroke="var(--logo-star, #1f3555)" strokeWidth="1.8" strokeLinejoin="round" />
+      <path
+        d={STAR}
+        fill="var(--logo-star-core, #ffffff)"
+        stroke="var(--logo-star, #1f3555)"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
-/** Official STELLUN logo lettering; swaps with the light or dark theme. */
+/** Official STELLUN lettering; swaps with light / dark theme. */
 export function BrandWord() {
   return (
     <span className="brand-word-img" role="img" aria-label="Stellun">
-      <img src="/stellun-logo-light.png" alt="" className="brand-word-light" width={409} height={80} />
-      <img src="/stellun-logo-dark.png" alt="" className="brand-word-dark" width={409} height={80} />
+      <img
+        src="/stellun-wordmark-light.png"
+        alt=""
+        className="brand-word-light"
+        width={409}
+        height={80}
+      />
+      <img
+        src="/stellun-wordmark-dark.png"
+        alt=""
+        className="brand-word-dark"
+        width={409}
+        height={80}
+      />
     </span>
   );
 }
