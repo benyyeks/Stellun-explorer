@@ -25,8 +25,8 @@ export function LogoMark({ className }: { className?: string }) {
 export function BrandWord() {
   return (
     <span className="brand-word-img" role="img" aria-label="Stellun">
-      <img src={logoLight.url} alt="" className="brand-word-light" width={409} height={80} />
-      <img src={logoDark.url} alt="" className="brand-word-dark" width={409} height={80} />
+      <img src="/stellun-logo-light.png" alt="" className="brand-word-light" width={409} height={80} />
+      <img src="/stellun-logo-dark.png" alt="" className="brand-word-dark" width={409} height={80} />
     </span>
   );
 }
