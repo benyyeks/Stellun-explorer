@@ -3327,29 +3327,49 @@ html, body { overflow-x: clip; }
 .accent-panel .brand-mark-light { display: none !important; }
 .accent-panel .brand-mark-dark { display: block !important; }
 
-/** STELLUN lettering (wide PNG). Swaps with light / dark theme. */
-export function BrandWord() {
-  return (
-    <span className="brand-word-img" role="img" aria-label="Stellun">
-      <img
-        src="/stellun-wordmark-light.png"
-        alt=""
-        className="brand-word-light"
-        width={409}
-        height={80}
-      />
-      <img
-        src="/stellun-wordmark-dark.png"
-        alt=""
-        className="brand-word-dark"
-        width={409}
-        height={80}
-      />
-    </span>
-  );
-   }
-   
-./* Wordmark: wide rectangle, only one theme variant visible */
+/* ── STELLUN brand lockup (PNG icon + PNG wordmark) ── */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* Icon: fixed square; only one theme variant visible */
+.brand-mark,
+.brand-mark-img {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-mark-img img,
+.brand-mark img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Default = light theme: show light icon, hide dark */
+.brand-mark-light { display: block !important; }
+.brand-mark-dark { display: none !important; }
+
+@media (prefers-color-scheme: dark) {
+  .brand-mark-light { display: none !important; }
+  .brand-mark-dark { display: block !important; }
+}
+
+.accent-panel .brand-mark-light { display: none !important; }
+.accent-panel .brand-mark-dark { display: block !important; }
+
+/* Wordmark: wide rectangle, only one theme variant visible */
 .brand-word-img {
   display: block;
   height: 22px;
@@ -3370,7 +3390,6 @@ export function BrandWord() {
   display: block;
 }
 
-/* Default = light theme */
 .brand-word-light { display: block !important; }
 .brand-word-dark { display: none !important; }
 
