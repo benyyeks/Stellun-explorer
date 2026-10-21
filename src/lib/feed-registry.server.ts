@@ -11,11 +11,18 @@ import { fetchJson, isoDate, nasaKey } from "@/lib/stellun-fetch.server";
 
 type Feed = { name: string; run: () => Promise<{ source: string }> };
 
+// Free tier: no key = 15 calls/hour per IP. Only send a token if it is set and
+// looks like a real hex token (never a bad leftover secret).
 async function launchFeed(url: string, timeoutMs: number) {
-  const token = process.env["LAUNCH_LIBRARY_KEY"];
-  return fetchJson(url, token ? { timeoutMs, headers: { Authorization: `Token ${token}` } } : { timeoutMs });
+  const raw = (process.env["LAUNCH_LIBRARY_KEY"] ?? "").trim();
+  const token = /^[a-f0-9]{20,}$/i.test(raw) ? raw : "";
+  return fetchJson(
+    url,
+    token
+      ? { timeoutMs, headers: { Authorization: `Token ${token}` } }
+      : { timeoutMs },
+  );
 }
-
 function feeds(): Feed[] {
   const today = new Date();
   const weekAgo = new Date(); weekAgo.setUTCDate(weekAgo.getUTCDate() - 7);
