@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getLaunches } from "@/lib/stellun-data.functions";
 import { fmtNum, safeText, pad2 } from "@/lib/format";
 import { FreshnessBadge } from "@/components/site/freshness-badge";
@@ -370,11 +370,21 @@ function LaunchesPage() {
 
           {next && (
             <article className="glass glass-card next-launch" aria-label="Next launch">
-              {next.image && (
-                <div className="next-launch-media">
-                  <LaunchImage src={next.image} className="next-launch-img" eager />
-                </div>
-              )}
+              {(next.image ||
+  (now &&
+    launchStream(next.vidURLs, next.net, now.getTime(), next.webcastLive))) && (
+  <div className="next-launch-media">
+    <LaunchWatch
+      stream={
+        now
+          ? launchStream(next.vidURLs, next.net, now.getTime(), next.webcastLive)
+          : null
+      }
+      image={next.image}
+      className="next-launch-img"
+    />
+  </div>
+)}
               <div className="next-launch-body">
                 <div className="next-launch-info">
                   <span className={`badge badge-${statusTone(next.status)}`}>{next.status || "Scheduled"}</span>
@@ -389,9 +399,7 @@ function LaunchesPage() {
                     {next.missionType && <div><dt>Mission type</dt><dd>{next.missionType}</dd></div>}
                   </dl>
                   {next.missionDesc && <p className="next-launch-desc">{next.missionDesc}</p>}
-                  {now && launchStreamUrl(next.vidURLs, next.net, now.getTime(), next.webcastLive) ? (
-                    <a className="btn btn-primary btn-sm" href={launchStreamUrl(next.vidURLs, next.net, now.getTime(), next.webcastLive) ?? undefined} target="_blank" rel="noopener noreferrer">Watch live</a>
-                  ) : null}
+                  {/* Watch control lives on the poster/player above when a stream is available */}
                 </div>
                 <div className="next-launch-count">
                   <div className="stat-label">Time until launch (NET)</div>
@@ -421,9 +429,16 @@ function LaunchesPage() {
                           .join(" · ")}
                       </p>
                       {l.missionDesc && <p className="launch-desc">{l.missionDesc}</p>}
-                      {now && launchStreamUrl(l.vidURLs, l.net, now.getTime(), l.webcastLive) ? (
-                        <a className="btn btn-primary btn-sm" href={launchStreamUrl(l.vidURLs, l.net, now.getTime(), l.webcastLive) ?? undefined} target="_blank" rel="noopener noreferrer">Watch live</a>
-                      ) : null}
+                      {now && launchStream(l.vidURLs, l.net, now.getTime(), l.webcastLive) ? (
+  <a
+    className="btn btn-primary btn-sm"
+    href={launchStream(l.vidURLs, l.net, now.getTime(), l.webcastLive)!.url}
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    Watch live
+  </a>
+) : null}
                     </div>
                   </article>
                 ))}
