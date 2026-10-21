@@ -16,7 +16,7 @@ import {
   type ManualRefreshResult,
   type SuggestionRow,
 } from "@/lib/admin.functions";
-import { timeAgo } from "@/lib/format";
+import { RelativeTime } from "@/components/site/relative-time";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
