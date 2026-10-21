@@ -45,7 +45,7 @@ export const getDONKI = createServerFn({ method: "GET" }).handler(async () => {
   start.setUTCDate(start.getUTCDate() - 7);
   const key = nasaKey();
   const url = `https://api.nasa.gov/DONKI/notifications?startDate=${isoDate(start)}&endDate=${isoDate(end)}&type=all&api_key=${encodeURIComponent(key)}`;
-  return cached("donki", { start: isoDate(start) }, 7200, () => fetchJson(url, { timeoutMs: 12000 }));
+  return cached("donki", { start: isoDate(start) }, 14400, () => fetchJson(url, { timeoutMs: 12000 }));
 });
 
 // --------------------------- NOAA: GOES X-ray flux ------------------------
@@ -90,7 +90,7 @@ export const getNEO = createServerFn({ method: "GET" }).handler(async () => {
   end.setUTCDate(end.getUTCDate() + 7);
   const key = nasaKey();
   const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${isoDate(start)}&end_date=${isoDate(end)}&api_key=${encodeURIComponent(key)}`;
-  return cached("neo", { start: isoDate(start) }, 21600, () => fetchJson(url, { timeoutMs: 12000 }));
+  return cached("neo", { start: isoDate(start) }, 43200, () => fetchJson(url, { timeoutMs: 12000 }));
 });
 
 // ------------------------------- NASA: Mars ------------------------------
@@ -105,7 +105,7 @@ export const getMarsImagery = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => MarsFeedInput.parse(input ?? {}))
   .handler(async ({ data }) => {
     const url = `https://mars.nasa.gov/rss/api/?feed=raw_images&category=${data.mission}&feedtype=json&num=8&page=0&format=json&order=sol+desc`;
-    return cached("mars-imagery", { mission: data.mission }, 1800, () => fetchJson(url, { timeoutMs: 20000 }));
+    return cached("mars-imagery", { mission: data.mission }, 7200, () => fetchJson(url, { timeoutMs: 20000 }));
   });
 
 // --------------------------- CelesTrak: satellites ------------------------
@@ -175,7 +175,7 @@ export const getISSPosition = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => IssInput.parse(input ?? {}))
   .handler(async ({ data }) => {
     const url = `https://api.wheretheiss.at/v1/satellites/${data.id}`;
-    return cached("iss-position", { id: data.id }, 5, () => fetchJson(url, { timeoutMs: 12000 }));
+    return cached("iss-position", { id: data.id }, 30, () => fetchJson(url, { timeoutMs: 12000 }));
   });
 
 // ---------------------- The Space Devs: launches --------------------------
@@ -245,7 +245,7 @@ async function fetchSpaceXUpcoming() {
 }
 
 export const getLaunches = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("launches", {}, 1800, async () => {
+  return cached("launches", {}, 3600, async () => {
     try {
       const ll = await fetchLaunchFeed(LL2_URL, 10000);
       const results = (ll as any)?.results;
