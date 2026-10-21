@@ -203,16 +203,16 @@ function AdminPage() {
                 Quantity, quality, integrity, and strength of every scheduled data feed.
                 Visitors read from cache; this panel watches the refresh path that fills it.
               </p>
-              <p className="text-muted" style={{ marginTop: 8, fontSize: "0.9rem" }}>
-                {{diag.data?.lastCycle ? (
-  <>
-    Last recorded cycle <RelativeTime date={diag.data.lastCycle} />.
-  </>
-) : (
-  "Waiting for the first refresh cycle."
-)}
-{diag.isFetching ? " Updating…" : ""}
-              </p>
+             <p className="text-muted" style={{ marginTop: 8, fontSize: "0.9rem" }}>
+  {diag.data?.lastCycle ? (
+    <>
+      Last recorded cycle <RelativeTime date={diag.data.lastCycle} />.
+    </>
+  ) : (
+    "Waiting for the first refresh cycle."
+  )}
+  {diag.isFetching ? " Updating…" : ""}
+</p>
             </div>
             <div className="admin-hero-actions">
               <button
