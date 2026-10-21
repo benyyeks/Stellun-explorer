@@ -755,6 +755,10 @@ function ApodSection() {
       }
     | undefined;
 
+  const mediaRef = useRef<HTMLDivElement | null>(null);
+  const [fs, setFs] = useState(false);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+
   if (!apod?.url && !apod?.hdurl) {
     return (
       <section id="apod" className="tight">
@@ -770,6 +774,95 @@ function ApodSection() {
 
   const img = apod.hdurl || apod.url || "";
   const isVideo = apod.media_type === "video";
+  const title = apod.title || "Astronomy Picture of the Day";
+  const explanation = (apod.explanation || "").trim();
+  const shareUrl = apod.permalink || (typeof window !== "undefined" ? `${window.location.origin}/#apod` : "");
+  const caption = [
+    title,
+    apod.date ? `NASA APOD · ${apod.date}` : "NASA Astronomy Picture of the Day",
+    explanation ? explanation.slice(0, 280) + (explanation.length > 280 ? "…" : "") : "",
+    shareUrl ? `\n${shareUrl}` : "",
+    "\n— via STELLUN",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  async function enterFullscreen() {
+    const el = mediaRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        setFs(false);
+      } else {
+        await el.requestFullscreen();
+        setFs(true);
+      }
+    } catch {
+      setFs((v) => !v);
+    }
+  }
+
+  useEffect(() => {
+    const onFs = () => setFs(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  async function shareNative() {
+    setShareNote(null);
+    try {
+      // Prefer sharing the image file when the browser supports it (mobile Chrome/Safari).
+      if (typeof navigator !== "undefined" && navigator.share && img && !isVideo) {
+        try {
+          const res = await fetch(img, { mode: "cors" });
+          const blob = await res.blob();
+          const file = new File([blob], "nasa-apod.jpg", { type: blob.type || "image/jpeg" });
+          if (navigator.canShare?.({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title,
+              text: caption,
+            });
+            return;
+          }
+        } catch {
+          // CORS or canShare failed — fall through to text+url share
+        }
+        await navigator.share({ title, text: caption, url: shareUrl || undefined });
+        return;
+      }
+      // Desktop fallback: copy caption
+      await navigator.clipboard.writeText(caption);
+      setShareNote("Caption copied — paste it into WhatsApp, X, or Messages.");
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
+      setShareNote("Could not open share sheet. Use WhatsApp or Copy caption below.");
+    }
+  }
+
+  function shareWhatsApp() {
+    const u = `https://wa.me/?text=${encodeURIComponent(caption)}`;
+    window.open(u, "_blank", "noopener,noreferrer");
+  }
+
+  async function copyCaption() {
+    try {
+      await navigator.clipboard.writeText(caption);
+      setShareNote("Caption copied.");
+    } catch {
+      setShareNote("Copy failed — long-press the text instead.");
+    }
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareNote("Link copied.");
+    } catch {
+      setShareNote("Copy failed.");
+    }
+  }
 
   return (
     <section id="apod">
@@ -779,41 +872,89 @@ function ApodSection() {
           <h2>Astronomy Picture of the Day</h2>
         </div>
         <article className="glass glass-card apod-card">
-          <div className="apod-media">
+          <div
+            className={`apod-media${fs ? " apod-media-fs" : ""}`}
+            ref={mediaRef}
+          >
             {isVideo ? (
-              <a href={apod.permalink || img} target="_blank" rel="noopener noreferrer" className="apod-video-link">
+              <a
+                href={apod.permalink || img}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="apod-video-link"
+              >
                 Open today’s media
               </a>
             ) : (
-              <SkeletonImage src={img} className="apod-img" eager />
+              <img
+                src={img}
+                alt={title}
+                className="apod-img"
+                loading="eager"
+                decoding="async"
+                referrerPolicy="no-referrer"
+              />
             )}
+            {!isVideo ? (
+              <button
+                type="button"
+                className="apod-fs-btn"
+                onClick={enterFullscreen}
+                aria-label={fs ? "Exit full screen" : "View full screen"}
+              >
+                {fs ? "Exit" : "Full screen"}
+              </button>
+            ) : null}
           </div>
           <div className="apod-body">
-            <h3>{apod.title || "Astronomy Picture of the Day"}</h3>
-            {apod.date ? <p className="text-muted mono" style={{ fontSize: "0.85rem" }}>{apod.date}</p> : null}
-            {apod.explanation ? <p className="apod-expl">{apod.explanation}</p> : null}
+            <h3>{title}</h3>
+            {apod.date ? (
+              <p className="text-muted mono" style={{ fontSize: "0.85rem" }}>
+                {apod.date}
+              </p>
+            ) : null}
+            {explanation ? <p className="apod-expl">{explanation}</p> : null}
             {apod.copyright ? (
               <p className="text-muted" style={{ fontSize: "0.8rem", marginTop: 8 }}>
                 Credit: {apod.copyright}
               </p>
             ) : null}
-            {apod.permalink ? (
-              <a
-                className="btn btn-ghost btn-sm"
-                href={apod.permalink}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ marginTop: 12 }}
-              >
-                View on NASA
-              </a>
+
+            <div className="apod-actions">
+              <button type="button" className="btn btn-primary btn-sm" onClick={shareNative}>
+                Share
+              </button>
+              <button type="button" className="btn btn-sm" onClick={shareWhatsApp}>
+                WhatsApp
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={copyCaption}>
+                Copy caption
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={copyLink}>
+                Copy link
+              </button>
+              {apod.permalink ? (
+                <a
+                  className="btn btn-ghost btn-sm"
+                  href={apod.permalink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  NASA
+                </a>
+              ) : null}
+            </div>
+            {shareNote ? (
+              <p className="text-muted" style={{ fontSize: "0.8rem", marginTop: 8 }} role="status">
+                {shareNote}
+              </p>
             ) : null}
           </div>
         </article>
       </div>
     </section>
   );
-  }
+}
 // ------------------------------ Landing page ---------------------------------
 function LandingPage() {
   const clock = useUtcClock();
