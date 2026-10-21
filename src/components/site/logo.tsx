@@ -11,15 +11,15 @@ export function LogoMark({ className }: { className?: string }) {
         src="/stellun-icon-light.png"
         alt=""
         className="brand-mark-light"
-        width={300}
-        height={200}
+        width={3000}
+        height={1000}
       />
       <img
         src="/stellun-icon-dark.png"
         alt=""
         className="brand-mark-dark"
-        width={300}
-        height={200}
+        width={3000}
+        height={1000}
       />
     </span>
   );
