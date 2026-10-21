@@ -10,7 +10,7 @@ import {
   type NewsItem,
   type CompetitionItem,
 } from "@/lib/news.functions";
-import { getLaunches, getNEO, getEarthWeather } from "@/lib/stellun-data.functions";
+import { getLaunches, getNEO, getEarthWeather, getAPOD } from "@/lib/stellun-data.functions";
 import { timeAgo, safeText, plainText, pad2, utcDateStr } from "@/lib/format";
 import {
   heliocentricEcliptic,
@@ -46,6 +46,7 @@ export const Route = createFileRoute("/")({
     await Promise.allSettled([
       context.queryClient.ensureQueryData(newsQueryOptions),
       context.queryClient.ensureQueryData(competitionsQueryOptions),
+      context.queryClient.ensureQueryData(apodQueryOptions),
     ]);
   },
   staleTime: 60_000,
@@ -63,7 +64,11 @@ const competitionsQueryOptions = queryOptions({
   queryKey: ["stellun", "competitions"],
   queryFn: () => getCompetitions(),
 });
-
+const apodQueryOptions = queryOptions({
+  queryKey: ["stellun", "apod"],
+  queryFn: () => getAPOD(),
+  staleTime: 60 * 60_000,
+});
 // ----------------------------- Explore cards ------------------------------
 type ExploreCard = { to: string; icon: string; title: string; blurb: string };
 const EXPLORE: ExploreCard[] = [
@@ -734,7 +739,81 @@ function FeedbackSection() {
     </section>
   );
 }
+// ------------------------------ ApodSection ---------------------------------
+function ApodSection() {
+  const { data } = useSuspenseQuery(apodQueryOptions);
+  const apod = data?.data as
+    | {
+        title?: string;
+        explanation?: string;
+        url?: string | null;
+        hdurl?: string | null;
+        date?: string | null;
+        copyright?: string;
+        permalink?: string;
+        media_type?: string;
+      }
+    | undefined;
 
+  if (!apod?.url && !apod?.hdurl) {
+    return (
+      <section id="apod" className="tight">
+        <div className="container">
+          <EmptyState
+            title="Picture of the Day unavailable"
+            message="NASA’s Astronomy Picture of the Day feed did not return an image for this run. It usually returns within a few hours."
+          />
+        </div>
+      </section>
+    );
+  }
+
+  const img = apod.hdurl || apod.url || "";
+  const isVideo = apod.media_type === "video";
+
+  return (
+    <section id="apod">
+      <div className="container">
+        <div className="section-head">
+          <span className="eyebrow">NASA · Daily</span>
+          <h2>Astronomy Picture of the Day</h2>
+        </div>
+        <article className="glass glass-card apod-card">
+          <div className="apod-media">
+            {isVideo ? (
+              <a href={apod.permalink || img} target="_blank" rel="noopener noreferrer" className="apod-video-link">
+                Open today’s media
+              </a>
+            ) : (
+              <SkeletonImage src={img} className="apod-img" eager />
+            )}
+          </div>
+          <div className="apod-body">
+            <h3>{apod.title || "Astronomy Picture of the Day"}</h3>
+            {apod.date ? <p className="text-muted mono" style={{ fontSize: "0.85rem" }}>{apod.date}</p> : null}
+            {apod.explanation ? <p className="apod-expl">{apod.explanation}</p> : null}
+            {apod.copyright ? (
+              <p className="text-muted" style={{ fontSize: "0.8rem", marginTop: 8 }}>
+                Credit: {apod.copyright}
+              </p>
+            ) : null}
+            {apod.permalink ? (
+              <a
+                className="btn btn-ghost btn-sm"
+                href={apod.permalink}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ marginTop: 12 }}
+              >
+                View on NASA
+              </a>
+            ) : null}
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+  }
 // ------------------------------ Landing page ---------------------------------
 function LandingPage() {
   const clock = useUtcClock();
@@ -824,6 +903,8 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* ASTRONOMY PICTURE OF THE DAY */}
+      <ApodSection />
 
       {/* EXPLORE GRID */}
       <section>
