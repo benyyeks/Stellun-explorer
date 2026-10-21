@@ -851,6 +851,112 @@ const shareUrl =
   }
 
   async function copyCaption() {
+// ------------------------------ ApodSection ---------------------------------
+function ApodSection() {
+  const { data } = useSuspenseQuery(apodQueryOptions);
+  const apod = data?.data as
+    | {
+        title?: string;
+        explanation?: string;
+        url?: string | null;
+        hdurl?: string | null;
+        date?: string | null;
+        copyright?: string;
+        media_type?: string;
+      }
+    | undefined;
+
+  const mediaRef = useRef<HTMLDivElement | null>(null);
+  const [fs, setFs] = useState(false);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+
+  if (!apod?.url && !apod?.hdurl) {
+    return (
+      <section id="apod" className="tight">
+        <div className="container">
+          <EmptyState
+            title="Picture of the Day unavailable"
+            message="NASA’s Astronomy Picture of the Day feed did not return an image for this run. It usually returns within a few hours."
+          />
+        </div>
+      </section>
+    );
+  }
+
+  const img = apod.hdurl || apod.url || "";
+  const isVideo = apod.media_type === "video";
+  const title = apod.title || "Astronomy Picture of the Day";
+  const explanation = (apod.explanation || "").trim();
+
+  // Always STELLUN home + hash so the page opens and scrolls to this section.
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/#apod`
+      : "https://stellun-explorer.noreplyobitex.workers.dev/#apod";
+
+  const caption = [
+    title,
+    apod.date ? `NASA APOD · ${apod.date}` : "NASA Astronomy Picture of the Day",
+    explanation ? explanation.slice(0, 280) + (explanation.length > 280 ? "…" : "") : "",
+    shareUrl,
+    "— via STELLUN",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  async function enterFullscreen() {
+    const el = mediaRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        setFs(false);
+      } else {
+        await el.requestFullscreen();
+        setFs(true);
+      }
+    } catch {
+      setFs((v) => !v);
+    }
+  }
+
+  useEffect(() => {
+    const onFs = () => setFs(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  async function shareNative() {
+    setShareNote(null);
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try {
+          if (img && !isVideo) {
+            const res = await fetch(img, { mode: "cors" });
+            const blob = await res.blob();
+            const file = new File([blob], "stellun-apod.jpg", {
+              type: blob.type || "image/jpeg",
+            });
+            if (navigator.canShare?.({ files: [file] })) {
+              await navigator.share({ files: [file], title, text: caption });
+              return;
+            }
+          }
+        } catch {
+          /* text+url share below */
+        }
+        await navigator.share({ title, text: caption, url: shareUrl });
+        return;
+      }
+      await navigator.clipboard.writeText(caption);
+      setShareNote("Caption copied — paste it into WhatsApp or Messages.");
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") return;
+      setShareNote("Could not open share sheet. Try Copy link.");
+    }
+  }
+
+  async function copyCaption() {
     try {
       await navigator.clipboard.writeText(caption);
       setShareNote("Caption copied.");
@@ -876,19 +982,9 @@ const shareUrl =
           <h2>Astronomy Picture of the Day</h2>
         </div>
         <article className="glass glass-card apod-card">
-          <div
-            className={`apod-media${fs ? " apod-media-fs" : ""}`}
-            ref={mediaRef}
-          >
+          <div className={`apod-media${fs ? " apod-media-fs" : ""}`} ref={mediaRef}>
             {isVideo ? (
-              <a
-                href={apod.permalink || img}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="apod-video-link"
-              >
-                Open today’s media
-              </a>
+              <span className="apod-video-link">Today’s media is a video</span>
             ) : (
               <img
                 src={img}
@@ -928,21 +1024,19 @@ const shareUrl =
               <button type="button" className="btn btn-primary btn-sm" onClick={shareNative}>
                 Share
               </button>
-              <button type="button" className="btn btn-sm" onClick={shareWhatsApp}>
-                WhatsApp
-              </button>
               <button type="button" className="btn btn-ghost btn-sm" onClick={copyCaption}>
                 Copy caption
               </button>
               <button type="button" className="btn btn-ghost btn-sm" onClick={copyLink}>
                 Copy link
               </button>
-              // Always point people back to STELLUN, never NASA.
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/#apod`
-      : "https://stellun-explorer.noreplyobitex.workers.dev/#apod";
             </div>
+            {shareNote ? (
+              <p className="text-muted" style={{ fontSize: "0.8rem", marginTop: 8 }} role="status">
+                {shareNote}
+              </p>
+            ) : null}
+          </div>
         </article>
       </div>
     </section>
