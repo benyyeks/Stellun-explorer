@@ -1047,6 +1047,14 @@ function LandingPage() {
   const clock = useUtcClock();
   const { user, loading } = useAuth();
   const signedOut = !loading && !user;
+     useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#apod") return;
+    const t = window.setTimeout(() => {
+      document.getElementById("apod")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, []);
 
   return (
     <main className="page-main">
