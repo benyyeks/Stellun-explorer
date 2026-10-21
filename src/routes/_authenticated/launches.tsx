@@ -8,7 +8,7 @@ import { FeedError, EmptyState } from "@/components/site/data-state";
 import { SkeletonImage } from "@/components/site/skeleton-image";
 import { PastLaunches } from "@/components/launches/past-launches";
 import { useNow } from "@/hooks/use-now";
-import { launchStreamUrl } from "@/lib/launch-live";
+import { launchStream, type LaunchStream } from "@/lib/launch-live";
 import { PageHeroSkeleton, StatGridSkeleton, LaunchListSkeleton } from "@/components/site/page-skeleton";
 
 export const Route = createFileRoute("/_authenticated/launches")({
@@ -131,6 +131,74 @@ function fmtNet(net: string): string {
 // cards reserve their space and never show a broken frame.
 function LaunchImage({ src, className, eager = false }: { src: string | null; className: string; eager?: boolean }) {
   return <SkeletonImage src={src} className={className} eager={eager} />;
+}
+function LaunchWatch({
+  stream,
+  image,
+  className,
+}: {
+  stream: LaunchStream | null;
+  image: string | null;
+  className: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  const goFullscreen = () => {
+    const el = boxRef.current;
+    if (!el) return;
+    const req =
+      el.requestFullscreen?.bind(el) ||
+      (el as any).webkitRequestFullscreen?.bind(el);
+    void req?.();
+  };
+
+  if (!stream) {
+    return image ? <LaunchImage src={image} className={className} /> : null;
+  }
+
+  if (open && stream.embedUrl) {
+    return (
+      <div ref={boxRef} className={`launch-watch-player ${className}`}>
+        <iframe
+          title="Launch webcast"
+          src={stream.embedUrl}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+          allowFullScreen
+          style={{ width: "100%", height: "100%", minHeight: 220, border: 0, borderRadius: 12 }}
+        />
+        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={goFullscreen}>
+            Full screen
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+            Show poster
+          </button>
+          <a className="btn btn-ghost btn-sm" href={stream.url} target="_blank" rel="noopener noreferrer">
+            Open official stream
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`launch-watch-poster ${className}`} style={{ position: "relative" }}>
+      {image ? (
+        <LaunchImage src={image} className={className} />
+      ) : (
+        <div className={className} style={{ minHeight: 160, background: "rgba(0,0,0,0.25)" }} />
+      )}
+      <button
+        type="button"
+        className="btn btn-primary btn-sm"
+        style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
+        onClick={() => setOpen(true)}
+      >
+        Watch live
+      </button>
+    </div>
+  );
 }
 
 // After the scheduled moment passes, the countdown switches to a post-liftoff
