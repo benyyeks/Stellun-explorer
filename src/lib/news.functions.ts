@@ -91,9 +91,9 @@ export const submitFeedback = createServerFn({ method: "POST" })
         // Honeypot: real users never see or fill this field.
         company: z.string().max(200).optional().default(""),
       })
-      .parse(input ?? {})
+      .parse(input ?? {}),
   )
-.handler(async ({ data }): Promise<FeedbackResult> => {
+  .handler(async ({ data }): Promise<FeedbackResult> => {
     // Honeypot tripped: pretend success and store nothing.
     if (data.company) return { ok: true, error: null };
     if (data.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) {
@@ -113,19 +113,6 @@ export const submitFeedback = createServerFn({ method: "POST" })
     if (error) {
       return { ok: false, error: "Your message could not be sent. Please try again." };
     }
-
-    const { sendFeedbackEmail } = await import("@/lib/feedback-mail.server");
-    const mail = await sendFeedbackEmail({
-      name: data.name,
-      email: data.email,
-      type: data.type,
-      message: data.message,
-    });
-    if (!mail.sent) {
-      return { ok: true, error: null, delivered: false };
-    }
-    return { ok: true, error: null, delivered: true };
-  });
 
     // Relay the message to the team inbox. A delivery problem does not lose
     // the submission, which is already stored.
