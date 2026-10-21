@@ -59,25 +59,43 @@ export const getXrayFlux = createServerFn({ method: "GET" }).handler(async () =>
 // WordPress APOD (legacy planetary/apod is 500 / retires Dec 2026).
 function normalizeApod(raw: unknown) {
   const item = Array.isArray(raw) ? raw[0] : raw;
-  if (!item || typeof item !== "object") throw new Error("APOD response was empty.");
+  if (!item || typeof item !== "object") {
+    throw new Error("APOD response was empty.");
+  }
   const r = item as Record<string, unknown>;
-  const imageUrl =
-    (typeof r.hdurl === "string" && r.hdurl) ||
-    (typeof r.url === "string" ? r.url : null);
   const strip = (s: unknown) =>
     typeof s === "string" ? s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
+
+  const candidates = [r.hdurl, r.url].filter((u): u is string => typeof u === "string" && u.length > 0);
+
+  // Only accept real image assets — never article pages or theme logos.
+  const imageUrl =
+    candidates.find(
+      (u) =>
+        /assets\.science\.nasa\.gov/i.test(u) ||
+        /\.(png|jpe?g|webp|gif)(\?|$)/i.test(u),
+    ) ?? null;
+
+  if (!imageUrl) {
+    throw new Error("APOD response had no usable image URL.");
+  }
+
+  const title =
+    typeof r.title === "string" && r.title.trim() && r.title.trim() !== "NASA Science"
+      ? r.title.trim()
+      : "Astronomy Picture of the Day";
+
   return {
     date: r.date ?? null,
-    title: r.title ?? "Astronomy Picture of the Day",
+    title,
     explanation: strip(r.explanation),
     url: imageUrl,
-    hdurl: typeof r.hdurl === "string" ? r.hdurl : imageUrl,
+    hdurl: imageUrl,
     media_type: r.media_type ?? "image",
     copyright: strip(r.copyright) || strip(r.credit) || undefined,
     permalink: typeof r.permalink === "string" ? r.permalink : undefined,
   };
 }
-
 export const getAPOD = createServerFn({ method: "GET" }).handler(async () => {
   const key = nasaKey();
   const url = `https://science.nasa.gov/wp-json/wp/v2/apod-basic/?api_key=${encodeURIComponent(key)}`;
