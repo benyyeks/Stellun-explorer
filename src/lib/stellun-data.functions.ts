@@ -56,38 +56,24 @@ export const getXrayFlux = createServerFn({ method: "GET" }).handler(async () =>
 });
 
 // -------------------------------- NASA: APOD -----------------------------
-// Legacy api.nasa.gov/planetary/apod is retiring (offline 1 Dec 2026) and
-// currently returns 500. Use the WordPress APOD endpoint and normalize to the
-// classic shape the UI expects (url = image, hdurl, title, explanation, …).
+// WordPress APOD (legacy planetary/apod is 500 / retires Dec 2026).
 function normalizeApod(raw: unknown) {
   const item = Array.isArray(raw) ? raw[0] : raw;
-  if (!item || typeof item !== "object") {
-    throw new Error("APOD response was empty.");
-  }
+  if (!item || typeof item !== "object") throw new Error("APOD response was empty.");
   const r = item as Record<string, unknown>;
   const imageUrl =
     (typeof r.hdurl === "string" && r.hdurl) ||
-    (typeof r.url === "string" && r.url.includes("assets.science.nasa.gov") ? r.url : null) ||
     (typeof r.url === "string" ? r.url : null);
-  const explanation =
-    typeof r.explanation === "string"
-      ? r.explanation.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-      : "";
-  const copyright =
-    typeof r.copyright === "string"
-      ? r.copyright.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-      : typeof r.credit === "string"
-        ? r.credit.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-        : undefined;
+  const strip = (s: unknown) =>
+    typeof s === "string" ? s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
   return {
     date: r.date ?? null,
     title: r.title ?? "Astronomy Picture of the Day",
-    explanation,
+    explanation: strip(r.explanation),
     url: imageUrl,
     hdurl: typeof r.hdurl === "string" ? r.hdurl : imageUrl,
     media_type: r.media_type ?? "image",
-    copyright: copyright || undefined,
-    // Extra fields if a page wants the NASA article link
+    copyright: strip(r.copyright) || strip(r.credit) || undefined,
     permalink: typeof r.permalink === "string" ? r.permalink : undefined,
   };
 }
@@ -95,10 +81,7 @@ function normalizeApod(raw: unknown) {
 export const getAPOD = createServerFn({ method: "GET" }).handler(async () => {
   const key = nasaKey();
   const url = `https://science.nasa.gov/wp-json/wp/v2/apod-basic/?api_key=${encodeURIComponent(key)}`;
-  return cached("apod", {}, 43200, async () => {
-    const raw = await fetchJson(url, { timeoutMs: 15000 });
-    return normalizeApod(raw);
-  });
+  return cached("apod", {}, 86400, async () => normalizeApod(await fetchJson(url, { timeoutMs: 15000 })));
 });
 // -------------------------------- NASA: NEO ------------------------------
 export const getNEO = createServerFn({ method: "GET" }).handler(async () => {
