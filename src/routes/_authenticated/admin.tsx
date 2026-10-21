@@ -204,10 +204,14 @@ function AdminPage() {
                 Visitors read from cache; this panel watches the refresh path that fills it.
               </p>
               <p className="text-muted" style={{ marginTop: 8, fontSize: "0.9rem" }}>
-                {diag.data?.lastCycle
-                  ? `Last recorded cycle ${timeAgo(new Date(diag.data.lastCycle))}.`
-                  : "Waiting for the first refresh cycle."}
-                {diag.isFetching ? " Updating…" : ""}
+                {{diag.data?.lastCycle ? (
+  <>
+    Last recorded cycle <RelativeTime date={diag.data.lastCycle} />.
+  </>
+) : (
+  "Waiting for the first refresh cycle."
+)}
+{diag.isFetching ? " Updating…" : ""}
               </p>
             </div>
             <div className="admin-hero-actions">
@@ -305,7 +309,7 @@ function AdminPage() {
                       <span className={`badge ${s.status === "new" ? "badge-warning" : s.status === "done" ? "badge-success" : "badge-muted"}`}>
                         {s.status}
                       </span>
-                      <span className="text-faint mono" style={{ fontSize: "0.78rem" }}>{timeAgo(new Date(s.createdAt))}</span>
+                      <span className="text-faint mono" style={{ fontSize: "0.78rem" }}><RelativeTime date={s.createdAt} /></span>
                     </div>
                     <p style={{ margin: "10px 0", whiteSpace: "pre-wrap" }}>{s.message}</p>
                     <p className="text-faint" style={{ fontSize: "0.82rem", margin: "0 0 10px" }}>
@@ -357,7 +361,7 @@ function AdminPage() {
                       <span className={`badge ${e.resolved ? "badge-success" : "badge-danger"}`}>
                         {e.resolved ? "resolved" : "open"}
                       </span>
-                      <span className="text-faint mono" style={{ fontSize: "0.78rem" }}>{timeAgo(new Date(e.createdAt))}</span>
+                      <span className="text-faint mono" style={{ fontSize: "0.78rem" }}><RelativeTime date={e.createdAt} /></span>
                     </div>
                     <p style={{ margin: "10px 0", fontWeight: 600 }}>{e.message}</p>
                     {e.path && <p className="mono text-faint" style={{ fontSize: "0.8rem", margin: "0 0 6px" }}>{e.path}</p>}
@@ -427,7 +431,7 @@ function AdminPage() {
                 </p>
               </div>
               <p className="text-muted" style={{ fontSize: "0.88rem", margin: 0, maxWidth: "42ch" }}>
-                Last read {timeAgo(new Date(q.checkedAt))}. Resets hourly. Visitor traffic does
+                Last read <RelativeTime date={q.checkedAt} />. Resets hourly. Visitor traffic does
                 not spend this quota; the scheduled refresh and manual refresh do.
               </p>
             </div>
@@ -464,7 +468,7 @@ function AdminPage() {
                     <dl className="admin-problem-meta">
                       <div>
                         <dt>Last check</dt>
-                        <dd>{timeAgo(new Date(f.checkedAt))}</dd>
+                        <dd><RelativeTime date={f.checkedAt} /></dd>
                       </div>
                       <div>
                         <dt>Response</dt>
@@ -560,7 +564,7 @@ function AdminPage() {
                               {integrityLabel(f.integrity)}
                             </span>
                           </td>
-                          <td>{timeAgo(new Date(f.checkedAt))}</td>
+                          <td><RelativeTime date={f.checkedAt} /></td>
                           <td className="mono">{f.durationMs != null ? `${f.durationMs} ms` : "—"}</td>
                           <td className="mono">
                             {Math.round(f.okRate * 100)}% · {f.runs}
