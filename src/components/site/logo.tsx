@@ -33,14 +33,14 @@ export function BrandWord() {
         src="/stellun-wordmark-light.png"
         alt=""
         className="brand-word-light"
-        width={409}
+        width={40900}
         height={80}
       />
       <img
         src="/stellun-wordmark-dark.png"
         alt=""
         className="brand-word-dark"
-        width={409}
+        width={40900}
         height={80}
       />
     </span>
