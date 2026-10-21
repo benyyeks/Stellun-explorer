@@ -93,22 +93,39 @@ export const submitFeedback = createServerFn({ method: "POST" })
       })
       .parse(input ?? {})
   )
-  .handler(async ({ data }): Promise<FeedbackResult> => {
+.handler(async ({ data }): Promise<FeedbackResult> => {
     // Honeypot tripped: pretend success and store nothing.
     if (data.company) return { ok: true, error: null };
     if (data.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(data.email)) {
       return { ok: false, error: "That email address does not look valid." };
     }
-    const supabase = publishableClient();
-    const { error } = await supabase.from("feedback").insert({
+
+    // Same inbox as About page → Admin → Suggestions
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("site_suggestions").insert({
       name: data.name || null,
       email: data.email || null,
       type: data.type,
       message: data.message,
+      user_id: null,
+      status: "new",
     });
     if (error) {
       return { ok: false, error: "Your message could not be sent. Please try again." };
     }
+
+    const { sendFeedbackEmail } = await import("@/lib/feedback-mail.server");
+    const mail = await sendFeedbackEmail({
+      name: data.name,
+      email: data.email,
+      type: data.type,
+      message: data.message,
+    });
+    if (!mail.sent) {
+      return { ok: true, error: null, delivered: false };
+    }
+    return { ok: true, error: null, delivered: true };
+  });
 
     // Relay the message to the team inbox. A delivery problem does not lose
     // the submission, which is already stored.
