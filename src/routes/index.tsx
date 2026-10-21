@@ -776,7 +776,11 @@ function ApodSection() {
   const isVideo = apod.media_type === "video";
   const title = apod.title || "Astronomy Picture of the Day";
   const explanation = (apod.explanation || "").trim();
-  const shareUrl = apod.permalink || (typeof window !== "undefined" ? `${window.location.origin}/#apod` : "");
+  // Always point people back to STELLUN, never NASA.
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/#apod`
+      : "https://stellun-explorer.noreplyobitex.workers.dev/#apod";
   const caption = [
     title,
     apod.date ? `NASA APOD · ${apod.date}` : "NASA Astronomy Picture of the Day",
@@ -933,16 +937,11 @@ function ApodSection() {
               <button type="button" className="btn btn-ghost btn-sm" onClick={copyLink}>
                 Copy link
               </button>
-              {apod.permalink ? (
-                <a
-                  className="btn btn-ghost btn-sm"
-                  href={apod.permalink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  NASA
-                </a>
-              ) : null}
+              // Always point people back to STELLUN, never NASA.
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/#apod`
+      : "https://stellun-explorer.noreplyobitex.workers.dev/#apod";
             </div>
             {shareNote ? (
               <p className="text-muted" style={{ fontSize: "0.8rem", marginTop: 8 }} role="status">
