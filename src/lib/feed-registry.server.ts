@@ -47,7 +47,33 @@ function feeds(): Feed[] {
     { name: "space-weather-alerts", run: () => cached("donki", { start: isoDate(weekAgo) }, 7200, () => fetchJson(`https://api.nasa.gov/DONKI/notifications?startDate=${isoDate(weekAgo)}&endDate=${isoDate(today)}&type=all&api_key=${key}`, { timeoutMs: 12000 })) },
     // Daily tier
     { name: "asteroids", run: () => cached("neo", { start: isoDate(today) }, 21600, () => fetchJson(`https://api.nasa.gov/neo/rest/v1/feed?start_date=${isoDate(today)}&end_date=${isoDate(weekAhead)}&api_key=${key}`, { timeoutMs: 12000 })) },
-    { name: "picture-of-the-day", run: () => cached("apod", {}, 43200, () => fetchJson(`https://api.nasa.gov/planetary/apod?api_key=${key}`, { timeoutMs: 12000 })) },
+    { name: "picture-of-the-day", run: () => cached("apod", {}, 43200, async () => {
+  const raw = await fetchJson(
+    `https://science.nasa.gov/wp-json/wp/v2/apod-basic/?api_key=${key}`,
+    { timeoutMs: 15000 },
+  );
+  const item = Array.isArray(raw) ? raw[0] : raw;
+  if (!item || typeof item !== "object") throw new Error("APOD response was empty.");
+  const r = item as Record<string, unknown>;
+  const imageUrl =
+    (typeof r.hdurl === "string" && r.hdurl) ||
+    (typeof r.url === "string" ? r.url : null);
+  return {
+    date: r.date ?? null,
+    title: r.title ?? "Astronomy Picture of the Day",
+    explanation:
+      typeof r.explanation === "string"
+        ? r.explanation.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+        : "",
+    url: imageUrl,
+    hdurl: typeof r.hdurl === "string" ? r.hdurl : imageUrl,
+    media_type: r.media_type ?? "image",
+    copyright:
+      typeof r.copyright === "string"
+        ? r.copyright.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+        : undefined,
+  };
+}) },
     { name: "past-launches", run: () => cached("launches-previous", {}, 21600, () => launchFeed("https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=20&mode=detailed", 12000)) },
   ];
 }
