@@ -158,28 +158,82 @@ export const getISSPosition = createServerFn({ method: "GET" })
   });
 
 // ---------------------- The Space Devs: launches --------------------------
-const LL2_URL = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=12&mode=detailed";
+// Free: URL only, no key required (15 req/hour/IP). Cache in Supabase via
+// cached() so the page can refresh as often as it wants without hitting LL2.
+const LL2_URL =
+  "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=12&mode=detailed";
+const SPACEX_UPCOMING = "https://api.spacexdata.com/v5/launches/upcoming";
 
-// Shared launch fetch. The public tier of this upstream allows only a handful
-// of calls per hour, so a failed keyed call is NOT retried anonymously when the
-// upstream is rate limiting us: that doubles the request volume and keeps the
-// quota exhausted. Cache windows are long enough that normal traffic stays well
-// inside the quota, and cached() serves the previous copy on failure.
 async function fetchLaunchFeed(url: string, timeoutMs: number) {
-  const token = process.env["LAUNCH_LIBRARY_KEY"];
+  const raw = (process.env["LAUNCH_LIBRARY_KEY"] ?? "").trim();
+  // Only use a token that looks like a real LL2 key; ignore junk/empty.
+  const token = /^[a-f0-9]{20,}$/i.test(raw) ? raw : "";
   if (!token) return fetchJson(url, { timeoutMs });
   try {
-    return await fetchJson(url, { timeoutMs, headers: { Authorization: `Token ${token}` } });
+    return await fetchJson(url, {
+      timeoutMs,
+      headers: { Authorization: `Token ${token}` },
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    // Quota or auth problems are not fixed by asking again without the token.
     if (/HTTP (401|403|429)/.test(msg)) throw err;
     return fetchJson(url, { timeoutMs });
   }
 }
 
+/** Optional SpaceX v5 list — no key. Used only if LL2 returns empty. */
+async function fetchSpaceXUpcoming() {
+  const rows = (await fetchJson(SPACEX_UPCOMING, { timeoutMs: 12000 })) as any[];
+  if (!Array.isArray(rows)) return { count: 0, next: null, previous: null, results: [] };
+  const results = rows.slice(0, 12).map((l) => ({
+    id: l.id,
+    name: l.name ?? "SpaceX mission",
+    net: l.date_utc ?? l.date_local ?? null,
+    window_start: l.date_utc ?? null,
+    window_end: l.date_utc ?? null,
+    status: {
+      name: l.upcoming ? "Go" : l.success === false ? "Failure" : "Success",
+    },
+    launch_service_provider: { name: "SpaceX" },
+    rocket: {
+      configuration: {
+        full_name: "Falcon 9 / Falcon Heavy",
+        name: "Falcon",
+      },
+    },
+    pad: {
+      name: null,
+      location: { name: l.launchpad ?? null },
+    },
+    mission: {
+      name: l.name,
+      description: l.details ?? null,
+      type: null,
+      orbit: { name: null },
+    },
+    image: l.links?.patch?.large ?? l.links?.patch?.small ?? null,
+    webcast_live: Boolean(l.links?.webcast),
+    vidURLs: l.links?.webcast
+      ? [{ url: l.links.webcast, priority: 0 }]
+      : l.links?.youtube_id
+        ? [{ url: `https://www.youtube.com/watch?v=${l.links.youtube_id}`, priority: 0 }]
+        : [],
+    _source: "spacex",
+  }));
+  return { count: results.length, next: null, previous: null, results };
+}
+
 export const getLaunches = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("launches", {}, 1800, () => fetchLaunchFeed(LL2_URL, 10000));
+  return cached("launches", {}, 1800, async () => {
+    try {
+      const ll = await fetchLaunchFeed(LL2_URL, 10000);
+      const results = (ll as any)?.results;
+      if (Array.isArray(results) && results.length > 0) return ll;
+    } catch {
+      /* fall through to SpaceX */
+    }
+    return fetchSpaceXUpcoming();
+  });
 });
 
 // ------------------------- Open-Meteo: earth weather ----------------------
