@@ -157,21 +157,46 @@ function LaunchWatch({
     return image ? <LaunchImage src={image} className={className} /> : null;
   }
 
-  if (open && stream.embedUrl) {
-    return (
-      <div ref={boxRef} className={`launch-watch-player ${className}`}>
-        <iframe
-          title="Launch webcast"
-          src={stream.embedUrl}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          allowFullScreen
-          style={{ width: "100%", height: "100%", minHeight: 220, border: 0, borderRadius: 12 }}
-        />
+  if (open) {
+    if (stream.embedUrl) {
+      return (
+        <div ref={boxRef} className={`launch-watch-player ${className}`}>
+          <iframe
+            title="Launch webcast"
+            src={stream.embedUrl}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+            style={{ width: "100%", height: "100%", minHeight: 220, border: 0, borderRadius: 12 }}
+          />
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={goFullscreen}>
+              Full screen
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+              Show poster
+            </button>
+            <a className="btn btn-ghost btn-sm" href={stream.url} target="_blank" rel="noopener noreferrer">
+              Open official stream
+            </a>
+          </div>
+        </div>
+      );
+    }
+    // Non-YouTube: open official stream in a new tab and reset poster
+    if (typeof window !== "undefined") {
+      window.open(stream.url, "_blank", "noopener,noreferrer");
+    }
+    setOpen(false);
+    return image ? <LaunchImage src={image} className={className} /> : null;
+  }
         <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
           <button type="button" className="btn btn-ghost btn-sm" onClick={goFullscreen}>
             Full screen
           </button>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => {
+  if (stream.embedUrl) setOpen(true);
+  else window.open(stream.url, "_blank", "noopener,noreferrer");
+}}}>
             Show poster
           </button>
           <a className="btn btn-ghost btn-sm" href={stream.url} target="_blank" rel="noopener noreferrer">
