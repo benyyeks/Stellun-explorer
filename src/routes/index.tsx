@@ -42,33 +42,44 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  loader: async ({ context }) => {
+  loaderloader: async ({ context }) => {
     await Promise.allSettled([
       context.queryClient.ensureQueryData(newsQueryOptions),
       context.queryClient.ensureQueryData(competitionsQueryOptions),
       context.queryClient.ensureQueryData(apodQueryOptions),
     ]);
+    const apodResult = context.queryClient.getQueryData(apodQueryOptions.queryKey) as
+      | { data?: { title?: string; explanation?: string; hdurl?: string | null; url?: string | null } }
+      | undefined;
+    return { apod: apodResult?.data };
   },
-  staleTime: 60_000,
-  pendingMs: 0,
-  pendingComponent: LandingSkeleton,
-  component: LandingPage,
-});
-
-const newsQueryOptions = queryOptions({
-  queryKey: ["stellun", "news", "latest"],
-  queryFn: () => getLatestNews(),
-});
-
-const competitionsQueryOptions = queryOptions({
-  queryKey: ["stellun", "competitions"],
-  queryFn: () => getCompetitions(),
-});
-const apodQueryOptions = queryOptions({
-  queryKey: ["stellun", "apod"],
-  queryFn: () => getAPOD(),
-  staleTime: 60 * 60_000,
-});
+  head: ({ loaderData }) => {
+    const apod = loaderData?.apod;
+    const img = apod?.hdurl || apod?.url || "";
+    const title = apod?.title
+      ? `${apod.title} · STELLUN`
+      : "STELLUN - Space Intelligence Platform";
+    const desc = apod?.explanation
+      ? apod.explanation.slice(0, 200)
+      : "Live satellite tracking, verified space weather, near-Earth object watch, and deep-space mission data.";
+    return {
+      meta: [
+        { title },
+        { name: "description", content: desc },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: "https://stellun-explorer.noreplyobitex.workers.dev/" },
+        ...(img
+          ? [
+              { property: "og:image", content: img },
+              { name: "twitter:card", content: "summary_large_image" },
+              { name: "twitter:image", content: img },
+            ]
+          : [{ name: "twitter:card", content: "summary_large_image" }]),
+      ],
+    };
+  },
 // ----------------------------- Explore cards ------------------------------
 type ExploreCard = { to: string; icon: string; title: string; blurb: string };
 const EXPLORE: ExploreCard[] = [
