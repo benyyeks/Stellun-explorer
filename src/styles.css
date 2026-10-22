@@ -1,4 +1,4 @@
-/* ==========================================================================
+7/* ==========================================================================
    STELLUN Design System
    Academic, minimal, glass. Color is used sparingly and functionally.
    Light is the base palette; dark mode follows the visitor's system setting
@@ -3495,4 +3495,114 @@ html, body { overflow-x: clip; }
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
+}
+/* ── STELLUN brand lockup (bigger mark + glass text wordmark) ── */
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.brand-mark,
+.brand-mark-img {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+
+.brand-mark-img img,
+.brand-mark img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.brand-mark-light { display: block !important; }
+.brand-mark-dark { display: none !important; }
+
+@media (prefers-color-scheme: dark) {
+  .brand-mark-light { display: none !important; }
+  .brand-mark-dark { display: block !important; }
+}
+
+.accent-panel .brand-mark-light { display: none !important; }
+.accent-panel .brand-mark-dark { display: block !important; }
+
+/* Text wordmark — no PNG box, blends with glass header */
+.brand-word-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.brand-word-text {
+  font-family: var(--font-heading, system-ui, sans-serif);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.14em;
+  color: var(--color-text, #0f172a);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .brand-word-text { color: #f1f5f9; }
+  .brand-word-pill {
+    border-color: rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Hide legacy PNG wordmark if any old markup remains */
+.brand-word-img { display: none !important; }
+
+/* Profile avatar presets */
+.avatar-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.avatar-preset-btn {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+  aspect-ratio: 1;
+}
+.avatar-preset-btn img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.avatar-preset-btn.is-selected {
+  border-color: var(--color-accent, #3f8fe0);
+  box-shadow: 0 0 0 2px rgba(63, 143, 224, 0.35);
+}
+.avatar-preset-label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #64748b);
+  margin-top: 10px;
+}
+@media (max-width: 480px) {
+  .avatar-preset-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .brand-mark, .brand-mark-img { width: 36px; height: 36px; }
+  .brand-word-text { font-size: 0.95rem; letter-spacing: 0.12em; }
 }
