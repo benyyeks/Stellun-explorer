@@ -206,7 +206,7 @@ export const runFeedRefresh = createServerFn({ method: "POST" })
     const t0 = Date.now();
     try {
       const { runRefreshCycle } = await import("@/lib/feed-registry.server");
-      const results = await runRefreshCycle();
+      const results = await runRefreshCycle({ force: true });
       const failed = results.filter((r) => !r.ok);
       const failedNames = failed.map((r) => r.feed);
       const durationMs = Date.now() - t0;
