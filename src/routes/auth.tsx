@@ -142,39 +142,84 @@ function AccountView({ email }: { email: string }) {
 }
 
 function SignInView({ gated }: { gated: boolean }) {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ kind: "error" | "success"; text: string } | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptcha | null>(null);
+
+  const siteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (busy) return;
     setStatus(null);
-    // Client-side bounds keep malformed input out of the request entirely.
+
     const cleanEmail = email.trim().toLowerCase().slice(0, 254);
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
       setStatus({ kind: "error", text: "Please enter a valid email address." });
       return;
     }
+
+    // Forgot password: email only + captcha
+    if (mode === "reset") {
+      if (siteKey && !captchaToken) {
+        setStatus({ kind: "error", text: "Please complete the captcha." });
+        return;
+      }
+      setBusy(true);
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+          redirectTo: `${window.location.origin}/auth`,
+          captchaToken: captchaToken ?? undefined,
+        });
+        if (error) {
+          setStatus({ kind: "error", text: friendlyError(error.message) });
+        } else {
+          setStatus({
+            kind: "success",
+            text: "If an account exists for that email, a reset link is on its way. Check your inbox.",
+          });
+        }
+      } catch {
+        setStatus({ kind: "error", text: "The connection failed. Please try again." });
+      } finally {
+        setBusy(false);
+        setCaptchaToken(null);
+        captchaRef.current?.resetCaptcha();
+      }
+      return;
+    }
+
     if (password.length < 6 || password.length > 128) {
       setStatus({ kind: "error", text: "Passwords need between 6 and 128 characters." });
       return;
     }
+
+    if (siteKey && !captchaToken) {
+      setStatus({ kind: "error", text: "Please complete the captcha." });
+      return;
+    }
+
     setBusy(true);
     try {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({
           email: cleanEmail,
           password,
+          options: { captchaToken: captchaToken ?? undefined },
         });
         if (error) setStatus({ kind: "error", text: friendlyError(error.message) });
       } else {
         const { data, error } = await supabase.auth.signUp({
           email: cleanEmail,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: {
+            emailRedirectTo: window.location.origin,
+            captchaToken: captchaToken ?? undefined,
+          },
         });
         if (error) {
           setStatus({ kind: "error", text: friendlyError(error.message) });
@@ -189,9 +234,11 @@ function SignInView({ gated }: { gated: boolean }) {
       setStatus({ kind: "error", text: "The connection failed. Please try again." });
     } finally {
       setBusy(false);
+      setCaptchaToken(null);
+      captchaRef.current?.resetCaptcha();
     }
   };
-
+  
   return (
     <>
       <section className="page-hero">
@@ -244,26 +291,88 @@ function SignInView({ gated }: { gated: boolean }) {
               placeholder="you@example.com"
             />
           </div>
-          <div className="form-row">
-            <label htmlFor="auth-password">Password</label>
-            <input
-              id="auth-password"
-              type="password"
-              autoComplete={mode === "signin" ? "current-password" : "new-password"}
-              required
-              minLength={6}
-              maxLength={128}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 6 characters"
-            />
-          </div>
+          {mode !== "reset" ? (
+            <div className="form-row">
+              <label htmlFor="auth-password">Password</label>
+              <input
+                id="auth-password"
+                type="password"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                required
+                minLength={6}
+                maxLength={128}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 6 characters"
+              />
+            </div>
+          ) : null}
+
+          {mode === "signin" ? (
+            <p style={{ margin: "0 0 12px", fontSize: "0.9rem" }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ padding: 0, textDecoration: "underline" }}
+                onClick={() => {
+                  setMode("reset");
+                  setStatus(null);
+                  setPassword("");
+                  setCaptchaToken(null);
+                  captchaRef.current?.resetCaptcha();
+                }}
+              >
+                Forgot password?
+              </button>
+            </p>
+          ) : null}
+
+          {mode === "reset" ? (
+            <p className="text-muted" style={{ fontSize: "0.9rem", marginBottom: 12 }}>
+              Enter your email and we will send a reset link if an account exists.
+              {" "}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ padding: 0, textDecoration: "underline" }}
+                onClick={() => {
+                  setMode("signin");
+                  setStatus(null);
+                  setCaptchaToken(null);
+                  captchaRef.current?.resetCaptcha();
+                }}
+              >
+                Back to sign in
+              </button>
+            </p>
+          ) : null}
+
+          {siteKey ? (
+            <div className="form-row" style={{ display: "flex", justifyContent: "center" }}>
+              <HCaptcha
+                ref={captchaRef}
+                sitekey={siteKey}
+                onVerify={(token) => setCaptchaToken(token)}
+                onExpire={() => setCaptchaToken(null)}
+                onError={() => {
+                  setCaptchaToken(null);
+                  setStatus({
+                    kind: "error",
+                    text: "Captcha failed to load. Check your connection and try again.",
+                  });
+                }}
+              />
+            </div>
+          ) : null}
+
           <button type="submit" className="btn btn-primary auth-submit" disabled={busy}>
             {busy
               ? "One moment..."
               : mode === "signin"
                 ? "Sign in"
-                : "Create account"}
+                : mode === "reset"
+                  ? "Send reset link"
+                  : "Create account"}
           </button>
           <p
             className={`form-status${status ? ` ${status.kind}` : ""}`}
