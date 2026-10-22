@@ -277,18 +277,27 @@ function SignInView({ gated }: { gated: boolean }) {
 }
 
 function ProfileCard() {
-  const { profile, uploadAvatar, saveName } = useProfile();
+  const { profile, uploadAvatar, selectPreset, saveName } = useProfile();
   const [name, setName] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => setName(profile.displayName ?? ""), [profile.displayName]);
+
+  const selectedPreset =
+    profile.avatarPath && profile.avatarPath.startsWith("preset:")
+      ? profile.avatarPath.slice("preset:".length)
+      : null;
 
   return (
     <section className="glass glass-card auth-card profile-card">
       <h2>Profile</h2>
       <div className="profile-row">
         <div className="profile-photo" aria-hidden="true">
-          {profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <span>{(name || "?").charAt(0).toUpperCase()}</span>}
+          {profile.avatarUrl ? (
+            <img src={profile.avatarUrl} alt="" />
+          ) : (
+            <span>{(name || "?").charAt(0).toUpperCase()}</span>
+          )}
         </div>
         <label className="btn btn-ghost">
           {busy ? "Uploading..." : "Upload photo"}
@@ -309,6 +318,34 @@ function ProfileCard() {
           />
         </label>
       </div>
+
+      <p className="avatar-preset-label">Or choose a STELLUN avatar</p>
+      <div className="avatar-preset-grid" role="listbox" aria-label="Preset avatars">
+        {PRESET_AVATARS.map((a) => {
+          const src = `data:image/svg+xml;utf8,${encodeURIComponent(a.svg)}`;
+          const selected = selectedPreset === a.id;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              role="option"
+              aria-selected={selected}
+              className={`avatar-preset-btn${selected ? " is-selected" : ""}`}
+              title={a.label}
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                const err = await selectPreset(a.id);
+                setBusy(false);
+                setMsg(err ?? `Avatar set to ${a.label}.`);
+              }}
+            >
+              <img src={src} alt={a.label} />
+            </button>
+          );
+        })}
+      </div>
+
       <form
         className="form-row"
         onSubmit={async (e) => {
@@ -319,11 +356,23 @@ function ProfileCard() {
       >
         <label htmlFor="profile-name">Display name</label>
         <div className="profile-name-row">
-          <input id="profile-name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-          <button type="submit" className="btn btn-primary">Save</button>
+          <input
+            id="profile-name"
+            value={name}
+            maxLength={60}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+          />
+          <button type="submit" className="btn btn-primary">
+            Save
+          </button>
         </div>
       </form>
-      {msg ? <p className="auth-note" role="status">{msg}</p> : null}
+      {msg ? (
+        <p className="auth-note" role="status">
+          {msg}
+        </p>
+      ) : null}
     </section>
   );
 }
