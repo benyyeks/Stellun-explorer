@@ -199,14 +199,29 @@ async function assertAdmin(context: AdminContext) {
  * scheduler, immediately. Each feed still goes through cached(): upstream is
  * contacted when the cache row is past TTL or missing. Use when feeds are down.
  */
+/**
+ * Manual refresh for admins.
+ * - No feed (or empty body) → refresh ALL feeds (banner "Refresh all feeds now").
+ * - { feed: "launches" } → refresh ONLY that registry feed.
+ */
 export const runFeedRefresh = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<ManualRefreshResult> => {
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        feed: z.string().min(1).max(80).optional(),
+      })
+      .parse(data ?? {}),
+  )
+  .handler(async ({ context, data }): Promise<ManualRefreshResult> => {
     await assertAdmin(context);
     const t0 = Date.now();
     try {
       const { runRefreshCycle } = await import("@/lib/feed-registry.server");
-      const results = await runRefreshCycle({ force: true });
+      const results = await runRefreshCycle({
+        force: true,
+        only: data.feed,
+      });
       const failed = results.filter((r) => !r.ok);
       const failedNames = failed.map((r) => r.feed);
       const durationMs = Date.now() - t0;
@@ -217,7 +232,9 @@ export const runFeedRefresh = createServerFn({ method: "POST" })
           failed: 0,
           failedNames: [],
           durationMs,
-          message: `All ${results.length} feeds checked successfully in ${durationMs} ms.`,
+          message: data.feed
+            ? `Refreshed ${data.feed} successfully in ${durationMs} ms.`
+            : `All ${results.length} feeds checked successfully in ${durationMs} ms.`,
         };
       }
       return {
@@ -226,7 +243,9 @@ export const runFeedRefresh = createServerFn({ method: "POST" })
         failed: failed.length,
         failedNames,
         durationMs,
-        message: `${failed.length} of ${results.length} feeds still have problems after this run.`,
+        message: data.feed
+          ? `Refresh of ${data.feed} failed.`
+          : `${failed.length} of ${results.length} feeds still have problems after this run.`,
       };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
