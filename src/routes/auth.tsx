@@ -576,7 +576,7 @@ function ProfileCard() {
       <p className="avatar-preset-label">Or choose a STELLUN avatar</p>
       <div className="avatar-preset-grid" role="listbox" aria-label="Preset avatars">
         {PRESET_AVATARS.map((a) => {
-          const src = `data:image/svg+xml;utf8,${encodeURIComponent(a.svg)}`;
+          const src = a.src;
           const selected = selectedPreset === a.id;
           return (
             <button
