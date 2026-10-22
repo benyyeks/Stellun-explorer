@@ -103,7 +103,7 @@ function normalizeLl2List(ll: any) {
 async function fetchUpcomingLaunches() {
   try {
     const ll = await launchFeed(
-      ""https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=12&mode=detailed",",
+      "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=12&mode=detailed",
       15000,
     );
     const n = normalizeLl2List(ll);
