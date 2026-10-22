@@ -260,8 +260,7 @@ function SignInView({ gated }: { gated: boolean }) {
             onClick={() => {
               setMode("signin");
               setStatus(null);
-              setCaptchaToken(null);
-captchaRef.current?.resetCaptcha();
+              
             }}
           >
             Sign in
@@ -274,8 +273,6 @@ captchaRef.current?.resetCaptcha();
             onClick={() => {
               setMode("signup");
               setStatus(null);
-              setCaptchaToken(null);
-captchaRef.current?.resetCaptcha();
             }}
           >
             Create account
