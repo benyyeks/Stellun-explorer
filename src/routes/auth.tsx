@@ -1,7 +1,8 @@
 // Account page: sign in, create an account, or manage the signed-in session.
 // An STELLUN account is required for every page except the landing page, and
 // it keeps the reading list, saved satellites, and observing location in sync.
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
