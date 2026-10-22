@@ -1,6 +1,5 @@
-// Account page: sign in, create an account, or manage the signed-in session.
-// An STELLUN account is required for every page except the landing page, and
-// it keeps the reading list, saved satellites, and observing location in sync.
+// STELLUN account: sign in, create account, forgot password, set new password,
+// and manage profile when signed in. Professional, recovery-aware flow.
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
@@ -9,8 +8,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
 import { PRESET_AVATARS } from "@/lib/preset-avatars";
 
-// Only same-origin paths are ever followed after sign-in. Anything else, an
-// absolute URL or a protocol-relative path, falls back to the landing page.
+type AuthMode = "signin" | "signup" | "reset" | "newpassword";
+
 function safePath(raw: unknown): string {
   if (typeof raw !== "string" || raw.length === 0 || raw.length > 300) return "/";
   if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) return "/";
@@ -25,17 +24,16 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in - STELLUN" },
+      { title: "Sign in · STELLUN" },
       {
         name: "description",
         content:
-          "Sign in to STELLUN to open the live tracking, mission, and study tools, and to sync your reading list and saved objects across devices.",
+          "Sign in to STELLUN to open live tracking, missions, and study tools, and sync your reading list across devices.",
       },
-      { property: "og:title", content: "Sign in - STELLUN" },
+      { property: "og:title", content: "Sign in · STELLUN" },
       {
         property: "og:description",
-        content:
-          "An STELLUN account unlocks the dashboard and keeps your reading list, saved satellites, and observing location in sync.",
+        content: "An STELLUN account unlocks the dashboard and keeps your data in sync.",
       },
       { name: "robots", content: "noindex" },
     ],
@@ -43,19 +41,25 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-
-// Professional copy only: no provider jargon, no internal detail, and nothing
-// that reveals whether an account exists for a given address.
 function friendlyError(message: string): string {
   const m = message.toLowerCase();
-  if (m.includes("rate limit") || m.includes("too many")) {
-    return "Too many attempts in a short time. Please wait a moment and try again.";
+  if (m.includes("captcha") || m.includes("verification")) {
+    return "Please complete the captcha and try again.";
   }
-  if (m.includes("password") && m.includes("6")) {
+  if (m.includes("rate limit") || m.includes("too many")) {
+    return "Too many attempts. Please wait a moment and try again.";
+  }
+  if (m.includes("password") && (m.includes("6") || m.includes("least"))) {
     return "Passwords need at least 6 characters.";
   }
-  if (m.includes("confirm")) {
-    return "Please confirm your email address first, then sign in.";
+  if (m.includes("confirm") || m.includes("not confirmed")) {
+    return "Please confirm your email first, then sign in.";
+  }
+  if (m.includes("invalid login") || m.includes("invalid credentials")) {
+    return "Email or password is incorrect.";
+  }
+  if (m.includes("already registered") || m.includes("already been registered")) {
+    return "That email already has an account. Sign in instead.";
   }
   return "Those details did not work. Please check them and try again.";
 }
@@ -65,20 +69,54 @@ function AuthPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const target = safePath(search.redirect);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+
+  // Detect password-recovery session from the email link (hash or auth event).
+  useEffect(() => {
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    if (hash.includes("type=recovery") || hash.includes("type%3Drecovery")) {
+      setRecoveryMode(true);
+    }
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setRecoveryMode(true);
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
-    if (!loading && user && target !== "/") {
+    // After normal sign-in (not recovery), optional redirect.
+    if (!loading && user && target !== "/" && !recoveryMode) {
       void navigate({ to: target, replace: true });
     }
-  }, [loading, user, target, navigate]);
+  }, [loading, user, target, navigate, recoveryMode]);
 
   if (loading) {
     return (
       <main className="container page-scaffold">
         <section className="page-hero">
           <h1>Account</h1>
-          <p className="tagline">Checking your session.</p>
+          <p className="tagline">Checking your session…</p>
         </section>
+      </main>
+    );
+  }
+
+  // Recovery link lands with a session but user must set a new password first.
+  if (recoveryMode) {
+    return (
+      <main className="container page-scaffold">
+        <NewPasswordView
+          onDone={() => {
+            setRecoveryMode(false);
+            // Clear recovery hash so refresh does not re-enter this mode.
+            if (typeof window !== "undefined" && window.location.hash) {
+              window.history.replaceState(null, "", window.location.pathname + window.location.search);
+            }
+          }}
+        />
       </main>
     );
   }
@@ -94,6 +132,362 @@ function AuthPage() {
   );
 }
 
+/** Shown when the user opens the reset link from email. */
+function NewPasswordView({ onDone }: { onDone: () => void }) {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ kind: "error" | "success"; text: string } | null>(null);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    setStatus(null);
+
+    if (password.length < 6 || password.length > 128) {
+      setStatus({ kind: "error", text: "Passwords need between 6 and 128 characters." });
+      return;
+    }
+    if (password !== confirm) {
+      setStatus({ kind: "error", text: "Passwords do not match." });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        setStatus({ kind: "error", text: friendlyError(error.message) });
+      } else {
+        setStatus({
+          kind: "success",
+          text: "Password updated. You are signed in.",
+        });
+        window.setTimeout(() => onDone(), 1200);
+      }
+    } catch {
+      setStatus({ kind: "error", text: "The connection failed. Please try again." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <section className="page-hero">
+        <span className="eyebrow">Security</span>
+        <h1>Choose a new password</h1>
+        <p className="tagline">
+          Enter a new password for your STELLUN account. Use something unique that
+          you do not reuse on other sites.
+        </p>
+      </section>
+
+      <section className="glass glass-card auth-card">
+        <form onSubmit={submit} noValidate>
+          <div className="form-row">
+            <label htmlFor="new-password">New password</label>
+            <input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={6}
+              maxLength={128}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 6 characters"
+            />
+          </div>
+          <div className="form-row">
+            <label htmlFor="confirm-password">Confirm new password</label>
+            <input
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={6}
+              maxLength={128}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="Type it again"
+            />
+          </div>
+          <button type="submit" className="btn btn-primary auth-submit" disabled={busy}>
+            {busy ? "Saving…" : "Save new password"}
+          </button>
+          <p
+            className={`form-status${status ? ` ${status.kind}` : ""}`}
+            role={status?.kind === "error" ? "alert" : undefined}
+          >
+            {status?.text ?? ""}
+          </p>
+        </form>
+      </section>
+    </>
+  );
+}
+
+function SignInView({ gated }: { gated: boolean }) {
+  const [mode, setMode] = useState<AuthMode>("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ kind: "error" | "success"; text: string } | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<HCaptcha | null>(null);
+
+  const siteKey = (import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined)?.trim() || "";
+
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    captchaRef.current?.resetCaptcha();
+  };
+
+  const switchMode = (next: AuthMode) => {
+    setMode(next);
+    setStatus(null);
+    setPassword("");
+    resetCaptcha();
+  };
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    setStatus(null);
+
+    const cleanEmail = email.trim().toLowerCase().slice(0, 254);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
+      setStatus({ kind: "error", text: "Please enter a valid email address." });
+      return;
+    }
+
+    if (mode === "reset") {
+      if (siteKey && !captchaToken) {
+        setStatus({ kind: "error", text: "Please complete the captcha." });
+        return;
+      }
+      setBusy(true);
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+          redirectTo: `${window.location.origin}/auth`,
+          captchaToken: captchaToken || undefined,
+        });
+        if (error) {
+          setStatus({ kind: "error", text: friendlyError(error.message) });
+        } else {
+          setStatus({
+            kind: "success",
+            text: "If an account exists for that email, a reset link is on its way. Open the link on this device to choose a new password.",
+          });
+        }
+      } catch {
+        setStatus({ kind: "error", text: "The connection failed. Please try again." });
+      } finally {
+        setBusy(false);
+        resetCaptcha();
+      }
+      return;
+    }
+
+    if (password.length < 6 || password.length > 128) {
+      setStatus({ kind: "error", text: "Passwords need between 6 and 128 characters." });
+      return;
+    }
+
+    if (siteKey && !captchaToken) {
+      setStatus({ kind: "error", text: "Please complete the captcha." });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+          options: { captchaToken: captchaToken || undefined },
+        });
+        if (error) setStatus({ kind: "error", text: friendlyError(error.message) });
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth`,
+            captchaToken: captchaToken || undefined,
+          },
+        });
+        if (error) {
+          setStatus({ kind: "error", text: friendlyError(error.message) });
+        } else if (!data.session) {
+          setStatus({
+            kind: "success",
+            text: "Check your inbox for a confirmation link to finish creating your account.",
+          });
+        }
+      }
+    } catch {
+      setStatus({ kind: "error", text: "The connection failed. Please try again." });
+    } finally {
+      setBusy(false);
+      resetCaptcha();
+    }
+  };
+
+  const title =
+    mode === "signin"
+      ? "Sign in"
+      : mode === "signup"
+        ? "Create your account"
+        : "Reset password";
+
+  const subtitle =
+    mode === "reset"
+      ? "Enter the email for your STELLUN account. We will send a link to choose a new password."
+      : gated
+        ? "That page is part of the STELLUN dashboard. Sign in to continue."
+        : "An STELLUN account opens live tracking, missions, and study tools, and keeps your reading list in sync.";
+
+  return (
+    <>
+      <section className="page-hero">
+        <h1>{title}</h1>
+        <p className="tagline">{subtitle}</p>
+      </section>
+
+      <section className="glass glass-card auth-card">
+        {mode !== "reset" ? (
+          <div className="auth-tabs" role="tablist" aria-label="Sign in or create account">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "signin"}
+              className={mode === "signin" ? "active" : ""}
+              onClick={() => switchMode("signin")}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mode === "signup"}
+              className={mode === "signup" ? "active" : ""}
+              onClick={() => switchMode("signup")}
+            >
+              Create account
+            </button>
+          </div>
+        ) : null}
+
+        <form onSubmit={submit} noValidate>
+          <div className="form-row">
+            <label htmlFor="auth-email">Email</label>
+            <input
+              id="auth-email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              maxLength={254}
+              placeholder="you@example.com"
+            />
+          </div>
+
+          {mode !== "reset" ? (
+            <div className="form-row">
+              <label htmlFor="auth-password">Password</label>
+              <input
+                id="auth-password"
+                type="password"
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                required
+                minLength={6}
+                maxLength={128}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 6 characters"
+              />
+            </div>
+          ) : null}
+
+          {mode === "signin" ? (
+            <p style={{ margin: "0 0 14px", fontSize: "0.9rem" }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ padding: 0, textDecoration: "underline", background: "none", border: "none", cursor: "pointer" }}
+                onClick={() => switchMode("reset")}
+              >
+                Forgot password?
+              </button>
+            </p>
+          ) : null}
+
+          {mode === "reset" ? (
+            <p className="text-muted" style={{ fontSize: "0.9rem", marginBottom: 14 }}>
+              Remembered it?{" "}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ padding: 0, textDecoration: "underline", background: "none", border: "none", cursor: "pointer" }}
+                onClick={() => switchMode("signin")}
+              >
+                Back to sign in
+              </button>
+            </p>
+          ) : null}
+
+          {siteKey ? (
+            <div className="form-row" style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
+              <HCaptcha
+                ref={captchaRef}
+                sitekey={siteKey}
+                onVerify={(token) => setCaptchaToken(token)}
+                onExpire={() => setCaptchaToken(null)}
+                onError={() => {
+                  setCaptchaToken(null);
+                  setStatus({
+                    kind: "error",
+                    text: "Captcha failed to load. Check your connection and try again.",
+                  });
+                }}
+              />
+            </div>
+          ) : (
+            <p className="text-faint" style={{ fontSize: "0.8rem", marginBottom: 12, textAlign: "center" }}>
+              Captcha is not configured on this build. Sign-in may fail until{" "}
+              <span className="mono">VITE_HCAPTCHA_SITE_KEY</span> is set.
+            </p>
+          )}
+
+          <button type="submit" className="btn btn-primary auth-submit" disabled={busy}>
+            {busy
+              ? "One moment…"
+              : mode === "signin"
+                ? "Sign in"
+                : mode === "reset"
+                  ? "Send reset link"
+                  : "Create account"}
+          </button>
+
+          <p
+            className={`form-status${status ? ` ${status.kind}` : ""}`}
+            role={status?.kind === "error" ? "alert" : undefined}
+          >
+            {status?.text ?? ""}
+          </p>
+        </form>
+      </section>
+
+      <p className="text-faint" style={{ marginTop: 24, fontSize: "0.85rem", textAlign: "center" }}>
+        By continuing you agree to STELLUN’s use of your email only for account access.{" "}
+        <Link to="/privacy">Privacy</Link>
+      </p>
+    </>
+  );
+}
 
 function AccountView({ email }: { email: string }) {
   const [busy, setBusy] = useState(false);
@@ -124,264 +518,13 @@ function AccountView({ email }: { email: string }) {
           no access to accounts, saved lists, or notes.
         </p>
         <div className="auth-actions">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={signOut}
-            disabled={busy}
-          >
-            {busy ? "Signing out..." : "Sign out"}
+          <button type="button" className="btn btn-ghost" onClick={signOut} disabled={busy}>
+            {busy ? "Signing out…" : "Sign out"}
           </button>
           <Link to="/" className="btn btn-primary">
             Back to STELLUN
           </Link>
         </div>
-      </section>
-    </>
-  );
-}
-
-function SignInView({ gated }: { gated: boolean }) {
-  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState<{ kind: "error" | "success"; text: string } | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const captchaRef = useRef<HCaptcha | null>(null);
-
-  const siteKey = import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined;
-
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    setStatus(null);
-
-    const cleanEmail = email.trim().toLowerCase().slice(0, 254);
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
-      setStatus({ kind: "error", text: "Please enter a valid email address." });
-      return;
-    }
-
-    // Forgot password: email only + captcha
-    if (mode === "reset") {
-      if (siteKey && !captchaToken) {
-        setStatus({ kind: "error", text: "Please complete the captcha." });
-        return;
-      }
-      setBusy(true);
-      try {
-        const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-          redirectTo: `${window.location.origin}/auth`,
-          captchaToken: captchaToken ?? undefined,
-        });
-        if (error) {
-          setStatus({ kind: "error", text: friendlyError(error.message) });
-        } else {
-          setStatus({
-            kind: "success",
-            text: "If an account exists for that email, a reset link is on its way. Check your inbox.",
-          });
-        }
-      } catch {
-        setStatus({ kind: "error", text: "The connection failed. Please try again." });
-      } finally {
-        setBusy(false);
-        setCaptchaToken(null);
-        captchaRef.current?.resetCaptcha();
-      }
-      return;
-    }
-
-    if (password.length < 6 || password.length > 128) {
-      setStatus({ kind: "error", text: "Passwords need between 6 and 128 characters." });
-      return;
-    }
-
-    if (siteKey && !captchaToken) {
-      setStatus({ kind: "error", text: "Please complete the captcha." });
-      return;
-    }
-
-    setBusy(true);
-    try {
-      if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
-          options: { captchaToken: captchaToken ?? undefined },
-        });
-        if (error) setStatus({ kind: "error", text: friendlyError(error.message) });
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email: cleanEmail,
-          password,
-          options: {
-            emailRedirectTo: window.location.origin,
-            captchaToken: captchaToken ?? undefined,
-          },
-        });
-        if (error) {
-          setStatus({ kind: "error", text: friendlyError(error.message) });
-        } else if (!data.session) {
-          setStatus({
-            kind: "success",
-            text: "Check your inbox for a confirmation link to finish signing in.",
-          });
-        }
-      }
-    } catch {
-      setStatus({ kind: "error", text: "The connection failed. Please try again." });
-    } finally {
-      setBusy(false);
-      setCaptchaToken(null);
-      captchaRef.current?.resetCaptcha();
-    }
-  };
-  
-  return (
-    <>
-      <section className="page-hero">
-        <h1>{mode === "signin" ? "Sign in" : "Create your account"}</h1>
-        <p className="tagline">
-          {gated
-            ? "That page is part of the STELLUN dashboard. Sign in to continue, and you will be taken straight there."
-            : "An STELLUN account opens the live tracking, mission, and study tools, and keeps your reading list, saved objects, and observing location in sync across devices."}
-        </p>
-      </section>
-
-      <section className="glass glass-card auth-card">
-        <div className="auth-tabs" role="tablist" aria-label="Sign in or create an account">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "signin"}
-            className={mode === "signin" ? "active" : ""}
-            onClick={() => {
-              setMode("signin");
-              setStatus(null);
-              
-            }}
-          >
-            Sign in
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "signup"}
-            className={mode === "signup" ? "active" : ""}
-            onClick={() => {
-              setMode("signup");
-              setStatus(null);
-            }}
-          >
-            Create account
-          </button>
-        </div>
-        <form onSubmit={submit} noValidate={false}>
-          <div className="form-row">
-            <label htmlFor="auth-email">Email</label>
-            <input
-              id="auth-email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              maxLength={254}
-              placeholder="you@example.com"
-            />
-          </div>
-          {mode !== "reset" ? (
-            <div className="form-row">
-              <label htmlFor="auth-password">Password</label>
-              <input
-                id="auth-password"
-                type="password"
-                autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                required
-                minLength={6}
-                maxLength={128}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 6 characters"
-              />
-            </div>
-          ) : null}
-
-          {mode === "signin" ? (
-            <p style={{ margin: "0 0 12px", fontSize: "0.9rem" }}>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                style={{ padding: 0, textDecoration: "underline" }}
-                onClick={() => {
-                  setMode("reset");
-                  setStatus(null);
-                  setPassword("");
-                  setCaptchaToken(null);
-                  captchaRef.current?.resetCaptcha();
-                }}
-              >
-                Forgot password?
-              </button>
-            </p>
-          ) : null}
-
-          {mode === "reset" ? (
-            <p className="text-muted" style={{ fontSize: "0.9rem", marginBottom: 12 }}>
-              Enter your email and we will send a reset link if an account exists.
-              {" "}
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                style={{ padding: 0, textDecoration: "underline" }}
-                onClick={() => {
-                  setMode("signin");
-                  setStatus(null);
-                  setCaptchaToken(null);
-                  captchaRef.current?.resetCaptcha();
-                }}
-              >
-                Back to sign in
-              </button>
-            </p>
-          ) : null}
-
-          {siteKey ? (
-            <div className="form-row" style={{ display: "flex", justifyContent: "center" }}>
-              <HCaptcha
-                ref={captchaRef}
-                sitekey={siteKey}
-                onVerify={(token) => setCaptchaToken(token)}
-                onExpire={() => setCaptchaToken(null)}
-                onError={() => {
-                  setCaptchaToken(null);
-                  setStatus({
-                    kind: "error",
-                    text: "Captcha failed to load. Check your connection and try again.",
-                  });
-                }}
-              />
-            </div>
-          ) : null}
-
-          <button type="submit" className="btn btn-primary auth-submit" disabled={busy}>
-            {busy
-              ? "One moment..."
-              : mode === "signin"
-                ? "Sign in"
-                : mode === "reset"
-                  ? "Send reset link"
-                  : "Create account"}
-          </button>
-          <p
-            className={`form-status${status ? ` ${status.kind}` : ""}`}
-            role={status?.kind === "error" ? "alert" : undefined}
-          >
-            {status?.text ?? ""}
-          </p>
-        </form>
       </section>
     </>
   );
@@ -400,10 +543,10 @@ function ProfileCard() {
       : null;
 
   return (
-    <section className="glass glass-card auth-card profile-card">
+    <section className="glass glass-card auth-card" style={{ marginBottom: 20 }}>
       <h2>Profile</h2>
-      <div className="profile-row">
-        <div className="profile-photo" aria-hidden="true">
+      <div className="profile-avatar-row">
+        <div className="profile-avatar-preview" aria-hidden>
           {profile.avatarUrl ? (
             <img src={profile.avatarUrl} alt="" />
           ) : (
@@ -411,7 +554,7 @@ function ProfileCard() {
           )}
         </div>
         <label className="btn btn-ghost">
-          {busy ? "Uploading..." : "Upload photo"}
+          {busy ? "Uploading…" : "Upload photo"}
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"
