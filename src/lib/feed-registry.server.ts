@@ -335,12 +335,29 @@ function feeds(): Feed[] {
   ];
 }
 
-export async function runRefreshCycle(opts?: { force?: boolean }) {
+export async function runRefreshCycle(opts?: { force?: boolean; only?: string }) {
   forceRefresh = Boolean(opts?.force);
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const all = feeds();
+    const selected = opts?.only
+      ? all.filter((f) => f.name === opts.only)
+      : all;
+
+    if (opts?.only && selected.length === 0) {
+      return [
+        {
+          feed: opts.only,
+          ok: false,
+          source: "none",
+          duration_ms: 0,
+          error: `Unknown feed "${opts.only}".`,
+        },
+      ];
+    }
+
     const results = await Promise.all(
-      feeds().map(async (f) => {
+      selected.map(async (f) => {
         const t0 = Date.now();
         try {
           const r = await f.run();
