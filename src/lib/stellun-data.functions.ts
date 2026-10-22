@@ -38,15 +38,6 @@ export const getSolarWind = createServerFn({ method: "GET" }).handler(async () =
   });
 });
 
-// ------------------------------- NOAA: DONKI ------------------------------
-export const getDONKI = createServerFn({ method: "GET" }).handler(async () => {
-  const end = new Date();
-  const start = new Date();
-  start.setUTCDate(start.getUTCDate() - 7);
-  const key = nasaKey();
-  const url = `https://api.nasa.gov/DONKI/notifications?startDate=${isoDate(start)}&endDate=${isoDate(end)}&type=all&api_key=${encodeURIComponent(key)}`;
-  return cached("donki", { start: isoDate(start) }, 14400, () => fetchJson(url, { timeoutMs: 12000 }));
-});
 
 // --------------------------- NOAA: GOES X-ray flux ------------------------
 export const getXrayFlux = createServerFn({ method: "GET" }).handler(async () => {
