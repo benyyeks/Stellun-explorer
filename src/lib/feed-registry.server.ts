@@ -90,7 +90,10 @@ function normalizeLl2List(ll: any) {
         location: { name: r.pad?.location?.name ?? r.pad_location ?? null },
         country_code: r.pad?.country_code ?? null,
       },
-      image: r.image ?? null,
+      image:
+  typeof r.image === "string"
+    ? r.image
+    : r.image?.image_url ?? r.image?.url ?? r.rocket?.configuration?.image_url ?? null,
       webcast_live: Boolean(r.webcast_live),
       vidURLs: r.vidURLs ?? r.vid_urls ?? [],
     })),
@@ -100,7 +103,7 @@ function normalizeLl2List(ll: any) {
 async function fetchUpcomingLaunches() {
   try {
     const ll = await launchFeed(
-      "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=12&mode=list",
+      ""https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=12&mode=detailed",",
       15000,
     );
     const n = normalizeLl2List(ll);
@@ -140,7 +143,7 @@ async function fetchUpcomingLaunches() {
 async function fetchPastLaunches() {
   try {
     const ll = await launchFeed(
-      "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=12&mode=list",
+      ""https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=12&mode=detailed",",
       15000,
     );
     return normalizeLl2List(ll);
@@ -260,7 +263,7 @@ function feeds(): Feed[] {
     {
       name: "launches",
       run: () =>
-        cached("launches", {}, 3600, () => fetchUpcomingLaunches(), { force: forceRefresh }),
+        cached("launches", {}, 1800, () => fetchUpcomingLaunches(), { force: forceRefresh }),
     },
     {
       name: "past-launches",
