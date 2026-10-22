@@ -143,7 +143,7 @@ async function fetchUpcomingLaunches() {
 async function fetchPastLaunches() {
   try {
     const ll = await launchFeed(
-      ""https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=12&mode=detailed",",
+      "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=12&mode=detailed",
       15000,
     );
     return normalizeLl2List(ll);
