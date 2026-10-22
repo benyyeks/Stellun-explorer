@@ -6,6 +6,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useProfile } from "@/lib/profile";
+import { PRESET_AVATARS } from "@/lib/preset-avatars";
 
 // Only same-origin paths are ever followed after sign-in. Anything else, an
 // absolute URL or a protocol-relative path, falls back to the landing page.
