@@ -135,7 +135,7 @@ function AdminPage() {
   });
 
   const refreshMutation = useMutation({
-    mutationFn: () => refreshFn(),
+    mutationFn: () => refreshFn({ data: {} }),
     onSuccess: (result) => {
       setRefreshNote(result);
       void queryClient.invalidateQueries({ queryKey: ["diagnostics"] });
@@ -152,6 +152,30 @@ function AdminPage() {
     },
   });
 
+  const [singleFeedBusy, setSingleFeedBusy] = useState<string | null>(null);
+
+  const singleRefreshMutation = useMutation({
+    mutationFn: (feed: string) => refreshFn({ data: { feed } }),
+    onMutate: (feed) => {
+      setSingleFeedBusy(feed);
+      setRefreshNote(null);
+    },
+    onSuccess: (result) => {
+      setRefreshNote(result);
+      void queryClient.invalidateQueries({ queryKey: ["diagnostics"] });
+    },
+    onError: (err) => {
+      setRefreshNote({
+        ok: false,
+        feeds: 0,
+        failed: 0,
+        failedNames: [],
+        durationMs: 0,
+        message: err instanceof Error ? err.message : "Refresh failed.",
+      });
+    },
+    onSettled: () => setSingleFeedBusy(null),
+  });
   if (role.isPending) {
     return (
       <main className="page-main">
@@ -502,13 +526,12 @@ function AdminPage() {
                         type="button"
                         className="btn btn-sm"
                         style={{ marginTop: 12 }}
-                        disabled={refreshing}
-                        onClick={() => {
-                          setRefreshNote(null);
-                          refreshMutation.mutate();
-                        }}
+                        disabled={singleFeedBusy === f.feed || refreshing}
+                        onClick={() => singleRefreshMutation.mutate(f.feed)}
                       >
-                        {refreshing ? "Refreshing…" : "Retry all feeds now"}
+                        {singleFeedBusy === f.feed
+                          ? "Refreshing this feed…"
+                          : `Retry ${f.label} only`}
                       </button>
                     </div>
                   </article>
