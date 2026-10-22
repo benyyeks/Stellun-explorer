@@ -5,7 +5,7 @@
 //
 // All cache writes go through the service-role client (RLS is bypassed),
 // loaded inside the handler so the server-only module never reaches the
-// client bundle. Reads use the publishable (anon) client.
+// client bundle.
 
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
@@ -22,8 +22,6 @@ function publishableClient() {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
   return createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
-    // New-format sb_ keys are opaque, not JWTs: PostgREST rejects the default
-    // Authorization bearer. Send apikey only and strip the bearer header.
     global: {
       fetch: (input, init) => {
         const h = new Headers(init?.headers);
@@ -45,7 +43,6 @@ async function adminClient() {
 // Deterministic cache key from an endpoint name and a stable JSON of params.
 export function cacheKey(endpoint: string, params: unknown): string {
   const json = JSON.stringify(params ?? {});
-  // Simple, fast, non-crypto hash. Keys are namespaced and not security-sensitive.
   let h = 5381;
   for (let i = 0; i < json.length; i++) {
     h = (h * 33) ^ json.charCodeAt(i);
@@ -53,10 +50,7 @@ export function cacheKey(endpoint: string, params: unknown): string {
   return `${endpoint}:${(h >>> 0).toString(36)}`;
 }
 
-// Read a cached payload. Returns null when no row exists or the row is older
-// than ttlSeconds (a stale copy is still returned separately for fallback).
 async function readCache<T>(key: string, ttlSeconds: number) {
-  // api_cache has no public read rule; only server code reads it.
   const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
   const { data } = await supabase
     .from("api_cache")
@@ -84,42 +78,55 @@ async function writeCache(key: string, endpoint: string, payload: unknown, ttlSe
         fetched_at: new Date().toISOString(),
         ttl_seconds: ttlSeconds,
       },
-      { onConflict: "cache_key" }
+      { onConflict: "cache_key" },
     );
   } catch (err) {
-    // Cache write failure is non-fatal: the caller still gets fresh data.
     console.error(`api_cache write failed for ${endpoint}:`, err);
   }
 }
 
-// Read-through cache with stale-on-error fallback. On a cache miss (or stale
-// row), it calls fetcher. If the fetcher succeeds, it writes the fresh result
-// to the cache and returns it. If the fetcher fails but a stale cache row
-// exists, the stale payload is returned (clearly flagged) so the page still
-// renders real data instead of an error. If there is no cache at all and the
-// fetcher fails, the error propagates to the caller.
+/**
+ * Read-through cache with stale-on-error fallback.
+ * Pass opts.force = true (admin refresh) to ignore TTL and re-hit upstream.
+ */
 export async function cached<T>(
   endpoint: string,
   params: unknown,
   ttlSeconds: number,
-  fetcher: () => Promise<T>
+  fetcher: () => Promise<T>,
+  opts?: { force?: boolean },
 ): Promise<CacheResult<T>> {
   const key = cacheKey(endpoint, params);
   const cachedRow = await readCache<T>(key, ttlSeconds);
 
-  // Fresh cache hit: return immediately, no upstream call.
-  if (cachedRow && !cachedRow.isStale) {
-    return { data: cachedRow.payload, source: "cache", fetchedAt: cachedRow.fetchedAt, isStale: false };
+  // Fresh cache hit — skip when admin force-refresh is on
+  if (!opts?.force && cachedRow && !cachedRow.isStale) {
+    return {
+      data: cachedRow.payload,
+      source: "cache",
+      fetchedAt: cachedRow.fetchedAt,
+      isStale: false,
+    };
   }
 
   try {
     const fresh = await fetcher();
     void writeCache(key, endpoint, fresh, ttlSeconds);
-    return { data: fresh, source: "fresh", fetchedAt: new Date().toISOString(), isStale: false };
+    return {
+      data: fresh,
+      source: "fresh",
+      fetchedAt: new Date().toISOString(),
+      isStale: false,
+    };
   } catch (err) {
     if (cachedRow) {
       console.error(`upstream ${endpoint} failed; serving stale cache:`, err);
-      return { data: cachedRow.payload, source: "stale", fetchedAt: cachedRow.fetchedAt, isStale: true };
+      return {
+        data: cachedRow.payload,
+        source: "stale",
+        fetchedAt: cachedRow.fetchedAt,
+        isStale: true,
+      };
     }
     throw err;
   }
