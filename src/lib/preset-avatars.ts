@@ -10,15 +10,15 @@ export type PresetAvatar = {
 
 export const PRESET_AVATARS: PresetAvatar[] = [
   { id: "star-cadet", label: "Star Cadet", src: "/star-cadet.jpg" },
-  { id: "jet-pilot", label: "Jet Pilot", src: "/avatars/jet-pilot.jpg" },
-  { id: "ace-bulldog", label: "Ace Bulldog", src: "/avatars/ace-bulldog.jpg" },
-  { id: "chip-the-robot", label: "Chip the Robot", src: "/avatars/chip-the-robot.jpg" },
-  { id: "cosmic-fox", label: "Cosmic Fox", src: "/avatars/cosmic-fox.jpg" },
-  { id: "galaxy-kitty", label: "Galaxy Kitty", src: "/avatars/galaxy-kitty.jpg" },
-  { id: "curiosity-alien", label: "Curiosity Alien", src: "/avatars/curiosity-alien.jpg" },
-  { id: "sky-eagle", label: "Sky Eagle", src: "/avatars/sky-eagle.jpg" },
-  { id: "starfighter", label: "Starfighter", src: "/avatars/starfighter.jpg" },
-  { id: "reentry-capsule", label: "Re-entry Capsule", src: "/avatars/reentry-capsule.jpg" },
+  { id: "jet-pilot", label: "Jet Pilot", src: "/jet-pilot.jpg" },
+  { id: "ace-bulldog", label: "Ace Bulldog", src: "/ace-bulldog.jpg" },
+  { id: "chip-the-robot", label: "Chip the Robot", src: "/chip-the-robot.jpg" },
+  { id: "cosmic-fox", label: "Cosmic Fox", src: "/cosmic-fox.jpg" },
+  { id: "galaxy-kitty", label: "Galaxy Kitty", src: "/galaxy-kitty.jpg" },
+  { id: "curiosity-alien", label: "Curiosity Alien", src: "/curiosity-alien.jpg" },
+  { id: "sky-eagle", label: "Sky Eagle", src: "/sky-eagle.jpg" },
+  { id: "starfighter", label: "Starfighter", src: "/starfighter.jpg" },
+  { id: "reentry-capsule", label: "Re-entry Capsule", src: "/reentry-capsule.jpg" },
 ];
 
 export function presetDataUrl(id: string): string | null {
