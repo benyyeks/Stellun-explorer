@@ -55,6 +55,7 @@ export const getXrayFlux = createServerFn({ method: "GET" }).handler(async () =>
   );
 });
 
+
 // -------------------------------- NASA: APOD -----------------------------
 // WordPress APOD (legacy planetary/apod is 500 / retires Dec 2026).
 function normalizeApod(raw: unknown) {
@@ -68,7 +69,6 @@ function normalizeApod(raw: unknown) {
 
   const candidates = [r.hdurl, r.url].filter((u): u is string => typeof u === "string" && u.length > 0);
 
-  // Only accept real image assets — never article pages or theme logos.
   const imageUrl =
     candidates.find(
       (u) =>
@@ -96,11 +96,18 @@ function normalizeApod(raw: unknown) {
     permalink: typeof r.permalink === "string" ? r.permalink : undefined,
   };
 }
+
 export const getAPOD = createServerFn({ method: "GET" }).handler(async () => {
-  const key = nasaKey();
-  const url = `https://science.nasa.gov/wp-json/wp/v2/apod-basic/?api_key=${encodeURIComponent(key)}`;
-  return cached("apod", {}, 86400, async () => normalizeApod(await fetchJson(url, { timeoutMs: 15000 })));
+  // Key by UTC date so the picture rotates every morning.
+  const day = isoDate(new Date());
+  return cached("apod", { day }, 86400, async () => {
+    const raw = await fetchJson("https://science.nasa.gov/wp-json/wp/v2/apod-basic/", {
+      timeoutMs: 15000,
+    });
+    return normalizeApod(raw);
+  });
 });
+
 // -------------------------------- NASA: NEO ------------------------------
 export const getNEO = createServerFn({ method: "GET" }).handler(async () => {
   const start = new Date();
@@ -665,3 +672,36 @@ export const getMarsGallery = createServerFn({ method: "GET" })
       };
     });
   });
+
+    
+// ------------------------------- Space weather alerts ---------------------
+export const getDONKI = createServerFn({ method: "GET" }).handler(async () => {
+  const end = new Date();
+  const start = new Date();
+  start.setUTCDate(start.getUTCDate() - 7);
+  const key = nasaKey();
+  const startS = isoDate(start);
+  const endS = isoDate(end);
+
+  return cached("donki", { start: startS }, 14400, async () => {
+    try {
+      const url = `https://api.nasa.gov/DONKI/notifications?startDate=${startS}&endDate=${endS}&type=all&api_key=${encodeURIComponent(key)}`;
+      const data = await fetchJson(url, { timeoutMs: 15000 });
+      if (Array.isArray(data)) return data;
+    } catch (e) {
+      console.error("DONKI failed, NOAA fallback:", e);
+    }
+    const noaa = await fetchJson("https://services.swpc.noaa.gov/products/alerts.json", {
+      timeoutMs: 12000,
+    });
+    if (!Array.isArray(noaa)) return [];
+    return noaa.slice(0, 40).map((a: any, i: number) => ({
+      messageType: "SWPC",
+      messageID: String(a.product_id ?? `noaa-${i}`),
+      messageURL: "https://www.swpc.noaa.gov/",
+      messageIssueTime: a.issue_datetime ?? null,
+      messageBody: a.message ?? "",
+    }));
+  });
+});
+
