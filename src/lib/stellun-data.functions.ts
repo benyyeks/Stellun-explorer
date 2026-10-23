@@ -135,43 +135,50 @@ const SatInput = z.object({ group: z.enum(SAT_GROUPS).default("stations") });
 export const getSatellites = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => SatInput.parse(input ?? {}))
   .handler(async ({ data }) => {
-    const url = `https://celestrak.org/NORAD/elements/gp.php?GROUP=${data.group}&FORMAT=json`;
-    const heavy = ["starlink", "active", "geo", "cosmos-2251-debris", "iridium-33-debris"].includes(data.group);
-    const timeoutMs = heavy ? 30000 : 15000;
-    const load = async () => {
-      try {
-        return await fetchJson(url, { timeoutMs });
-      } catch (e) {
-        if (e instanceof Error && e.name === "AbortError") return await fetchJson(url, { timeoutMs });
-        throw e;
-      }
-    };
-    // cached() already serves the stale copy on upstream failure; it only
-    // throws when nothing is saved yet. Rethrow that case so the tracker
-    // shows its error-and-retry state instead of a silently empty globe.
-    return cached<any[]>("satellites", { group: data.group }, heavy ? 21600 : 3600, load as () => Promise<any[]>);
-  });
+    const {
+      readCatalogPayloads,
+      getCatalogStatus,
+      refreshSatelliteGroup,
+      isHeavySatGroup,
+    } = await import("@/lib/satellite-catalog.server");
 
-// Sun-synchronous orbit (SSO) view: CelesTrak has no single SSO group, so
-// this fetches the polar-orbiting weather (noaa) and Earth-observation
-// (resource) groups in parallel and filters by inclination 96-100 deg,
-// which captures the sun-synchronous band (~97-99 deg).
-export const getSatellitesSSO = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("satellites-sso", {}, 3600, async () => {
-    const [noaaRes, resourceRes] = await Promise.all([
-      fetchJson<any[]>("https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=json", { timeoutMs: 12000 }),
-      fetchJson<any[]>("https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=json", { timeoutMs: 12000 }),
-    ]);
-    const noaa = Array.isArray(noaaRes) ? noaaRes : [];
-    const resource = Array.isArray(resourceRes) ? resourceRes : [];
-    const merged = [...noaa, ...resource];
-    const filtered = merged.filter((rec) => {
-      const inc = Number(rec?.["INCLINATION"]);
-      return Number.isFinite(inc) && inc >= 96 && inc <= 100;
-    });
-    return filtered;
+    // Heavy groups: table-backed, progressive, no cap.
+    if (isHeavySatGroup(data.group)) {
+      let status = await getCatalogStatus(data.group);
+      const { rows, fetchedAt } = await readCatalogPayloads(data.group);
+
+      // First visit / empty: kick a background-style refresh (await so first
+      // load still works; admin/cron will keep it warm later).
+      if (rows.length === 0 && status?.status !== "loading") {
+        try {
+          await refreshSatelliteGroup(data.group, { force: true });
+          status = await getCatalogStatus(data.group);
+          const again = await readCatalogPayloads(data.group);
+          return {
+            data: again.rows,
+            source: "fresh" as const,
+            fetchedAt: again.fetchedAt ?? new Date().toISOString(),
+            isStale: status?.status === "loading",
+          };
+        } catch (e) {
+          if (rows.length === 0) throw e;
+        }
+      }
+
+      return {
+        data: rows,
+        source: status?.status === "ready" ? ("cache" as const) : ("stale" as const),
+        fetchedAt: fetchedAt ?? status?.finished_at ?? status?.updated_at ?? new Date().toISOString(),
+        isStale: status?.status === "loading",
+      };
+    }
+
+    // Small groups: existing short-TTL cache path (unchanged idea).
+    const url = `https://celestrak.org/NORAD/elements/gp.php?GROUP=${data.group}&FORMAT=json`;
+    return cached("satellites", { group: data.group }, 3600, () =>
+      fetchJson(url, { timeoutMs: 18000 }),
+    );
   });
-});
 
 // Single-object lookup by NORAD catalog number, used by the satellite
 // detail template page.
