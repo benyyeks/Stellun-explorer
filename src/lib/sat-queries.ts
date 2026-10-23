@@ -30,10 +30,18 @@ export type SatGroup =
 
 export function satGroupQuery(group: SatGroup) {
   if (group === "sso") return satSSOQuery();
+  const heavy = ["starlink", "active", "geo", "cosmos-2251-debris", "iridium-33-debris"].includes(
+    group,
+  );
   return queryOptions({
     queryKey: ["stellun", "sats", group],
     queryFn: () => getSatellites({ data: { group } }),
-    staleTime: 30 * 60_000,
+    staleTime: heavy ? 5_000 : 30 * 60_000,
+    refetchInterval: (query) => {
+      if (!heavy) return false;
+      const res = query.state.data as { isStale?: boolean } | undefined;
+      return res?.isStale ? 3_000 : 5 * 60_000;
+    },
     retry: 1,
   });
 }
