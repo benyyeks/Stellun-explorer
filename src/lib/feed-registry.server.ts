@@ -260,6 +260,32 @@ function feeds(): Feed[] {
           { force: forceRefresh },
         ),
     },
+
+{
+      name: "satellites-starlink",
+      run: async () => {
+        const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
+        const r = await refreshSatelliteGroup("starlink", { force: forceRefresh });
+        return { source: r.source };
+      },
+    },
+    {
+      name: "satellites-active",
+      run: async () => {
+        const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
+        const r = await refreshSatelliteGroup("active", { force: forceRefresh });
+        return { source: r.source };
+      },
+    },
+    {
+      name: "satellites-geo",
+      run: async () => {
+        const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
+        const r = await refreshSatelliteGroup("geo", { force: forceRefresh });
+        return { source: r.source };
+      },
+    },
+    
     {
       name: "launches",
       run: () =>
