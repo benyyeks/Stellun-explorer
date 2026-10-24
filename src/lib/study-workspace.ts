@@ -192,7 +192,10 @@ export function setAskPrefill(p: AskPrefill) {
   sessionStorage.setItem(ASK_PREFILL_KEY, JSON.stringify(p));
 }
 
-export function takeAskPrefill(): AskPrefill | null {
+/** Alias used by /ask — do not remove. */
+export function consumeAskPrefill(): AskPrefill | null {
+  return takeAskPrefill();
+}
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(ASK_PREFILL_KEY);
@@ -248,6 +251,22 @@ export function useStudyWorkspaces() {
   }, []);
 
   const createDraft = useCallback(
+    const create = useCallback(
+    (input: { title?: string; topicId: string; bookId: string }) => {
+      const shelf = bookById(input.bookId);
+      if (!shelf) return null;
+      return createDraft({
+        title: input.title ?? "",
+        topicId: input.topicId,
+        bookId: input.bookId,
+        bookTitle: shelf.title,
+        bookAuthor: shelf.authors,
+        learningMode: "intermediate",
+        goals: "",
+      });
+    },
+    [createDraft],
+  );
     (input: CreateWorkspaceInput) => {
       if (readAll().length >= MAX_WORKSPACES) return null;
       const shelf = input.bookId ? bookById(input.bookId) : null;
