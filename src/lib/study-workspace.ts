@@ -94,9 +94,11 @@ function newId(): string {
 }
 
 function topicLabel(id: string): string {
+  if (id.startsWith("custom:")) {
+    return id.slice("custom:".length).trim() || "Custom topic";
+  }
   return BOOK_TOPICS.find((t) => t.id === id)?.label ?? id;
 }
-
 export function booksForTopic(topicId: string) {
   return BOOKS.filter((b) => b.topic === topicId);
 }
