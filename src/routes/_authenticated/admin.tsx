@@ -545,8 +545,9 @@ function AdminPage() {
               All feeds by system
             </h2>
             <p className="text-muted" style={{ fontSize: "0.9rem", marginBottom: 18, maxWidth: "62ch" }}>
-              Latest check per feed in the last hour. Heavy catalogs only contact upstream when
-              their multi-hour TTL expires; other cycles show as healthy cached hits.
+              Every registered feed is listed here. Use <strong>Refresh</strong> on a row to
+              update only that feed (recommended for Starlink / Active / GEO). Full cycle skips
+              those heavy catalogs to stay under Cloudflare subrequest limits.
             </p>
 
             {byCategory.map(({ cat, items }) => (
@@ -564,6 +565,18 @@ function AdminPage() {
                         <th>Last check</th>
                         <th>Response</th>
                         <th>Success · 1h</th>
+                        <th>Actions</th>
+                        <td>
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              style={{ fontSize: "0.78rem", padding: "6px 10px" }}
+                              disabled={singleFeedBusy === f.feed || refreshing}
+                              onClick={() => singleRefreshMutation.mutate(f.feed)}
+                            >
+                              {singleFeedBusy === f.feed ? "Refreshing…" : "Refresh"}
+                            </button>
+                          </td>
                       </tr>
                     </thead>
                     <tbody>
