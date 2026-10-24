@@ -46,7 +46,9 @@ export const PLANET_ELEMENTS: Record<PlanetKey, PlanetElement> = {
   neptune: { a: [30.06992276, 0.00026291], e: [0.00859048, 0.00005105], I: [1.77004347, 0.00035372], L: [-55.12002969, 218.45945325], peri: [44.96476227, -0.32241464], node: [131.78422574, -0.00508664], radiusKm: 24622, color: "#6a8fe0" },
 };
 
-export const PLANET_ORDER: PlanetKey[] = ["mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune"];
+const VISIBLE_PLANETS = [
+  "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune",
+] as const;
 
 export type Vec3 = { x: number; y: number; z: number };
 export type Heliocentric = Vec3 & { r: number; a: number; e: number; periodDays: number };
