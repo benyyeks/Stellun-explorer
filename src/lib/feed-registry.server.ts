@@ -409,7 +409,17 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
       }),
     );
     const { error } = await supabaseAdmin.from("diagnostics_events").insert(results);
-    if (error) console.error("diagnostics insert failed", error);
+    if (error) {
+      console.error("diagnostics insert failed", error);
+      // Surface so admin is not stuck on zeros / fake ALL CLEAR
+      results.push({
+        feed: "_diagnostics_write",
+        ok: false,
+        source: "none",
+        duration_ms: 0,
+        error: error.message.slice(0, 300),
+      });
+    }
     return results;
   } finally {
     forceRefresh = false;
