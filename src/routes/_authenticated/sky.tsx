@@ -62,13 +62,13 @@ function computeSky(lat: number, lon: number, now: Date): SkyData {
   const mp = moonPhase(jd);
   const moonEq = moonEquatorial(jd);
   const sunEq = sunEquatorial(jd);
-  const sunAltAz = altAzFromRaDec(sunEq.ra * (180 / Math.PI), sunEq.dec * (180 / Math.PI), lat, lon, jd);
+const sunAltAz = altAzFromRaDec(sunEq.ra, sunEq.dec, lat, lon, jd);
   const earth = heliocentricEcliptic("earth", jd);
 
   const planets: PlanetRow[] = VISIBLE_PLANETS.map((key) => {
     const p = planetEquatorial(key, jd);
-    const raDeg = p.ra * (180 / Math.PI);
-    const decDeg = p.dec * (180 / Math.PI);
+    const raDeg = p.ra;
+    const decDeg = p.dec;
     const ph = heliocentricEcliptic(key, jd);
     const distAU = interplanetDistanceAU(earth, ph);
     const { alt, az } = altAzFromRaDec(raDeg, decDeg, lat, lon, jd);
