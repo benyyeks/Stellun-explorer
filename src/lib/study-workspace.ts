@@ -1,27 +1,41 @@
-// Personal study workspaces for The Academy Study desk.
-// Stored in the browser so they survive reloads without an account.
-// Each workspace is tied to one textbook topic and one primary book from the shelf.
+// Personal study workspaces for Study desk (localStorage).
 import { useCallback, useEffect, useState } from "react";
-import { BOOK_TOPICS, BOOKS, bookById, type Book } from "@/lib/books";
+import { BOOK_TOPICS, bookById } from "@/lib/books";
 
 export type ChecklistItem = { id: string; label: string; done: boolean };
+
+export type LearningMode = "beginner" | "intermediate" | "advanced" | "exam-prep";
+
+export type StudyPlanPhase = {
+  id: string;
+  title: string;
+  detail: string;
+  estimatedSessions: number;
+};
 
 export type StudyWorkspace = {
   id: string;
   title: string;
   topicId: string;
   bookId: string;
+  bookTitle: string;
+  bookAuthor: string;
+  learningMode: LearningMode;
+  goals: string;
   focus: string;
   notes: string;
   checklist: ChecklistItem[];
+  plan: StudyPlanPhase[];
+  planAccepted: boolean;
   createdAt: number;
   updatedAt: number;
 };
 
-const KEY = "stellun:study-workspaces";
+const KEY = "stellun:study-workspaces-v2";
 const MAX_WORKSPACES = 12;
-export const MAX_NOTES = 8000;
-export const MAX_FOCUS = 200;
+export const MAX_NOTES = 12000;
+export const MAX_FOCUS = 280;
+export const MAX_GOALS = 500;
 export const ASK_PREFILL_KEY = "stellun-ask-prefill";
 
 export type AskPrefill = {
@@ -29,15 +43,21 @@ export type AskPrefill = {
   text: string;
 };
 
-/** Default checklist seeds by textbook topic. Users can edit freely. */
-export const TOPIC_CHECKLISTS: Record<string, string[]> = {
+export const LEARNING_MODES: { id: LearningMode; label: string; hint: string }[] = [
+  { id: "beginner", label: "Beginner", hint: "Foundations first, slower pace, more definitions" },
+  { id: "intermediate", label: "Intermediate", hint: "Core theory plus worked examples" },
+  { id: "advanced", label: "Advanced", hint: "Deeper models, edge cases, research-style depth" },
+  { id: "exam-prep", label: "Exam prep", hint: "High-yield review, drills, and recall" },
+];
+
+const TOPIC_SEEDS: Record<string, string[]> = {
   "orbital-mechanics": [
     "Two-body problem and constants of motion",
     "Orbit types and classical elements",
-    "Ground tracks and coordinate frames",
+    "Coordinate frames and ground tracks",
     "Hohmann and bi-elliptic transfers",
-    "Orbital perturbations (J2, drag)",
-    "Relative motion and rendezvous basics",
+    "Perturbations (J2, drag)",
+    "Rendezvous basics",
   ],
   propulsion: [
     "Rocket equation and mass ratio",
@@ -47,7 +67,7 @@ export const TOPIC_CHECKLISTS: Record<string, string[]> = {
     "Electric propulsion overview",
   ],
   systems: [
-    "Mission design process and requirements",
+    "Mission design and requirements",
     "Spacecraft subsystems map",
     "Power, thermal, and communications budgets",
     "Risk, margins, and verification",
@@ -64,113 +84,167 @@ export const TOPIC_CHECKLISTS: Record<string, string[]> = {
     "Entry, descent, and landing concepts",
   ],
   structures: [
-    "Launch loads and structural paths",
+    "Launch loads and load paths",
     "Materials and mechanisms",
     "Space environment effects",
   ],
 };
 
+function newId(): string {
+  return `ws_\( {Date.now().toString(36)}_ \){Math.random().toString(36).slice(2, 8)}`;
+}
+
 function topicLabel(id: string): string {
   return BOOK_TOPICS.find((t) => t.id === id)?.label ?? id;
 }
 
-function defaultChecklist(topicId: string): ChecklistItem[] {
-  const labels = TOPIC_CHECKLISTS[topicId] ?? ["Core concepts", "Worked examples", "Review problems"];
-  return labels.map((label, i) => ({
-    id: `c${i}-${label.slice(0, 12).replace(/\s+/g, "-").toLowerCase()}`,
+/** Rule-based study plan from mode + topic + goals (no API required). */
+export function generateStudyPlan(input: {
+  topicId: string;
+  learningMode: LearningMode;
+  bookTitle: string;
+  goals: string;
+}): { plan: StudyPlanPhase[]; checklist: ChecklistItem[] } {
+  const seeds = TOPIC_SEEDS[input.topicId] ?? [
+    "Core concepts",
+    "Worked examples",
+    "Practice problems",
+    "Review and summary",
+  ];
+
+  const mode = input.learningMode;
+  const pace =
+    mode === "beginner" ? 1 : mode === "exam-prep" ? 0.7 : mode === "advanced" ? 1.2 : 1;
+
+  const plan: StudyPlanPhase[] = [
+    {
+      id: "p0",
+      title: "Orient",
+      detail: `Skim ${input.bookTitle || "your text"} structure. Note chapter map for ${topicLabel(input.topicId)}.`,
+      estimatedSessions: Math.max(1, Math.round(1 * pace)),
+    },
+    {
+      id: "p1",
+      title: mode === "beginner" ? "Build vocabulary" : "Establish framework",
+      detail:
+        mode === "beginner"
+          ? "Define every key term you meet. Prefer plain language before equations."
+          : "Map the main models and assumptions used in this topic.",
+      estimatedSessions: Math.max(1, Math.round(2 * pace)),
+    },
+    {
+      id: "p2",
+      title: "Worked path",
+      detail: `Work through: ${seeds.slice(0, 3).join("; ")}.`,
+      estimatedSessions: Math.max(2, Math.round(3 * pace)),
+    },
+    {
+      id: "p3",
+      title: mode === "exam-prep" ? "Drill & recall" : "Apply",
+      detail:
+        mode === "exam-prep"
+          ? "Timed problems, closed-book recall, error log."
+          : "Solve end-of-chapter style problems; write short derivations in notes.",
+      estimatedSessions: Math.max(2, Math.round(2 * pace)),
+    },
+    {
+      id: "p4",
+      title: "Synthesize",
+      detail: input.goals.trim()
+        ? `Tie notes back to your goals: ${input.goals.trim().slice(0, 160)}`
+        : "One-page summary of the topic in your own words.",
+      estimatedSessions: 1,
+    },
+  ];
+
+  const extra =
+    mode === "advanced"
+      ? ["Read one primary paper or handbook section", "Challenge: derive one result without the book"]
+      : mode === "exam-prep"
+        ? ["Error log review", "Mock quiz (self or Stellun AI)"]
+        : [];
+
+  const checklist: ChecklistItem[] = [...seeds, ...extra].map((label, i) => ({
+    id: `c\( {i}- \){label.slice(0, 10).replace(/\s+/g, "")}`,
     label,
     done: false,
   }));
-}
 
-function isWorkspace(v: unknown): v is StudyWorkspace {
-  if (typeof v !== "object" || v === null) return false;
-  const w = v as StudyWorkspace;
-  return (
-    typeof w.id === "string" &&
-    typeof w.title === "string" &&
-    typeof w.topicId === "string" &&
-    typeof w.bookId === "string" &&
-    typeof w.notes === "string" &&
-    Array.isArray(w.checklist)
-  );
+  return { plan, checklist };
 }
 
 function readAll(): StudyWorkspace[] {
+  if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isWorkspace).slice(0, MAX_WORKSPACES);
+    const parsed = JSON.parse(raw) as StudyWorkspace[];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-function writeAll(next: StudyWorkspace[]) {
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(next.slice(0, MAX_WORKSPACES)));
-  } catch {
-    /* storage unavailable */
-  }
+function writeAll(list: StudyWorkspace[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(KEY, JSON.stringify(list));
 }
 
-function newId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `ws-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+export function setAskPrefill(p: AskPrefill) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(ASK_PREFILL_KEY, JSON.stringify(p));
 }
 
-export function booksForTopic(topicId: string): Book[] {
-  return BOOKS.filter((b) => b.topic === topicId);
-}
-
-export function buildStudyAskPrompt(ws: StudyWorkspace): string {
-  const book = bookById(ws.bookId);
-  const topic = topicLabel(ws.topicId);
-  const bookLine = book
-    ? `${book.title} by ${book.authors}`
-    : "a standard aerospace textbook on this topic";
-  const focus = ws.focus.trim() || "the current study focus";
-  const noteSnippet = ws.notes.trim().slice(0, 400);
-  const done = ws.checklist.filter((c) => c.done).map((c) => c.label);
-  const open = ws.checklist.filter((c) => !c.done).map((c) => c.label);
-
-  return [
-    `I am studying ${topic}.`,
-    `Primary reference: ${bookLine}.`,
-    `Current focus: ${focus}.`,
-    done.length ? `I have covered: ${done.join("; ")}.` : null,
-    open.length ? `Still working on: ${open.slice(0, 4).join("; ")}.` : null,
-    noteSnippet ? `From my notes: ${noteSnippet}` : null,
-    "Explain the focus clearly for an engineering student. Use one concrete example. Label any estimate as an estimate. Do not invent figures that are not standard textbook results.",
-  ]
-    .filter(Boolean)
-    .join(" ");
-}
-
-export function setAskPrefill(prefill: AskPrefill) {
-  try {
-    sessionStorage.setItem(ASK_PREFILL_KEY, JSON.stringify(prefill));
-  } catch {
-    /* ignore */
-  }
-}
-
-export function consumeAskPrefill(): AskPrefill | null {
+export function takeAskPrefill(): AskPrefill | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(ASK_PREFILL_KEY);
-    if (!raw) return null;
     sessionStorage.removeItem(ASK_PREFILL_KEY);
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as AskPrefill;
-    if (typeof parsed?.text !== "string" || !parsed.text.trim()) return null;
-    return { ...(parsed.mode ? { mode: parsed.mode } : {}), text: parsed.text.trim() };
+    if (!parsed?.text?.trim()) return null;
+    return parsed;
   } catch {
     return null;
   }
 }
+
+export function buildStudyAskPrompt(ws: StudyWorkspace): string {
+  return [
+    `I'm studying in workspace "${ws.title}".`,
+    `Topic: ${topicLabel(ws.topicId)}.`,
+    `Book: \( {ws.bookTitle} \){ws.bookAuthor ? ` by ${ws.bookAuthor}` : ""}.`,
+    `Mode: ${ws.learningMode}.`,
+    ws.goals ? `Goals: ${ws.goals}` : "",
+    ws.focus ? `Current focus: ${ws.focus}` : "",
+    "Explain the current focus clearly for this level, with equations only when needed.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function booksForTopic(topicId: string) {
+  return bookById
+    ? // prefer shelf books for topic
+      (awaitableTopicBooks(topicId) as ReturnType<typeof import("@/lib/books").BOOKS extends infer B ? B : never>)
+    : [];
+}
+
+// Avoid circular import issues — re-export helper from books pattern used before:
+import { BOOKS } from "@/lib/books";
+export function booksForTopicSafe(topicId: string) {
+  return BOOKS.filter((b) => b.topic === topicId);
+}
+
+export type CreateWorkspaceInput = {
+  title: string;
+  topicId: string;
+  bookId?: string;
+  bookTitle: string;
+  bookAuthor: string;
+  learningMode: LearningMode;
+  goals: string;
+};
 
 export function useStudyWorkspaces() {
   const [workspaces, setWorkspaces] = useState<StudyWorkspace[]>([]);
@@ -186,22 +260,31 @@ export function useStudyWorkspaces() {
     writeAll(next);
   }, []);
 
-  const create = useCallback(
-    (input: { title?: string; topicId: string; bookId: string }) => {
-      const book = bookById(input.bookId);
-      const topic = BOOK_TOPICS.find((t) => t.id === input.topicId);
-      if (!book || !topic || book.topic !== input.topicId) return null;
+  const createDraft = useCallback(
+    (input: CreateWorkspaceInput) => {
       if (readAll().length >= MAX_WORKSPACES) return null;
-
+      const shelf = input.bookId ? bookById(input.bookId) : null;
+      const { plan, checklist } = generateStudyPlan({
+        topicId: input.topicId,
+        learningMode: input.learningMode,
+        bookTitle: input.bookTitle || shelf?.title || "Primary text",
+        goals: input.goals,
+      });
       const now = Date.now();
       const ws: StudyWorkspace = {
         id: newId(),
-        title: (input.title?.trim() || `${topic.label}: ${book.title}`).slice(0, 120),
+        title: input.title.trim().slice(0, 120) || `${topicLabel(input.topicId)} study`,
         topicId: input.topicId,
-        bookId: input.bookId,
+        bookId: input.bookId || shelf?.id || "",
+        bookTitle: (input.bookTitle || shelf?.title || "").slice(0, 160),
+        bookAuthor: (input.bookAuthor || "").slice(0, 120),
+        learningMode: input.learningMode,
+        goals: input.goals.trim().slice(0, MAX_GOALS),
         focus: "",
         notes: "",
-        checklist: defaultChecklist(input.topicId),
+        checklist,
+        plan,
+        planAccepted: false,
         createdAt: now,
         updatedAt: now,
       };
@@ -209,11 +292,26 @@ export function useStudyWorkspaces() {
       persist(next);
       return ws;
     },
-    [persist]
+    [persist],
+  );
+
+  const acceptPlan = useCallback(
+    (id: string) => {
+      const next = readAll().map((w) =>
+        w.id === id ? { ...w, planAccepted: true, updatedAt: Date.now() } : w,
+      );
+      persist(next);
+    },
+    [persist],
   );
 
   const update = useCallback(
-    (id: string, patch: Partial<Pick<StudyWorkspace, "title" | "focus" | "notes" | "checklist">>) => {
+    (
+      id: string,
+      patch: Partial<
+        Pick<StudyWorkspace, "title" | "focus" | "notes" | "checklist" | "goals" | "plan">
+      >,
+    ) => {
       const now = Date.now();
       const next = readAll().map((w) => {
         if (w.id !== id) return w;
@@ -222,26 +320,29 @@ export function useStudyWorkspaces() {
           title: patch.title !== undefined ? patch.title.slice(0, 120) : w.title,
           focus: patch.focus !== undefined ? patch.focus.slice(0, MAX_FOCUS) : w.focus,
           notes: patch.notes !== undefined ? patch.notes.slice(0, MAX_NOTES) : w.notes,
+          goals: patch.goals !== undefined ? patch.goals.slice(0, MAX_GOALS) : w.goals,
           checklist: patch.checklist ?? w.checklist,
+          plan: patch.plan ?? w.plan,
           updatedAt: now,
         };
       });
       persist(next);
     },
-    [persist]
+    [persist],
   );
 
   const remove = useCallback(
     (id: string) => {
       persist(readAll().filter((w) => w.id !== id));
     },
-    [persist]
+    [persist],
   );
 
   return {
     workspaces,
     ready,
-    create,
+    createDraft,
+    acceptPlan,
     update,
     remove,
     max: MAX_WORKSPACES,
