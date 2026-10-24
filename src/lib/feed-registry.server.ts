@@ -422,5 +422,6 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
     }
     return results;
   } finally {
-    forceRefresh = true;
+    forceRefresh = false;
+  }
 }
