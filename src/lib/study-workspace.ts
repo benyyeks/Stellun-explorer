@@ -162,7 +162,7 @@ export function generateStudyPlan(input: {
         : [];
 
   const checklist: ChecklistItem[] = [...seeds, ...extra].map((label, i) => ({
-    id: `c\( {i}- \){label.slice(0, 12).replace(/\s+/g, "")}`,
+id: `c\( {i}- \){label.slice(0, 12).replace(/\s+/g, "")}`,
     label,
     done: false,
   }));
@@ -207,10 +207,13 @@ export function takeAskPrefill(): AskPrefill | null {
 }
 
 export function buildStudyAskPrompt(ws: StudyWorkspace): string {
+  const bookLine = ws.bookAuthor
+    ? `Book: ${ws.bookTitle} by ${ws.bookAuthor}.`
+    : `Book: ${ws.bookTitle}.`;
   return [
     `I'm studying in workspace "${ws.title}".`,
     `Topic: ${topicLabel(ws.topicId)}.`,
-    `Book: \( {ws.bookTitle} \){ws.bookAuthor ? ` by ${ws.bookAuthor}` : ""}.`,
+    bookLine,
     `Mode: ${ws.learningMode}.`,
     ws.goals ? `Goals: ${ws.goals}` : "",
     ws.focus ? `Current focus: ${ws.focus}` : "",
