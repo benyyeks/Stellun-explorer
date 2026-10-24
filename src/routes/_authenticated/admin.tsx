@@ -597,6 +597,17 @@ function AdminPage() {
                           <td className="mono">
                             {Math.round(f.okRate * 100)}% · {f.runs}
                           </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="btn btn-ghost"
+                              style={{ fontSize: "0.78rem", padding: "6px 10px", whiteSpace: "nowrap" }}
+                              disabled={singleFeedBusy === f.feed || refreshing}
+                              onClick={() => singleRefreshMutation.mutate(f.feed)}
+                            >
+                              {singleFeedBusy === f.feed ? "Refreshing…" : "Refresh"}
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
