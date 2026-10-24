@@ -385,18 +385,74 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
       ];
     }
 
-    const results = await Promise.all(
-      selected.map(async (f) => {
-        const t0 = Date.now();
-        try {
-          const r = await f.run();
-          return {
-            feed: f.name,
-            ok: r.source !== "stale",
-            source: r.source,
-            duration_ms: Date.now() - t0,
-            error: r.source === "stale" ? "Source unavailable, showing last saved copy" : null,
-          };
+    const HEAVY_FEEDS = new Set([
+      "satellites-starlink",
+      "satellites-active",
+      "satellites-geo",
+    ]);
+
+    // Full cycle: skip mega catalogs (run them alone via "refresh this feed").
+    // Single-feed refresh: always run the requested feed.
+    const toRun =
+      opts?.only != null
+        ? selected
+        : selected.filter((f) => !HEAVY_FEEDS.has(f.name));
+
+    const results: Array<{
+      feed: string;
+      ok: boolean;
+      source: string;
+      duration_ms: number;
+      error: string | null;
+    }> = [];
+
+    // Sequential = far fewer concurrent subrequests (CF limit safe).
+    for (const f of toRun) {
+      const t0 = Date.now();
+      try {
+        const r = await f.run();
+        results.push({
+          feed: f.name,
+          ok: r.source !== "stale",
+          source: r.source,
+          duration_ms: Date.now() - t0,
+          error: r.source === "stale" ? "Source unavailable, showing last saved copy" : null,
+        });
+      } catch (e) {
+        results.push({
+          feed: f.name,
+          ok: false,
+          source: "none",
+          duration_ms: Date.now() - t0,
+          error: (e instanceof Error ? e.message : String(e)).slice(0, 300),
+        });
+      }
+    }
+
+    if (!opts?.only) {
+      for (const name of HEAVY_FEEDS) {
+        results.push({
+          feed: name,
+          ok: true,
+          source: "skipped",
+          duration_ms: 0,
+          error: "Skipped on full cycle — refresh this feed alone (CF subrequest budget).",
+        });
+      }
+    }
+
+    const { error } = await supabaseAdmin.from("diagnostics_events").insert(results);
+    if (error) {
+      console.error("diagnostics insert failed", error);
+      results.push({
+        feed: "_diagnostics_write",
+        ok: false,
+        source: "none",
+        duration_ms: 0,
+        error: error.message.slice(0, 300),
+      });
+    }
+    return results;
         } catch (e) {
           return {
             feed: f.name,
