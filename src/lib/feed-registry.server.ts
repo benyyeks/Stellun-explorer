@@ -363,11 +363,11 @@ function feeds(): Feed[] {
     },
   ];
 }
-/** Stable list of feed ids the admin panel and refresh must know about. */
+
+/** Stable list of feed ids the admin panel must always show. */
 export function listRegisteredFeeds(): string[] {
   return feeds().map((f) => f.name);
 }
-
 export async function runRefreshCycle(opts?: { force?: boolean; only?: string }) {
   forceRefresh = Boolean(opts?.force);
   try {
