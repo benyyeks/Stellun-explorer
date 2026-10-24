@@ -74,7 +74,6 @@ export async function readCatalogPayloads(group: string): Promise<{
 }
 
 async function setStatus(
-  async function setStatus(
   group: string,
   patch: Partial<{
     status: CatalogStatus;
