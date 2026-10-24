@@ -34,7 +34,15 @@ export const Route = createFileRoute("/_authenticated/sky")({
   component: SkyPage,
 });
 
-const VISIBLE_PLANETS = ["mercury", "venus", "mars", "jupiter", "saturn"] as const;
+const VISIBLE_PLANETS = [
+  "mercury",
+  "venus",
+  "mars",
+  "jupiter",
+  "saturn",
+  "uranus",
+  "neptune",
+] as const;
 
 type PlanetRow = {
   key: string;
