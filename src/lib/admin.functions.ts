@@ -269,6 +269,7 @@ export const getDiagnostics = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
 
+    // 24h window so overnight is not an empty panel
     const since = new Date(Date.now() - 24 * 3600_000).toISOString();
     const { data, error } = await context.supabase
       .from("diagnostics_events")
@@ -279,18 +280,42 @@ export const getDiagnostics = createServerFn({ method: "GET" })
 
     if (error) throw new Error("Could not load diagnostics");
 
+    const { listRegisteredFeeds } = await import("@/lib/feed-registry.server");
+    const registry = listRegisteredFeeds();
+
     const byFeed = new Map<string, FeedHealth>();
     const counts = new Map<string, { ok: number; all: number }>();
 
+    // Always list every registered feed (Starlink included), even with no checks yet.
+    for (const name of registry) {
+      const m = metaFor(name);
+      byFeed.set(name, {
+        feed: name,
+        label: m.label,
+        category: m.category,
+        ok: true,
+        source: null,
+        durationMs: null,
+        error: null,
+        cause: "No check recorded in this window — use Refresh on this row.",
+        checkedAt: "",
+        okRate: 0,
+        runs: 0,
+        integrity: "unknown",
+      });
+    }
+
+    // Newest-first events overlay registry rows (first hit wins).
     for (const r of data ?? []) {
+      if (r.feed === "_diagnostics_write") continue;
+
       const c = counts.get(r.feed) ?? { ok: 0, all: 0 };
-      c.all++;
-      if (r.ok) c.ok++;
+      c.all += 1;
+      if (r.ok) c.ok += 1;
       counts.set(r.feed, c);
 
       if (!byFeed.has(r.feed)) {
         const m = metaFor(r.feed);
-        const { cause, integrity } = diagnoseCause(r.ok, r.source, r.error);
         byFeed.set(r.feed, {
           feed: r.feed,
           label: m.label,
@@ -299,13 +324,28 @@ export const getDiagnostics = createServerFn({ method: "GET" })
           source: r.source,
           durationMs: r.duration_ms,
           error: r.error,
-          cause,
-          checkedAt: r.created_at,
+          cause: null,
+          checkedAt: "",
           okRate: 0,
           runs: 0,
-          integrity,
+          integrity: "unknown",
         });
       }
+
+      const cur = byFeed.get(r.feed)!;
+      if (cur.checkedAt) continue;
+
+      const { cause, integrity } = diagnoseCause(r.ok, r.source, r.error);
+      byFeed.set(r.feed, {
+        ...cur,
+        ok: r.ok,
+        source: r.source,
+        durationMs: r.duration_ms,
+        error: r.error,
+        cause,
+        checkedAt: r.created_at,
+        integrity,
+      });
     }
 
     const feeds: FeedHealth[] = [...byFeed.values()]
@@ -330,21 +370,35 @@ export const getDiagnostics = createServerFn({ method: "GET" })
     const down = feeds.filter((f) => f.integrity === "down").length;
     const checksLastHour = feeds.reduce((s, f) => s + f.runs, 0);
     const avgOkRate = totalFeeds ? feeds.reduce((s, f) => s + f.okRate, 0) / totalFeeds : 0;
-    const durations = feeds.map((f) => f.durationMs).filter((n): n is number => typeof n === "number");
+    const durations = feeds
+      .map((f) => f.durationMs)
+      .filter((n): n is number => typeof n === "number");
     const avgDurationMs = durations.length
       ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
       : null;
 
-    const serving = feeds.filter((f) => f.integrity !== "down" && f.integrity !== "unknown").length;
+    const serving = feeds.filter(
+      (f) => f.integrity !== "down" && f.integrity !== "unknown",
+    ).length;
     const strengthScore = totalFeeds ? clampScore((serving / totalFeeds) * 100) : 0;
-    const integrityWeights = { fresh: 1, cached: 0.9, stale: 0.45, down: 0, unknown: 0.2 };
+    const integrityWeights = {
+      fresh: 1,
+      cached: 0.9,
+      stale: 0.45,
+      down: 0,
+      unknown: 0.2,
+    };
     const integrityScore = totalFeeds
       ? clampScore(
-          (feeds.reduce((s, f) => s + (integrityWeights[f.integrity] ?? 0), 0) / totalFeeds) * 100,
+          (feeds.reduce((s, f) => s + (integrityWeights[f.integrity] ?? 0), 0) /
+            totalFeeds) *
+            100,
         )
       : 0;
     const qualityScore = clampScore(avgOkRate * 100);
-    const overallScore = clampScore(strengthScore * 0.35 + integrityScore * 0.35 + qualityScore * 0.3);
+    const overallScore = clampScore(
+      strengthScore * 0.35 + integrityScore * 0.35 + qualityScore * 0.3,
+    );
 
     const summary: DiagnosticsSummary = {
       totalFeeds,
@@ -371,7 +425,9 @@ export const getDiagnostics = createServerFn({ method: "GET" })
       checkedAt: q.checked_at,
     }));
 
-    const problemFeeds = feeds.filter((f) => !f.ok || f.integrity === "stale" || f.integrity === "down");
+    const problemFeeds = feeds.filter(
+      (f) => !f.ok || f.integrity === "stale" || f.integrity === "down",
+    );
 
     return {
       feeds,
@@ -382,8 +438,6 @@ export const getDiagnostics = createServerFn({ method: "GET" })
       serverTime: new Date().toISOString(),
     };
   });
-
-
 
 // -------------------- Suggestions & client/server error inbox --------------------
 
