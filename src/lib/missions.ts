@@ -775,38 +775,8 @@ export const MISSIONS: MissionProfile[] = [
     ],
     url: "https://science.nasa.gov/mission/lro/",
   },
-];
 
-// ------------------------------- Directories --------------------------------
-// Official catalogues a reader can use to go beyond this curated set.
-export const MISSION_DIRECTORIES = [
-  {
-    name: "NASA Missions Directory",
-    url: "https://www.nasa.gov/missions/",
-    note: "The full catalogue, filterable by status and by mission type.",
-  },
-  {
-    name: "NASA Science Missions",
-    url: "https://science.nasa.gov/science-missions/",
-    note: "Science missions with objectives, instruments and milestone dates.",
-  },
-  {
-    name: "NASA A to Z Mission List",
-    url: "https://www.nasa.gov/a-to-z-of-nasa-missions/",
-    note: "Every NASA mission, past and present, with an individual page each.",
-  },
-  {
-    name: "HEASARC Active Missions",
-    url: "https://heasarc.gsfc.nasa.gov/docs/heasarc/missions/active.html",
-    note: "High-energy astrophysics observatories currently operating.",
-  },
-  {
-    name: "NASA Space Science Data Coordinated Archive",
-    url: "https://nssdc.gsfc.nasa.gov/nmc/",
-    note: "Master catalogue of spacecraft and experiments, including historic flights.",
-  },
-];
-// -------- Human spaceflight (historic + commercial + partners) --------
+  // -------- Human spaceflight (historic + commercial + partners) --------
   {
     id: "apollo-11",
     name: "Apollo 11",
@@ -1002,6 +972,7 @@ export const MISSION_DIRECTORIES = [
     id: "dragonfly",
     name: "Dragonfly",
     agency: "NASA APL",
+ dual: "planned",
     status: "planned",
     category: "planetary",
     launched: "2028-01-01",
@@ -1381,7 +1352,64 @@ export const MISSION_DIRECTORIES = [
     vehicle: "Electron / Photon",
     destination: "Near-rectilinear halo orbit about the Moon",
     objective:
-      "Validat
+      "Validate the NRHO planned for Gateway and demonstrate autonomous navigation.",
+    highlights: [
+      "Entered the target NRHO in November 2022.",
+      "Pathfinder for Artemis Gateway orbital logistics.",
+    ],
+    url: "https://www.nasa.gov/mission/capstone/",
+  },
+  {
+    id: "slim",
+    name: "SLIM",
+    agency: "JAXA",
+    status: "completed",
+    category: "lunar",
+    launched: "2023-09-06",
+    launchLabel: "6 September 2023",
+    vehicle: "H-IIA",
+    destination: "Near Shioli crater, Moon",
+    objective:
+      "Demonstrate high-precision (“pinpoint”) soft landing on the lunar surface.",
+    highlights: [
+      "Landed 19 January 2024 within a small target ellipse.",
+      "Operated at an unexpected attitude after touchdown but returned imagery and data.",
+    ],
+    url: "https://www.jaxa.jp/projects/sas/slim/",
+    ended: "2024-08-01",
+  },
+];
+
+// ------------------------------- Directories --------------------------------
+// Official catalogues a reader can use to go beyond this curated set.
+export const MISSION_DIRECTORIES = [
+  {
+    name: "NASA Missions Directory",
+    url: "https://www.nasa.gov/missions/",
+    note: "The full catalogue, filterable by status and by mission type.",
+  },
+  {
+    name: "NASA Science Missions",
+    url: "https://science.nasa.gov/science-missions/",
+    note: "Science missions with objectives, instruments and milestone dates.",
+  },
+  {
+    name: "NASA A to Z Mission List",
+    url: "https://www.nasa.gov/a-to-z-of-nasa-missions/",
+    note: "Every NASA mission, past and present, with an individual page each.",
+  },
+  {
+    name: "HEASARC Active Missions",
+    url: "https://heasarc.gsfc.nasa.gov/docs/heasarc/missions/active.html",
+    note: "High-energy astrophysics observatories currently operating.",
+  },
+  {
+    name: "NASA Space Science Data Coordinated Archive",
+    url: "https://nssdc.gsfc.nasa.gov/nmc/",
+    note: "Master catalogue of spacecraft and experiments, including historic flights.",
+  },
+];
+
 
 export function missionYear(m: MissionProfile): number {
   const y = Number(m.launched.slice(0, 4));
