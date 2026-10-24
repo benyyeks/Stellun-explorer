@@ -45,6 +45,7 @@ const PILLARS: Pillar[] = [
       { id: "academy-terms", label: "Aerospace Terminologies", to: "/academy", hint: "Working glossary of orbital and spacecraft terms" },
       { id: "academy-library", label: "Research Library", to: "/academy", hint: "Accredited archives and mission breakdowns" },
       { id: "academy-resources", label: "Learning Resources", to: "/academy", hint: "Textbooks, programs, and competitions" },
+    { id: "academy-study", label: "Study desk", to: "/study-desk", hint: "Workspaces, study plans, notes, and Stellun AI" },
     ],
   },
   {
