@@ -74,6 +74,7 @@ export async function readCatalogPayloads(group: string): Promise<{
 }
 
 async function setStatus(
+  async function setStatus(
   group: string,
   patch: Partial<{
     status: CatalogStatus;
@@ -85,22 +86,20 @@ async function setStatus(
   }>,
 ) {
   const sb = await admin();
-  await sb.from("satellite_catalog_status").upsert(
-    {
-      group_id: group,
-      updated_at: new Date().toISOString(),
-      status: patch.status ?? "idle",
-      loaded_count: patch.loaded_count ?? 0,
-      expected_total: patch.expected_total ?? null,
-      error: patch.error ?? null,
-      started_at: patch.started_at ?? null,
-      finished_at: patch.finished_at ?? null,
-      ...patch,
-      group_id: group,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "group_id" },
-  );
+  const row = {
+    group_id: group,
+    status: patch.status ?? "idle",
+    loaded_count: patch.loaded_count ?? 0,
+    expected_total: patch.expected_total ?? null,
+    error: patch.error ?? null,
+    started_at: patch.started_at ?? null,
+    finished_at: patch.finished_at ?? null,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await sb.from("satellite_catalog_status").upsert(row as any, {
+    onConflict: "group_id",
+  });
+  if (error) throw new Error(`catalog status upsert failed: ${error.message}`);
 }
 
 /**
