@@ -335,7 +335,7 @@ export function StudyDeskPage() {
               <textarea value={goals} maxLength={MAX_GOALS} onChange={(e) => setGoals(e.target.value)} placeholder="What should you be able to do after this workspace?" rows={3} />
             </label>
             <div className="study-plan-actions">
-              <button type="button" className="btn btn-primary" disabled={!bookTitle.trim()} onClick={onCreate}>
+              <button type="button" className="btn btn-primary" disabled={!bookTitle.trim() || (topicId === "other" && !customTopic.trim())} onClick={onCreate}>
                 Create & generate plan
               </button>
               <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>Cancel</button>
