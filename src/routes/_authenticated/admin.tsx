@@ -566,17 +566,6 @@ function AdminPage() {
                         <th>Response</th>
                         <th>Success · 1h</th>
                         <th>Actions</th>
-                        <td>
-                            <button
-                              type="button"
-                              className="btn btn-ghost"
-                              style={{ fontSize: "0.78rem", padding: "6px 10px" }}
-                              disabled={singleFeedBusy === f.feed || refreshing}
-                              onClick={() => singleRefreshMutation.mutate(f.feed)}
-                            >
-                              {singleFeedBusy === f.feed ? "Refreshing…" : "Refresh"}
-                            </button>
-                          </td>
                       </tr>
                     </thead>
                     <tbody>
