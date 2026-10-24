@@ -7,6 +7,7 @@ import { ResearchLibraryTab } from "@/components/academy/research-library";
 import { TerminologiesTab } from "@/components/academy/terminologies";
 import { RomanHub } from "@/components/academy/roman-hub";
 import { StudyDeskTab } from "@/components/academy/study-desk";
+<Link to="/study-desk" className="btn btn-ghost btn-sm">Open Study desk</Link>
 
 const TABS = [
   { id: "terminologies", label: "Aerospace terminologies" },
