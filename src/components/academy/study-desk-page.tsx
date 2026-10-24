@@ -27,6 +27,7 @@ export function StudyDeskPage() {
   // form state for modal
   const [title, setTitle] = useState("");
   const [topicId, setTopicId] = useState(BOOK_TOPICS[0]?.id ?? "orbital-mechanics");
+  const [customTopic, setCustomTopic] = useState("");
   const [bookId, setBookId] = useState("");
   const [bookTitle, setBookTitle] = useState("");
   const [bookAuthor, setBookAuthor] = useState("");
@@ -54,9 +55,16 @@ export function StudyDeskPage() {
 
   const onCreate = () => {
     if (!bookTitle.trim()) return;
+    if (topicId === "other" && !customTopic.trim()) return;
+
+    const resolvedTopicId =
+      topicId === "other"
+        ? `custom:${customTopic.trim().slice(0, 80)}`
+        : topicId;
+
     const ws = createDraft({
       title,
-      topicId,
+      topicId: resolvedTopicId,
       bookId: bookId || undefined,
       bookTitle,
       bookAuthor,
@@ -68,9 +76,13 @@ export function StudyDeskPage() {
       setModalOpen(false);
       setTitle("");
       setGoals("");
+      setCustomTopic("");
+      setTopicId(BOOK_TOPICS[0]?.id ?? "orbital-mechanics");
+      setBookId("");
+      setBookTitle("");
+      setBookAuthor("");
     }
   };
-
   const openAsk = (ws: StudyWorkspace) => {
     setAskPrefill({ mode: "explain", text: buildStudyAskPrompt(ws) });
     void navigate({ to: "/ask" });
@@ -199,14 +211,35 @@ export function StudyDeskPage() {
                   <div className="study-desk-panel-label eyebrow">Resource</div>
                   <StudyUploadPanel workspace={active as any} />
                   <label className="study-field">
-                    <span>Focus</span>
-                    <input
-                      value={active.focus}
-                      maxLength={MAX_FOCUS}
-                      placeholder="What are you working on right now?"
-                      onChange={(e) => update(active.id, { focus: e.target.value })}
-                    />
-                  </label>
+              <span>Topic</span>
+              <select
+                value={topicId}
+                onChange={(e) => {
+                  setTopicId(e.target.value);
+                  setBookId("");
+                  if (e.target.value !== "other") setCustomTopic("");
+                }}
+              >
+                {BOOK_TOPICS.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+                <option value="other">Others (write your own)</option>
+              </select>
+            </label>
+            {topicId === "other" && (
+              <label className="study-field">
+                <span>Your topic</span>
+                <input
+                  value={customTopic}
+                  onChange={(e) => setCustomTopic(e.target.value)}
+                  placeholder="e.g. Satellite communications, CubeSat design…"
+                  maxLength={120}
+                  required
+                />
+              </label>
+            )}
                 </div>
 
                 <div className="study-desk-panel study-desk-panel-notes" data-show={mobileTab === "notes" ? "true" : undefined}>
