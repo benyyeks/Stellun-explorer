@@ -1,5 +1,4 @@
-// Server-only: full CelesTrak group → Supabase satellite_catalog in batches.
-// No object cap. Tracker reads rows; refresh is cron/admin only.
+// Server-only: full CelesTrak group → one Supabase blob write (CF subrequest-safe).
 
 import { fetchJson } from "@/lib/stellun-fetch.server";
 
@@ -15,8 +14,6 @@ export type CatalogStatusRow = {
   finished_at: string | null;
   updated_at: string;
 };
-
-const BATCH = 450;
 
 const HEAVY = new Set([
   "starlink",
@@ -49,28 +46,25 @@ export async function getCatalogStatus(group: string): Promise<CatalogStatusRow 
   return (data as CatalogStatusRow | null) ?? null;
 }
 
-/** All OMM records for a group (full catalog, no slice). */
+/** Full OMM array for a group (no cap). */
 export async function readCatalogPayloads(group: string): Promise<{
   rows: Record<string, unknown>[];
   fetchedAt: string | null;
 }> {
   const sb = await admin();
   const { data, error } = await sb
-    .from("satellite_catalog")
-    .select("payload, fetched_at")
-    .eq("group_id", group);
+    .from("satellite_catalog_blob")
+    .select("payload, fetched_at, object_count")
+    .eq("group_id", group)
+    .maybeSingle();
 
   if (error) throw new Error(error.message);
-  const list = data ?? [];
-  let fetchedAt: string | null = null;
-  for (const r of list) {
-    const fa = r.fetched_at as string;
-    if (!fetchedAt || fa > fetchedAt) fetchedAt = fa;
-  }
-  return {
-    rows: list.map((r) => r.payload as Record<string, unknown>),
-    fetchedAt,
-  };
+  if (!data?.payload) return { rows: [], fetchedAt: null };
+
+  const rows = Array.isArray(data.payload)
+    ? (data.payload as Record<string, unknown>[])
+    : [];
+  return { rows, fetchedAt: (data.fetched_at as string) ?? null };
 }
 
 async function setStatus(
@@ -102,9 +96,8 @@ async function setStatus(
 }
 
 /**
- * Download full CelesTrak group and upsert every object in batches.
- * Keeps previous rows until the new generation is fully written, then
- * deletes rows with an older fetched_at.
+ * Download full group once, write ONE blob + status.
+ * \~3–5 Worker subrequests total (not hundreds).
  */
 export async function refreshSatelliteGroup(
   group: string,
@@ -132,16 +125,17 @@ export async function refreshSatelliteGroup(
   const timeoutMs = isHeavySatGroup(group) ? 55_000 : 25_000;
   let raw: unknown;
   let lastErr: unknown;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       raw = await fetchJson(celestrakUrl(group), { timeoutMs });
       lastErr = null;
       break;
     } catch (e) {
       lastErr = e;
-      await new Promise((r) => setTimeout(r, 1500 * attempt));
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 2000 * attempt));
     }
   }
+
   if (lastErr) {
     const msg = lastErr instanceof Error ? lastErr.message : String(lastErr);
     await setStatus(group, {
@@ -164,66 +158,35 @@ export async function refreshSatelliteGroup(
     throw new Error(`CelesTrak empty for group ${group}`);
   }
 
-  const generation = new Date().toISOString();
   const sb = await admin();
-  let written = 0;
-
-  for (let i = 0; i < records.length; i += BATCH) {
-    const chunk = records.slice(i, i + BATCH) as Record<string, unknown>[];
-    const rows = chunk
-      .map((rec) => {
-        const norad = rec["NORAD_CAT_ID"];
-        if (norad === undefined || norad === null) return null;
-        return {
-          group_id: group,
-          norad_id: String(norad),
-          payload: rec,
-          fetched_at: generation,
-        };
-      })
-      .filter(Boolean);
-
-    if (rows.length === 0) continue;
-
-    const { error } = await sb.from("satellite_catalog").upsert(rows as any[], {
-      onConflict: "group_id,norad_id",
-    });
-    if (error) {
-      await setStatus(group, {
-        status: "error",
-        error: error.message.slice(0, 400),
-        loaded_count: written,
-        expected_total: records.length,
-        finished_at: new Date().toISOString(),
-      });
-      throw new Error(error.message);
-    }
-
-    written += rows.length;
+  const fetchedAt = new Date().toISOString();
+  const { error: blobErr } = await sb.from("satellite_catalog_blob").upsert(
+    {
+      group_id: group,
+      payload: records,
+      object_count: records.length,
+      fetched_at: fetchedAt,
+    } as any,
+    { onConflict: "group_id" },
+  );
+  if (blobErr) {
     await setStatus(group, {
-      status: "loading",
-      loaded_count: written,
-      expected_total: records.length,
-      started_at: started,
-      error: null,
+      status: "error",
+      error: blobErr.message.slice(0, 400),
+      loaded_count: existing?.loaded_count ?? 0,
+      finished_at: new Date().toISOString(),
     });
+    throw new Error(blobErr.message);
   }
-
-  // Drop previous generation for this group only
-  await sb
-    .from("satellite_catalog")
-    .delete()
-    .eq("group_id", group)
-    .lt("fetched_at", generation);
 
   await setStatus(group, {
     status: "ready",
-    loaded_count: written,
+    loaded_count: records.length,
     expected_total: records.length,
     error: null,
     started_at: started,
-    finished_at: new Date().toISOString(),
+    finished_at: fetchedAt,
   });
 
-  return { source: "fresh", count: written };
-}
+  return { source: "fresh", count: records.length };
+                    }
