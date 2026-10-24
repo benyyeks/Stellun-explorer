@@ -269,7 +269,7 @@ export const getDiagnostics = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
 
-    const since = new Date(Date.now() - 3600_000).toISOString();
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
     const { data, error } = await context.supabase
       .from("diagnostics_events")
       .select("feed,ok,source,duration_ms,error,created_at")
