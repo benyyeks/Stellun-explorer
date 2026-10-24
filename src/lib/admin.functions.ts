@@ -237,6 +237,10 @@ export const runFeedRefresh = createServerFn({ method: "POST" })
             : `All ${results.length} feeds checked successfully in ${durationMs} ms.`,
         };
       }
+      const detail = failed
+        .map((r) => `${r.feed}: ${r.error ?? r.source ?? "failed"}`)
+        .join(" | ")
+        .slice(0, 400);
       return {
         ok: false,
         feeds: results.length,
@@ -244,8 +248,8 @@ export const runFeedRefresh = createServerFn({ method: "POST" })
         failedNames,
         durationMs,
         message: data.feed
-          ? `Refresh of ${data.feed} failed.`
-          : `${failed.length} of ${results.length} feeds still have problems after this run.`,
+          ? `Refresh of ${data.feed} failed. ${detail}`
+          : `${failed.length} of ${results.length} feeds still have problems. ${detail}`,
       };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
