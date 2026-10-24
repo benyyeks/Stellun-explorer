@@ -391,7 +391,7 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
       "satellites-geo",
     ]);
 
-    // Full cycle: skip mega catalogs (run them alone via "refresh this feed").
+    // Full cycle: skip mega catalogs (refresh those feeds alone).
     // Single-feed refresh: always run the requested feed.
     const toRun =
       opts?.only != null
@@ -406,7 +406,7 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
       error: string | null;
     }> = [];
 
-    // Sequential = far fewer concurrent subrequests (CF limit safe).
+    // Sequential = stays under Cloudflare Worker subrequest limits.
     for (const f of toRun) {
       const t0 = Date.now();
       try {
@@ -444,30 +444,6 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
     const { error } = await supabaseAdmin.from("diagnostics_events").insert(results);
     if (error) {
       console.error("diagnostics insert failed", error);
-      results.push({
-        feed: "_diagnostics_write",
-        ok: false,
-        source: "none",
-        duration_ms: 0,
-        error: error.message.slice(0, 300),
-      });
-    }
-    return results;
-        } catch (e) {
-          return {
-            feed: f.name,
-            ok: false,
-            source: "none",
-            duration_ms: Date.now() - t0,
-            error: (e instanceof Error ? e.message : String(e)).slice(0, 300),
-          };
-        }
-      }),
-    );
-    const { error } = await supabaseAdmin.from("diagnostics_events").insert(results);
-    if (error) {
-      console.error("diagnostics insert failed", error);
-      // Surface so admin is not stuck on zeros / fake ALL CLEAR
       results.push({
         feed: "_diagnostics_write",
         ok: false,
