@@ -25,9 +25,16 @@ export function StudyUploadPanel({ workspace }: { workspace: StudyWorkspace | nu
     event.preventDefault();
     const file = fileRef.current?.files?.[0];
     if (!file || title.trim().length < 2) return;
+    if (topic === "other" && !customTopic.trim()) {
+      setError("Write your topic under Others.");
+      return;
+    }
     if (!/\.(pdf|txt|md)$/i.test(file.name)) { setError("Choose a PDF, text, or Markdown book."); return; }
     const objectUrl = URL.createObjectURL(file);
-    const book = addUploadedBook({ title, authors, topicId: topic, fileName: file.name, objectUrl });
+    const book = addUploadedBook({ title, authors, topicId:
+  topic === "other"
+    ? `custom:${customTopic.trim().slice(0, 80)}`
+    : topic, fileName: file.name, objectUrl });
     if (!book) { URL.revokeObjectURL(objectUrl); setError("The book could not be added. Check its title and your book list."); return; }
     urls.current.add(objectUrl);
     setBooks((prev) => [book, ...prev]); setReferenceId(book.id); setTitle(""); setAuthors(""); setError("");
