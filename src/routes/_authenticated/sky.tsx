@@ -192,8 +192,8 @@ function SkyPage() {
             <div className="glass glass-card stat-card">
               <div className="stat-label">Visible planets</div>
               <div className="stat-value">{data ? visibleCount : "--"}</div>
-              <div className="stat-unit">of 5 tracked</div>
-              <div className="stat-note">Mercury, Venus, Mars, Jupiter, Saturn</div>
+              <div className="stat-unit">of 7 tracked</div>
+<div className="stat-note">Mercury through Neptune</div>
             </div>
           </div>
 
