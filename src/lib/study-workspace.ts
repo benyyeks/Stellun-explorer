@@ -89,11 +89,11 @@ const TOPIC_SEEDS: Record<string, string[]> = {
   ],
 };
 
-function newId() {
+function newId(): string {
   return `ws_\( {Date.now().toString(36)}_ \){Math.random().toString(36).slice(2, 8)}`;
 }
 
-function topicLabel(id: string) {
+function topicLabel(id: string): string {
   return BOOK_TOPICS.find((t) => t.id === id)?.label ?? id;
 }
 
@@ -111,7 +111,8 @@ export function generateStudyPlan(input: {
     TOPIC_SEEDS[input.topicId] ??
     ["Core concepts", "Worked examples", "Practice problems", "Review and summary"];
   const mode = input.learningMode;
-  const pace = mode === "beginner" ? 1.1 : mode === "exam-prep" ? 0.75 : mode === "advanced" ? 1.15 : 1;
+  const pace =
+    mode === "beginner" ? 1.1 : mode === "exam-prep" ? 0.75 : mode === "advanced" ? 1.15 : 1;
 
   const plan: StudyPlanPhase[] = [
     {
@@ -162,7 +163,7 @@ export function generateStudyPlan(input: {
         : [];
 
   const checklist: ChecklistItem[] = [...seeds, ...extra].map((label, i) => ({
-id: `c\( {i}- \){label.slice(0, 12).replace(/\s+/g, "")}`,
+    id: `c\( {i}- \){label.slice(0, 12).replace(/\s+/g, "")}`,
     label,
     done: false,
   }));
@@ -182,20 +183,18 @@ function readAll(): StudyWorkspace[] {
   }
 }
 
-function writeAll(list: StudyWorkspace[]) {
+function writeAll(list: StudyWorkspace[]): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(list));
 }
 
-export function setAskPrefill(p: AskPrefill) {
+export function setAskPrefill(p: AskPrefill): void {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(ASK_PREFILL_KEY, JSON.stringify(p));
 }
 
-/** Alias used by /ask — do not remove. */
+/** Used by /ask — keep this name. */
 export function consumeAskPrefill(): AskPrefill | null {
-  return takeAskPrefill();
-}
   if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(ASK_PREFILL_KEY);
@@ -208,6 +207,9 @@ export function consumeAskPrefill(): AskPrefill | null {
     return null;
   }
 }
+
+/** Alias if anything still imports takeAskPrefill. */
+export const takeAskPrefill = consumeAskPrefill;
 
 export function buildStudyAskPrompt(ws: StudyWorkspace): string {
   const bookLine = ws.bookAuthor
@@ -251,22 +253,6 @@ export function useStudyWorkspaces() {
   }, []);
 
   const createDraft = useCallback(
-    const create = useCallback(
-    (input: { title?: string; topicId: string; bookId: string }) => {
-      const shelf = bookById(input.bookId);
-      if (!shelf) return null;
-      return createDraft({
-        title: input.title ?? "",
-        topicId: input.topicId,
-        bookId: input.bookId,
-        bookTitle: shelf.title,
-        bookAuthor: shelf.authors,
-        learningMode: "intermediate",
-        goals: "",
-      });
-    },
-    [createDraft],
-  );
     (input: CreateWorkspaceInput) => {
       if (readAll().length >= MAX_WORKSPACES) return null;
       const shelf = input.bookId ? bookById(input.bookId) : null;
@@ -302,9 +288,31 @@ export function useStudyWorkspaces() {
     [persist],
   );
 
+  /** Legacy helper for older UI that only passed topic + shelf book. */
+  const create = useCallback(
+    (input: { title?: string; topicId: string; bookId: string }) => {
+      const shelf = bookById(input.bookId);
+      if (!shelf) return null;
+      return createDraft({
+        title: input.title ?? "",
+        topicId: input.topicId,
+        bookId: input.bookId,
+        bookTitle: shelf.title,
+        bookAuthor: shelf.authors,
+        learningMode: "intermediate",
+        goals: "",
+      });
+    },
+    [createDraft],
+  );
+
   const acceptPlan = useCallback(
     (id: string) => {
-      persist(readAll().map((w) => (w.id === id ? { ...w, planAccepted: true, updatedAt: Date.now() } : w)));
+      persist(
+        readAll().map((w) =>
+          w.id === id ? { ...w, planAccepted: true, updatedAt: Date.now() } : w,
+        ),
+      );
     },
     [persist],
   );
@@ -334,9 +342,20 @@ export function useStudyWorkspaces() {
   );
 
   const remove = useCallback(
-    (id: string) => persist(readAll().filter((w) => w.id !== id)),
+    (id: string) => {
+      persist(readAll().filter((w) => w.id !== id));
+    },
     [persist],
   );
 
-  return { workspaces, ready, createDraft, acceptPlan, update, remove, max: MAX_WORKSPACES };
-      }
+  return {
+    workspaces,
+    ready,
+    create,
+    createDraft,
+    acceptPlan,
+    update,
+    remove,
+    max: MAX_WORKSPACES,
+  };
+  }
