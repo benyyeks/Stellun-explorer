@@ -10,6 +10,7 @@ export function StudyUploadPanel({ workspace }: { workspace: StudyWorkspace | nu
   const [title, setTitle] = useState("");
   const [authors, setAuthors] = useState("");
   const [topic, setTopic] = useState(BOOK_TOPICS[0]?.id ?? "orbital-mechanics");
+  const [customTopic, setCustomTopic] = useState("");
   const [referenceId, setReferenceId] = useState("");
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -65,7 +66,38 @@ export function StudyUploadPanel({ workspace }: { workspace: StudyWorkspace | nu
           <label className="field-label" htmlFor="upload-book-authors">Author</label>
           <input id="upload-book-authors" className="input" maxLength={120} value={authors} onChange={(e) => setAuthors(e.target.value)} />
           <label className="field-label" htmlFor="upload-book-topic">Book topic</label>
-          <select id="upload-book-topic" className="input" value={topic} onChange={(e) => setTopic(e.target.value)}>{BOOK_TOPICS.map((t) => <option value={t.id} key={t.id}>{t.label}</option>)}</select>
+          <select
+            id="upload-book-topic"
+            className="input"
+            value={topic}
+            onChange={(e) => {
+              setTopic(e.target.value);
+              if (e.target.value !== "other") setCustomTopic("");
+            }}
+          >
+            {BOOK_TOPICS.map((t) => (
+              <option value={t.id} key={t.id}>
+                {t.label}
+              </option>
+            ))}
+            <option value="other">Others (write your own)</option>
+          </select>
+          {topic === "other" && (
+            <>
+              <label className="field-label" htmlFor="upload-book-topic-custom">
+                Your topic
+              </label>
+              <input
+                id="upload-book-topic-custom"
+                className="input"
+                value={customTopic}
+                maxLength={120}
+                required
+                placeholder="e.g. Satellite communications"
+                onChange={(e) => setCustomTopic(e.target.value)}
+              />
+            </>
+          )}
           <label className="field-label" htmlFor="upload-book-file">Book file</label>
           <input ref={fileRef} id="upload-book-file" className="input" type="file" accept=".pdf,.txt,.md" required />
           <button className="btn btn-primary btn-sm" type="submit" disabled={books.length >= MAX_UPLOADS}>Add book</button>
