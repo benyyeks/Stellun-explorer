@@ -173,12 +173,32 @@ export const getSatellites = createServerFn({ method: "GET" })
       };
     }
 
-    // Small groups: existing short-TTL cache path (unchanged idea).
+// Small groups: existing short-TTL cache path (unchanged idea).
     const url = `https://celestrak.org/NORAD/elements/gp.php?GROUP=${data.group}&FORMAT=json`;
     return cached("satellites", { group: data.group }, 3600, () =>
       fetchJson(url, { timeoutMs: 18000 }),
     );
   });
+
+// Sun-synchronous orbit (SSO): CelesTrak has no single SSO group, so we
+// merge NOAA + resource and keep inclinations in the sun-sync band.
+export const getSatellitesSSO = createServerFn({ method: "GET" }).handler(async () => {
+  return cached("satellites-sso", {}, 3600, async () => {
+    const [noaaRes, resourceRes] = await Promise.all([
+      fetchJson<any[]>("https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=json", {
+        timeoutMs: 12000,
+      }),
+      fetchJson<any[]>("https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=json", {
+        timeoutMs: 12000,
+      }),
+    ]);
+    const merged = [...(Array.isArray(noaaRes) ? noaaRes : []), ...(Array.isArray(resourceRes) ? resourceRes : [])];
+    return merged.filter((rec) => {
+      const inc = Number(rec?.INCLINATION);
+      return !Number.isNaN(inc) && inc >= 96 && inc <= 100;
+    });
+  });
+});
 
 // Single-object lookup by NORAD catalog number, used by the satellite
 // detail template page.
