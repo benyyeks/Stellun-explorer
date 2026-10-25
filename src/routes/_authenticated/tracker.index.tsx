@@ -648,10 +648,11 @@ function TrackerPage() {
           <span className="eyebrow">CelesTrak orbital elements</span>
           <h1>Orbit Tracker</h1>
           <p className="tagline">
-            Every satellite you see is positioned from its latest published orbital
-            elements, propagated in real time with a Kepler solver corrected for Earth's
-            oblateness. Click any satellite for live telemetry, save favorites, or compare
-            multiple orbits side by side.
+            <p className="tagline">
+            Satellites are positioned from published orbital elements (CelesTrak and
+            related sources), propagated in real time with a Kepler solver corrected for Earth's
+            oblateness.<br/>Click a satellite for details, favorites, or comparison.
+          </p>
           </p>
         </div>
       </section>
