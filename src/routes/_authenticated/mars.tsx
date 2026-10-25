@@ -47,11 +47,6 @@ function marsGeometry(now: Date) {
   };
 }
 
-function fmtRA(hours: number): string {
-  const h = Math.floor(hours);
-  const m = Math.floor((hours - h) * 60);
-  return `${h}h ${String(m).padStart(2, "0")}m`;
-}
 
 function elongationNote(el: number): string {
   if (el < 20) return "Near the Sun in the sky — hard to observe";
@@ -59,14 +54,6 @@ function elongationNote(el: number): string {
   return "Visible for part of the night from a dark site";
 }
 
-function DetailCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="detail-cell">
-      <div className="stat-label">{label}</div>
-      <div className="detail-value">{value}</div>
-    </div>
-  );
-}
 
 /** Top-down ecliptic sketch (not a surface map). */
 function OrbitDiagram({
@@ -160,22 +147,42 @@ function MarsPage() {
             </div>
           </div>
 
-          <div className="mars-split">
-            <div className="glass glass-card scaffold-card mars-panel">
-              <span className="eyebrow">Orbit sketch</span>
-              <h2>Where Mars is right now</h2>
-              <p className="text-muted mars-panel-lead">
-                Top-down view of the ecliptic plane. Positions update about once a
-                minute from approximate JPL Keplerian elements.
-              </p>
-              <div className="mars-orbit-wrap">
-                {geo ? (
-                  <OrbitDiagram earth={geo.earth} mars={geo.mars} au={geo.au} />
-                ) : (
-                  <p className="text-muted">Computing geometry…</p>
-                )}
-              </div>
+          <div className="glass glass-card scaffold-card mars-panel mars-orbit-section">
+            <span className="eyebrow">Orbit sketch</span>
+            <h2>Where Mars is right now</h2>
+            <p className="text-muted mars-panel-lead">
+              Top-down view of the ecliptic plane. Positions update about once a
+              minute from approximate JPL Keplerian elements.
+            </p>
+            <div className="mars-orbit-wrap">
+              {geo ? (
+                <OrbitDiagram earth={geo.earth} mars={geo.mars} au={geo.au} />
+              ) : (
+                <p className="text-muted">Computing geometry…</p>
+              )}
             </div>
+            {geo ? (
+              <div className="mars-sky-tags" aria-label="Approximate sky direction">
+                <span className="mars-tag">
+                  <span className="mars-tag-label">RA</span>
+                  <span className="mars-tag-value mono">
+                    {Math.floor(geo.raHours)}h{" "}
+                    {String(Math.floor((geo.raHours % 1) * 60)).padStart(2, "0")}m
+                  </span>
+                </span>
+                <span className="mars-tag">
+                  <span className="mars-tag-label">Dec</span>
+                  <span className="mars-tag-value mono">
+                    {(geo.dec >= 0 ? "+" : "") + geo.dec.toFixed(1)}°
+                  </span>
+                </span>
+                <span className="mars-tag">
+                  <span className="mars-tag-label">Note</span>
+                  <span className="mars-tag-value">{elongationNote(geo.elongation)}</span>
+                </span>
+              </div>
+            ) : null}
+          </div>
 
             <div className="glass glass-card scaffold-card mars-panel">
               <span className="eyebrow">From Earth</span>
