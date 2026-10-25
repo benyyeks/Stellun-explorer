@@ -56,10 +56,7 @@ export const Route = createFileRoute("/")({
       context.queryClient.ensureQueryData(competitionsQueryOptions),
       context.queryClient.ensureQueryData(apodQueryOptions),
     ]);
-    const apodResult = context.queryClient.getQueryData(apodQueryOptions.queryKey) as
-      | { data?: ApodPayload }
-      | undefined;
-    return { apod: apodResult?.data };
+    return {};
   },
   head: () => ({
     meta: [
