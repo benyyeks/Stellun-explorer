@@ -61,36 +61,36 @@ export const Route = createFileRoute("/")({
       | undefined;
     return { apod: apodResult?.data };
   },
-  head: ({ loaderData }) => {
-    const apod = loaderData?.apod;
-    const img = apod?.hdurl || apod?.url || "";
-    const title = apod?.title
-      ? `${apod.title} · STELLUN`
-      : "STELLUN - Space Intelligence Platform";
-    const desc = apod?.explanation
-      ? apod.explanation.slice(0, 200)
-      : "Live satellite tracking, verified space weather, near-Earth object watch, and deep-space mission data from NASA, NOAA, CelesTrak, and JPL.";
-    return {
-      meta: [
-        { title },
-        { name: "description", content: desc },
-        { property: "og:title", content: title },
-        { property: "og:description", content: desc },
-        { property: "og:type", content: "website" },
-        {
-          property: "og:url",
-          content: "https://stellun-explorer.noreplyobitex.workers.dev/",
-        },
-        ...(img
-          ? [
-              { property: "og:image", content: img },
-              { name: "twitter:card", content: "summary_large_image" },
-              { name: "twitter:image", content: img },
-            ]
-          : [{ name: "twitter:card", content: "summary_large_image" }]),
-      ],
-    };
-  },
+  head: () => ({
+    meta: [
+      { title: "STELLUN · Space intelligence dashboard" },
+      {
+        name: "description",
+        content:
+          "Independent space dashboard: orbit tracking, sky conditions, space weather, launches, missions, and study tools. Not affiliated with NASA, NOAA, or ESA.",
+      },
+      { property: "og:title", content: "STELLUN · Space intelligence dashboard" },
+      {
+        property: "og:description",
+        content:
+          "Live orbital context, sky tonight, space weather, launches, and mission intelligence — educational tools from public science feeds.",
+      },
+      { property: "og:type", content: "website" },
+      {
+        property: "og:url",
+        content: "https://stellun-explorer.noreplyobitex.workers.dev/",
+      },
+      // Prefer a static brand image in /public when you have one, e.g. /og-home.png
+      // Until then, omit og:image so scrapers don’t attach APOD to the homepage.
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "STELLUN · Space intelligence dashboard" },
+      {
+        name: "twitter:description",
+        content:
+          "Orbit tracking, sky conditions, space weather, launches, and missions — educational space tools.",
+      },
+    ],
+  }),
   staleTime: 60_000,
   pendingMs: 0,
   pendingComponent: LandingSkeleton,
