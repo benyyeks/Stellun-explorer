@@ -50,7 +50,9 @@ export function SiteFooter() {
             &copy; {year} STELLUN. Data courtesy of NASA, NOAA, CelesTrak, and
             JPL.
           </span>
-          <span className="mono">Built with real, verified data. No filler numbers.</span>
+          <span className="mono">
+            Public science feeds · educational use · not for operational decisions
+          </span>
         </div>
       </div>
     </footer>
