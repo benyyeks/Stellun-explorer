@@ -69,27 +69,16 @@ type Hourly = {
 };
 
 type Daily = {
- Reviewing the Sky Tonight page and weather data paths so we can add a full-day forecast with a space-appropriate layout.Plan: expand the earth-weather API for a full-day hourly series, then add an observing-weather panel on **Sky Tonight** (space aesthetic, not a generic weather app).
+  time: string[];
+  weather_code: (number | null)[];
+  temperature_2m_max: (number | null)[];
+  temperature_2m_min: (number | null)[];
+  sunrise: string[];
+  sunset: string[];
+  precipitation_sum: (number | null)[];
+  precipitation_probability_max?: (number | null)[];
+};
 
----
-
-## Structure
-
-| Layer | Role |
-|--------|------|
-| `getEarthWeather` | Open-Meteo: **current** + **hourly for today/tomorrow** (cloud, precip chance, temp, code) |
-| Sky Tonight section | “Observing conditions” under location controls — full-day strip + “best windows” |
-| Homepage widget | Stays **current only** (already separate) |
-
-Space feel: glass cards, mono times, cloud % as the hero metric (stargazing), soft day/night tone — not bright “rain radar” chrome.
-
----
-
-## 1) Expand API — `src/lib/stellun-data.functions.ts`
-
-**Find** the whole `getEarthWeather` block:
-
-```ts
 export const getEarthWeather = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => WeatherInput.parse(input ?? {}))
   .handler(async ({ data }) => {
