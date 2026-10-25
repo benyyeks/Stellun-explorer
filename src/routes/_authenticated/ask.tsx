@@ -621,10 +621,12 @@ function AskPage() {
             )}
           </form>
           <p className="ask-scope-note">
-            STELLUN answers questions about space and space studies only.
+            Space and space-studies questions only. AI can be wrong or outdated—not
+            professional, navigational, or safety advice. Do not paste passwords or
+            sensitive personal data.
             {history.signedIn
-              ? " Saved chats stay on your account and can be deleted at any time."
-              : ""}
+              ? " Saved chats stay on your account; delete any chat (or all) anytime from this page."
+              : " Signed out, this chat is not kept as a permanent account history."}
           </p>
         </div>
       </div>
