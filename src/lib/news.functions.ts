@@ -59,7 +59,26 @@ export const getLatestNews = createServerFn({ method: "GET" }).handler(async () 
 });
 
 // ---------------------------- Competitions ---------------------------------
-export type CompetitionItem = Database["public"]["Tables"]["competitions"]["Row"];
+export type CompetitionItem = {
+  id: number;
+  name: string;
+  organizer: string | null;
+  description: string | null;
+  summary: string | null;
+  url: string;
+  category: string | null;
+  region: string | null;
+  opens_at: string | null;
+  deadline: string | null;
+  is_active: boolean;
+  created_at: string;
+  image_url: string | null;
+  eligibility: string | null;
+  prizes: string | null;
+  fee: string | null;
+  tags: string[] | null;
+};
+
 export type CompetitionsResult = { items: CompetitionItem[]; error: string | null };
 
 export const getCompetitions = createServerFn({ method: "GET" }).handler(async () => {
@@ -69,21 +88,21 @@ export const getCompetitions = createServerFn({ method: "GET" }).handler(async (
   const { data, error } = await supabase
     .from("competitions")
     .select(
-      "id,name,organizer,description,url,category,opens_at,deadline,is_active,created_at",
+      "id,name,organizer,description,summary,url,category,region,opens_at,deadline,is_active,created_at,image_url,eligibility,prizes,fee,tags",
     )
     .eq("is_active", true)
     .or(`deadline.is.null,deadline.gte.${today}`)
     .order("deadline", { ascending: true, nullsFirst: false })
-    .limit(12);
+    .limit(40);
 
   if (error) {
+    console.error("getCompetitions", error);
     return {
       items: [],
       error: "Competitions are unavailable right now.",
     } satisfies CompetitionsResult;
   }
 
-  // Extra safety if PostgREST or filter is picky
   const items = ((data ?? []) as CompetitionItem[]).filter((c) => {
     if (!c.deadline) return true;
     return c.deadline >= today;
