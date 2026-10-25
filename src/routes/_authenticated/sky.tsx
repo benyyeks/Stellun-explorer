@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getEarthWeather } from "@/lib/stellun-data.functions";
 import { createFileRoute } from "@tanstack/react-router";
