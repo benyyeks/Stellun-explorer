@@ -3873,3 +3873,128 @@ html, body { overflow-x: clip; }
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+/* Sky Tonight — observing weather (24h) */
+.sky-obs-panel {
+  margin-bottom: 24px;
+}
+.sky-obs-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.sky-obs-head h2 {
+  margin: 4px 0 0;
+  font-size: 1.35rem;
+}
+.sky-obs-now {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-border, #888) 35%, transparent);
+}
+.sky-obs-now-temp {
+  display: flex;
+  align-items: flex-start;
+  line-height: 1;
+}
+.sky-obs-deg {
+  font-size: 2.75rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+.sky-obs-unit {
+  margin-top: 0.35rem;
+  opacity: 0.65;
+  font-size: 1rem;
+}
+.sky-obs-now-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.92rem;
+}
+.sky-obs-best {
+  margin-bottom: 16px;
+}
+.sky-obs-best-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.sky-obs-best-chip {
+  flex: 1 1 140px;
+  min-width: 120px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--color-accent, #6af) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-accent, #6af) 28%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.82rem;
+}
+.sky-obs-timeline {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(44px, 1fr);
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+}
+.sky-obs-hour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 120px;
+  padding: 6px 2px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--color-surface, #111) 40%, transparent);
+}
+.sky-obs-hour.is-night {
+  background: color-mix(in oklab, #1a1a2e 55%, transparent);
+}
+.sky-obs-hour.is-good {
+  outline: 1px solid color-mix(in oklab, var(--color-accent, #6af) 50%, transparent);
+}
+.sky-obs-hour-time {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+.sky-obs-hour-bar {
+  flex: 1;
+  width: 14px;
+  min-height: 48px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-border, #666) 40%, transparent);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.sky-obs-hour-fill {
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-accent, #7cf) 90%, white),
+    color-mix(in oklab, var(--color-accent, #5af) 50%, transparent)
+  );
+}
+.sky-obs-hour-cloud {
+  font-size: 0.65rem;
+  opacity: 0.85;
+}
+.sky-obs-hour-temp {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
