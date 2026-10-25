@@ -251,7 +251,7 @@ function ObservingWeatherPanel({ lat, lon }: { lat: number; lon: number }) {
         <div>
           <span className="eyebrow">Observing weather · next 24 h</span>
           <h2>Sky conditions for your site</h2>
-          <p className="text-muted" style={{ margin: "6px", maxWidth: 100 }}>
+          <p className="text-muted" style={{ margin: "6px", maxWidth: 500 }}>
             Refreshes about every five minutes.
           </p>
         </div>
