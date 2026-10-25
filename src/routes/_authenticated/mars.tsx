@@ -127,7 +127,6 @@ function MarsPage() {
           <p className="tagline">
             Live Earth–Mars distance from orbital mechanics, and the latest public
             frames from Perseverance, Curiosity, and other surface missions.
-            Educational context — not operational tracking.
           </p>
         </div>
       </section>
