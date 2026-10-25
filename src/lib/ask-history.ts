@@ -1,6 +1,4 @@
-// Saved Stellun AI conversations. Signed-in accounts keep their threads in the
-// cloud so the same questions and answers appear on every device. Signed out,
-// nothing is stored and the page stays session only.
+// Saved Stellun AI conversations (Supabase). Signed-out users stay session-only.
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -21,7 +19,7 @@ const MAX_CONTENT = 20000;
 export function titleFrom(text: string): string {
   const clean = text.replace(/\s+/g, " ").trim();
   if (!clean) return "New chat";
-  return clean.length > 60 ? `${clean.slice(0, 57)}...` : clean;
+  return clean.length > 60 ? clean.slice(0, 57) + "..." : clean;
 }
 
 export function useAskHistory() {
@@ -29,10 +27,12 @@ export function useAskHistory() {
   const userId = user?.id ?? null;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!userId) {
       setConversations([]);
+      setHistoryError(null);
       return;
     }
     setLoading(true);
@@ -42,14 +42,19 @@ export function useAskHistory() {
       .order("updated_at", { ascending: false })
       .limit(60);
     setLoading(false);
-    if (error) return;
+    if (error) {
+      console.error("ask_conversations list", error);
+      setHistoryError("Could not load saved chats.");
+      return;
+    }
+    setHistoryError(null);
     setConversations(
       (data ?? []).map((row) => ({
         id: row.id,
-        title: row.title,
+        title: row.title || "New chat",
         mode: (row.mode as AskMode) ?? "chat",
         updatedAt: row.updated_at,
-      }))
+      })),
     );
   }, [userId]);
 
@@ -57,7 +62,6 @@ export function useAskHistory() {
     void refresh();
   }, [refresh]);
 
-  // Loads the full thread of a saved conversation, oldest message first.
   const loadMessages = useCallback(
     async (conversationId: string): Promise<AskMsg[]> => {
       if (!userId) return [];
@@ -66,28 +70,37 @@ export function useAskHistory() {
         .select("role, content")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
-      if (error || !data) return [];
+      if (error || !data) {
+        if (error) console.error("ask_messages load", error);
+        return [];
+      }
       return data.map((row) => ({
         role: row.role === "assistant" ? "assistant" : "user",
         content: row.content,
       }));
     },
-    [userId]
+    [userId],
   );
 
   const createConversation = useCallback(
     async (firstQuestion: string, mode: AskMode): Promise<string | null> => {
       if (!userId) return null;
+      const title = titleFrom(firstQuestion).slice(0, MAX_TITLE);
       const { data, error } = await supabase
         .from("ask_conversations")
         .insert({
           user_id: userId,
-          title: titleFrom(firstQuestion).slice(0, MAX_TITLE),
+          title,
           mode,
         })
         .select("id, title, mode, updated_at")
         .single();
-      if (error || !data) return null;
+      if (error || !data) {
+        console.error("ask_conversations create", error);
+        setHistoryError("Could not save this chat. Try again while signed in.");
+        return null;
+      }
+      setHistoryError(null);
       setConversations((prev) => [
         {
           id: data.id,
@@ -95,11 +108,11 @@ export function useAskHistory() {
           mode: (data.mode as AskMode) ?? mode,
           updatedAt: data.updated_at,
         },
-        ...prev,
+        ...prev.filter((c) => c.id !== data.id),
       ]);
       return data.id;
     },
-    [userId]
+    [userId],
   );
 
   const appendMessage = useCallback(
@@ -107,27 +120,29 @@ export function useAskHistory() {
       if (!userId) return;
       const content = message.content.trim().slice(0, MAX_CONTENT);
       if (!content) return;
-      await supabase
-        .from("ask_messages")
-        .insert({
-          conversation_id: conversationId,
-          user_id: userId,
-          role: message.role,
-          content,
-        });
-      // Bump the thread so the sidebar keeps the most recent chat on top.
+      const { error } = await supabase.from("ask_messages").insert({
+        conversation_id: conversationId,
+        user_id: userId,
+        role: message.role,
+        content,
+      });
+      if (error) {
+        console.error("ask_messages insert", error);
+        return;
+      }
+      const now = new Date().toISOString();
       await supabase
         .from("ask_conversations")
-        .update({ updated_at: new Date().toISOString() })
+        .update({ updated_at: now })
         .eq("id", conversationId);
       setConversations((prev) => {
         const found = prev.find((c) => c.id === conversationId);
         if (!found) return prev;
         const rest = prev.filter((c) => c.id !== conversationId);
-        return [{ ...found, updatedAt: new Date().toISOString() }, ...rest];
+        return [{ ...found, updatedAt: now }, ...rest];
       });
     },
-    [userId]
+    [userId],
   );
 
   const renameConversation = useCallback(
@@ -139,23 +154,29 @@ export function useAskHistory() {
         .from("ask_conversations")
         .update({ title: clean })
         .eq("id", conversationId);
-      if (error) return;
+      if (error) {
+        console.error("ask_conversations rename", error);
+        return;
+      }
       setConversations((prev) =>
-        prev.map((c) => (c.id === conversationId ? { ...c, title: clean } : c))
+        prev.map((c) => (c.id === conversationId ? { ...c, title: clean } : c)),
       );
     },
-    [userId]
+    [userId],
   );
 
   const setConversationMode = useCallback(
     async (conversationId: string, mode: AskMode) => {
       if (!userId) return;
-      await supabase.from("ask_conversations").update({ mode }).eq("id", conversationId);
+      await supabase
+        .from("ask_conversations")
+        .update({ mode })
+        .eq("id", conversationId);
       setConversations((prev) =>
-        prev.map((c) => (c.id === conversationId ? { ...c, mode } : c))
+        prev.map((c) => (c.id === conversationId ? { ...c, mode } : c)),
       );
     },
-    [userId]
+    [userId],
   );
 
   const deleteConversation = useCallback(
@@ -165,10 +186,13 @@ export function useAskHistory() {
         .from("ask_conversations")
         .delete()
         .eq("id", conversationId);
-      if (error) return;
+      if (error) {
+        console.error("ask_conversations delete", error);
+        return;
+      }
       setConversations((prev) => prev.filter((c) => c.id !== conversationId));
     },
-    [userId]
+    [userId],
   );
 
   const clearAll = useCallback(async () => {
@@ -177,7 +201,10 @@ export function useAskHistory() {
       .from("ask_conversations")
       .delete()
       .eq("user_id", userId);
-    if (error) return;
+    if (error) {
+      console.error("ask_conversations clear", error);
+      return;
+    }
     setConversations([]);
   }, [userId]);
 
@@ -185,6 +212,7 @@ export function useAskHistory() {
     signedIn: Boolean(userId),
     conversations,
     loading,
+    historyError,
     refresh,
     loadMessages,
     createConversation,
