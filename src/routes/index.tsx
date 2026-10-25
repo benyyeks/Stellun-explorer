@@ -419,10 +419,33 @@ function WeatherWidget() {
     }, 5 * 60_000);
     return () => clearInterval(id);
   }, [fetchWeather, state.status]);
+function WeatherWidget() {
+  const fetchWeather = useServerFn(getEarthWeather);
+  const [state, setState] = useState<WeatherState>({ status: "idle" });
+  const coordsRef = useRef<{ lat: number; lon: number } | null>(null);
+
+  useEffect(() => {
+    if (state.status !== "ok" || !coordsRef.current) return;
+    const id = setInterval(async () => {
+      const c = coordsRef.current;
+      if (!c) return;
+      try {
+        const res = await fetchWeather({ data: c });
+        const current = (res?.data as { current?: CurrentWeather } | undefined)?.current;
+        if (current) setState({ status: "ok", current });
+      } catch {
+        /* keep last reading */
+      }
+    }, 5 * 60_000);
+    return () => clearInterval(id);
+  }, [fetchWeather, state.status]);
 
   const requestLocation = () => {
-    if (!navigator.geolocation) {
-      setState({ status: "error", message: "Geolocation is not supported in this browser." });
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setState({
+        status: "error",
+        message: "Location is not available in this browser.",
+      });
       return;
     }
     setState({ status: "locating" });
@@ -436,82 +459,124 @@ function WeatherWidget() {
           if (current) {
             setState({ status: "ok", current });
           } else {
-            setState({ status: "error", message: "Conditions could not be loaded right now." });
+            setState({
+              status: "error",
+              message: "Weather came back empty. Try again in a moment.",
+            });
           }
         } catch {
-          setState({ status: "error", message: "Conditions could not be loaded right now." });
+          setState({
+            status: "error",
+            message: "Could not load weather for that location.",
+          });
         }
       },
       (err) => {
-        setState({
-          status: "error",
-          message: err.code === 1 ? "Location permission denied." : "Could not get your location.",
-        });
+        const message =
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission was denied. You can enable it in browser settings."
+            : err.code === err.TIMEOUT
+              ? "Location request timed out. Try again."
+              : "Could not read your location.";
+        setState({ status: "error", message });
       },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+      { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 },
     );
   };
 
-  return (
-    <div className="glass glass-card weather-widget">
-      {state.status !== "ok" ? (
-        <div className="weather-request">
+  const reset = () => {
+    coordsRef.current = null;
+    setState({ status: "idle" });
+  };
+
+  if (state.status === "ok") {
+    const c = state.current;
+    const isDay = c.is_day !== 0;
+    const note = observingNote(c.cloud_cover ?? null, isDay);
+
+    return (
+      <div className="glass glass-card weather-widget weather-widget-live">
+        <div className="weather-live-head">
           <div>
             <span className="eyebrow">Local conditions</span>
-            <h3>See the sky through today's weather</h3>
-            <p className="text-muted" style={{ marginBottom: 0 }}>
-  Current local temperature and cloud cover for observing plans. Uses your location
-  only when you allow it; refreshes every few minutes.
-</p>
-            {state.status === "error" ? <p className="weather-error">{state.message}</p> : null}
+            <h3>Now at your location</h3>
+            <p className="text-muted" style={{ margin: "4px 0 0", fontSize: "0.85rem" }}>
+              Current reading · {isDay ? "Daytime" : "Night"} · Open-Meteo
+            </p>
           </div>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={requestLocation}
-            disabled={state.status === "locating"}
-          >
-            {state.status === "locating" ? "Locating..." : "Use my location"}
-          </button>
-        </div>
-      ) : (
-        <div className="weather-result">
-          <div className="weather-temp">
-  {Math.round(state.current.temperature_2m ?? 0)}&deg;C
-  <span className="stat-note" style={{ display: "block", fontSize: "0.75rem", fontWeight: 400 }}>
-    Current conditions · {state.current.is_day === 0 ? "night" : "day"}
-  </span>
-</div>
-          <div className="weather-detail-grid">
-            <div>
-              {WMO_DESCRIPTIONS[state.current.weather_code ?? -1] ?? "Current conditions"}
-              <br />
-              <strong>{Math.round(state.current.cloud_cover ?? 0)}% cloud cover</strong>
-            </div>
-            <div>
-              Feels like
-              <br />
-              <strong>{Math.round(state.current.apparent_temperature ?? 0)}&deg;C</strong>
-            </div>
-            <div>
-              Wind
-              <br />
-              <strong>{Math.round(state.current.wind_speed_10m ?? 0)} km/h</strong>
-            </div>
-            <div>
-              Humidity
-              <br />
-              <strong>{Math.round(state.current.relative_humidity_2m ?? 0)}%</strong>
-            </div>
-            <div className="text-accent" style={{ alignSelf: "center" }}>
-              {observingNote(
-                state.current.cloud_cover ?? null,
-                state.current.is_day !== 0,
-              )}
-            </div>
+          <div className="weather-live-actions">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={requestLocation}>
+              Refresh
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={reset}>
+              Clear
+            </button>
           </div>
         </div>
-      )}
+
+        <div className="weather-live-body">
+          <div className="weather-live-temp">
+            <span className="weather-live-deg">{Math.round(c.temperature_2m ?? 0)}</span>
+            <span className="weather-live-unit">°C</span>
+          </div>
+          <div className="weather-live-summary">
+            <strong>
+              {WMO_DESCRIPTIONS[c.weather_code ?? -1] ?? "Current conditions"}
+            </strong>
+            <span>{Math.round(c.cloud_cover ?? 0)}% cloud cover</span>
+            {note ? <span className="text-accent">{note}</span> : null}
+          </div>
+        </div>
+
+        <div className="weather-live-metrics">
+          <div>
+            <span className="weather-metric-label">Feels like</span>
+            <span className="weather-metric-value">
+              {Math.round(c.apparent_temperature ?? 0)}°C
+            </span>
+          </div>
+          <div>
+            <span className="weather-metric-label">Wind</span>
+            <span className="weather-metric-value">
+              {Math.round(c.wind_speed_10m ?? 0)} km/h
+            </span>
+          </div>
+          <div>
+            <span className="weather-metric-label">Humidity</span>
+            <span className="weather-metric-value">
+              {Math.round(c.relative_humidity_2m ?? 0)}%
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="glass glass-card weather-widget">
+      <div className="weather-request">
+        <div>
+          <span className="eyebrow">Local conditions</span>
+          <h3>Sky conditions near you</h3>
+          <p className="text-muted" style={{ marginBottom: 0 }}>
+            Current temperature and cloud cover for observing plans—not a full
+            multi-day forecast. Location stays on your device until you allow it.
+          </p>
+          {state.status === "error" ? (
+            <p className="weather-error" role="alert">
+              {state.message}
+            </p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={requestLocation}
+          disabled={state.status === "locating"}
+        >
+          {state.status === "locating" ? "Locating…" : "Use my location"}
+        </button>
+      </div>
     </div>
   );
 }
