@@ -370,12 +370,17 @@ const WMO_DESCRIPTIONS: Record<number, string> = {
   95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Severe thunderstorm with hail",
 };
 
-function skyClarityNote(cloudCover: number | null): string {
+function observingNote(cloudCover: number | null, isDay: boolean): string {
   if (cloudCover === null) return "";
+  if (isDay) {
+    if (cloudCover < 30) return "Clear conditions now (daytime).";
+    if (cloudCover < 70) return "Partly cloudy right now.";
+    return "Cloudy right now.";
+  }
   if (cloudCover < 20) return "Excellent for stargazing tonight.";
-  if (cloudCover < 50) return "Decent breaks in the cloud for stargazing.";
-  if (cloudCover < 80) return "Mostly cloudy, stargazing will be difficult.";
-  return "Overcast, not a good night for stargazing.";
+  if (cloudCover < 50) return "Some breaks in the cloud for stargazing.";
+  if (cloudCover < 80) return "Mostly cloudy — stargazing will be difficult.";
+  return "Overcast — poor for stargazing tonight.";
 }
 
 type CurrentWeather = {
@@ -385,6 +390,7 @@ type CurrentWeather = {
   cloud_cover?: number;
   weather_code?: number;
   wind_speed_10m?: number;
+  is_day?: number; // 1 = day, 0 = night
 };
 
 type WeatherState =
@@ -454,9 +460,9 @@ function WeatherWidget() {
             <span className="eyebrow">Local conditions</span>
             <h3>See the sky through today's weather</h3>
             <p className="text-muted" style={{ marginBottom: 0 }}>
-              Cloud cover matters as much as clear skies. Share your location for current
-              conditions, refreshed every few minutes.
-            </p>
+  Current local temperature and cloud cover for observing plans. Uses your location
+  only when you allow it; refreshes every few minutes.
+</p>
             {state.status === "error" ? <p className="weather-error">{state.message}</p> : null}
           </div>
           <button
@@ -470,7 +476,12 @@ function WeatherWidget() {
         </div>
       ) : (
         <div className="weather-result">
-          <div className="weather-temp">{Math.round(state.current.temperature_2m ?? 0)}&deg;C</div>
+          <div className="weather-temp">
+  {Math.round(state.current.temperature_2m ?? 0)}&deg;C
+  <span className="stat-note" style={{ display: "block", fontSize: "0.75rem", fontWeight: 400 }}>
+    Current conditions · {state.current.is_day === 0 ? "night" : "day"}
+  </span>
+</div>
           <div className="weather-detail-grid">
             <div>
               {WMO_DESCRIPTIONS[state.current.weather_code ?? -1] ?? "Current conditions"}
