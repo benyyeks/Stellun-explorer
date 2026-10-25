@@ -228,18 +228,21 @@ function AdminPage() {
                 Visitors read from cache; this panel watches the refresh path that fills it.
               </p>
              <p
-  className="text-muted"
-  style={{ marginTop: 8, fontSize: "0.9rem" }}
-  suppressHydrationWarning
->
-  {diag.data?.lastCycle ? (
-    <>
-      Last recorded cycle <RelativeTime date={diag.data.lastCycle} />.
-    </>
-  ) : (
-    "Waiting for the first refresh cycle."
-  )}
-</p>
+              className="text-muted"
+              style={{ marginTop: 8, fontSize: "0.9rem" }}
+              suppressHydrationWarning
+            >
+              {!mounted
+                ? "Checking latest refresh cycle…"
+                : diag.data?.lastCycle ? (
+                    <>
+                      Last recorded cycle{" "}
+                      <RelativeTime date={diag.data.lastCycle} />.
+                    </>
+                  ) : (
+                    "Waiting for the first refresh cycle."
+                  )}
+            </p>
             </div>
             <div className="admin-hero-actions">
               <button
