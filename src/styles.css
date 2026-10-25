@@ -4103,3 +4103,218 @@ html, body { overflow-x: clip; }
   line-height: 1.5;
   color: color-mix(in oklab, var(--color-text, #eee) 82%, transparent);
 }
+
+
+/* ---- Competitions v2 (home) ---- */
+.competition-grid-v2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+.competition-card-v2 {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.competition-card-v2:hover {
+  border-color: var(--accent, #6cf);
+  transform: translateY(-2px);
+}
+.comp-media {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, #0b1220, #1a2744);
+  overflow: hidden;
+}
+.comp-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.comp-media-fallback {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 30% 20%, #2a4a7a, #0b1220 70%);
+}
+.comp-cat {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+.comp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 14px 16px;
+  flex: 1;
+}
+.comp-body h3 {
+  font-size: 1.02rem;
+  margin: 0;
+  line-height: 1.25;
+}
+.comp-body p {
+  font-size: 0.85rem;
+  margin: 0;
+  opacity: 0.85;
+  flex: 1;
+}
+.comp-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.comp-countdown {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78rem;
+  color: var(--accent, #6cf);
+}
+.comp-countdown.is-expired {
+  color: #f66;
+}
+.comp-open-hint {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+.comp-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+.comp-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.comp-filter-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+  margin-right: 4px;
+}
+.comp-chip {
+  border: 1px solid var(--border, rgba(255,255,255,0.12));
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.comp-chip.is-active {
+  border-color: var(--accent, #6cf);
+  background: color-mix(in srgb, var(--accent, #6cf) 18%, transparent);
+}
+.comp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(4, 8, 16, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(6px);
+}
+.comp-modal {
+  width: min(560px, 100%);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+  position: relative;
+  padding: 0;
+  border-radius: 16px;
+}
+.comp-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.comp-modal-hero {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+}
+.comp-modal-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.comp-modal-body {
+  padding: 18px 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.comp-modal-body h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+.comp-modal-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+.comp-meta {
+  margin: 6px 0 4px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.comp-meta dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+}
+.comp-meta dd {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.section-lead {
+  margin: 6px 0 0;
+  max-width: 42rem;
+  opacity: 0.8;
+  font-size: 0.95rem;
+}
+@media (max-width: 560px) {
+  .competition-grid-v2 {
+    grid-template-columns: 1fr;
+  }
+}
