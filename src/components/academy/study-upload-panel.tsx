@@ -67,6 +67,10 @@ export function StudyUploadPanel({ workspace }: { workspace: StudyWorkspace | nu
       <div className="glass glass-card scaffold-card study-upload-panel">
         <h3>Your books</h3>
         <p className="detail-note">Book references stay in this browser. Reading links last for this visit; Stellun AI receives titles and study notes, not the file contents.</p>
+        <p className="text-faint" style={{ fontSize: "0.85rem" }}>
+  Only upload material you have the right to use. Files stay for your study
+  session as designed; STELLUN is not a public library of copyrighted books.
+</p>
         <form className="study-desk-create" onSubmit={upload}>
           <label className="field-label" htmlFor="upload-book-title">Book title (required)</label>
           <input id="upload-book-title" className="input" required minLength={2} maxLength={MAX_TITLE} value={title} onChange={(e) => setTitle(e.target.value)} />
