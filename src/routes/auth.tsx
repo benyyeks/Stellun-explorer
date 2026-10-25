@@ -235,6 +235,7 @@ function SignInView({ gated }: { gated: boolean }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<{ kind: "error" | "success"; text: string } | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const captchaRef = useRef<HCaptcha | null>(null);
 
   const siteKey = (import.meta.env.VITE_HCAPTCHA_SITE_KEY as string | undefined)?.trim() || "";
@@ -248,6 +249,7 @@ function SignInView({ gated }: { gated: boolean }) {
     setMode(next);
     setStatus(null);
     setPassword("");
+    setAcceptedTerms(false);
     resetCaptcha();
   };
 
@@ -263,11 +265,20 @@ function SignInView({ gated }: { gated: boolean }) {
     }
 
     if (mode === "reset") {
-      if (siteKey && !captchaToken) {
-        setStatus({ kind: "error", text: "Please complete the captcha." });
-        return;
-      }
-      setBusy(true);
+      if (mode === "signup" && !acceptedTerms) {
+      setStatus({
+        kind: "error",
+        text: "Please confirm that you agree to the Terms of Service and Privacy policy.",
+      });
+      return;
+    }
+
+    if (siteKey && !captchaToken) {
+      setStatus({ kind: "error", text: "Please complete the captcha." });
+      return;
+    }
+
+    setBusy(true);
       try {
         const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
           redirectTo: `${window.location.origin}/auth`,
@@ -439,6 +450,39 @@ function SignInView({ gated }: { gated: boolean }) {
             </p>
           ) : null}
 
+{mode === "signup" ? (
+            <label
+              className="form-row"
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "flex-start",
+                marginBottom: 12,
+                fontSize: "0.9rem",
+                lineHeight: 1.4,
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                style={{ marginTop: 3 }}
+              />
+              <span>
+                I am at least 16 years old and I agree to the{" "}
+                <Link to="/terms" target="_blank">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" target="_blank">
+                  Privacy policy
+                </Link>
+                .
+              </span>
+            </label>
+          ) : null}
+          
           {siteKey ? (
             <div className="form-row" style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
               <HCaptcha
@@ -482,8 +526,10 @@ function SignInView({ gated }: { gated: boolean }) {
       </section>
 
       <p className="text-faint" style={{ marginTop: 24, fontSize: "0.85rem", textAlign: "center" }}>
-        By continuing you agree to STELLUN’s use of your email only for account access.{" "}
+        <Link to="/terms">Terms</Link>
+        {" · "}
         <Link to="/privacy">Privacy</Link>
+        . Educational tools only — not for operational or safety-critical decisions.
       </p>
     </>
   );
