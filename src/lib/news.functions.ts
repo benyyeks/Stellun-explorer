@@ -64,19 +64,33 @@ export type CompetitionsResult = { items: CompetitionItem[]; error: string | nul
 
 export const getCompetitions = createServerFn({ method: "GET" }).handler(async () => {
   const supabase = publishableClient();
+  const today = new Date().toISOString().slice(0, 10);
+
   const { data, error } = await supabase
     .from("competitions")
-    .select("id,name,organizer,description,url,category,opens_at,deadline,is_active,created_at")
+    .select(
+      "id,name,organizer,description,url,category,opens_at,deadline,is_active,created_at",
+    )
     .eq("is_active", true)
+    .or(`deadline.is.null,deadline.gte.${today}`)
     .order("deadline", { ascending: true, nullsFirst: false })
-    .limit(6);
+    .limit(12);
 
   if (error) {
-    return { items: [], error: "Competitions are unavailable right now." } satisfies CompetitionsResult;
+    return {
+      items: [],
+      error: "Competitions are unavailable right now.",
+    } satisfies CompetitionsResult;
   }
-  return { items: (data ?? []) as CompetitionItem[], error: null } satisfies CompetitionsResult;
-});
 
+  // Extra safety if PostgREST or filter is picky
+  const items = ((data ?? []) as CompetitionItem[]).filter((c) => {
+    if (!c.deadline) return true;
+    return c.deadline >= today;
+  });
+
+  return { items, error: null } satisfies CompetitionsResult;
+});
 // ------------------------------ Feedback ------------------------------------
 export type FeedbackResult = { ok: boolean; error: string | null; delivered?: boolean };
 
