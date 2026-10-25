@@ -308,21 +308,30 @@ const WeatherInput = z.object({
 
 export const getEarthWeather = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => WeatherInput.parse(input ?? {}))
-  .handler(async ({ data }) => {
+.handler(async ({ data }) => {
     const current =
       "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,pressure_msl,is_day";
     const hourly =
       "temperature_2m,apparent_temperature,cloud_cover,precipitation_probability,precipitation,weather_code,wind_speed_10m,relative_humidity_2m,visibility,is_day";
     const daily =
       "sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max";
+
     const url =
-      "https://api.open-meteo.com/v1/forecast" +
-      `?latitude=\( {data.lat}&longitude= \){data.lon}` +
-      `&current=\( {current}&hourly= \){hourly}&daily=${daily}` +
+      "https://api.open-meteo.com/v1/forecast?latitude=" +
+      String(data.lat) +
+      "&longitude=" +
+      String(data.lon) +
+      "&current=" +
+      current +
+      "&hourly=" +
+      hourly +
+      "&daily=" +
+      daily +
       "&forecast_days=2&timezone=auto";
+
     return cached(
       "weather-earth",
-      { lat: +data.lat.toFixed(3), lon: +data.lon.toFixed(3) },
+      { lat: Number(data.lat.toFixed(3)), lon: Number(data.lon.toFixed(3)) },
       300,
       () => fetchJson(url, { timeoutMs: 12000 }),
     );
