@@ -70,7 +70,7 @@ type Hourly = {
 
 type Daily = {
  Reviewing the Sky Tonight page and weather data paths so we can add a full-day forecast with a space-appropriate layout.Plan: expand the earth-weather API for a full-day hourly series, then add an observing-weather panel on **Sky Tonight** (space aesthetic, not a generic weather app).
-
+;
 ---
 
 ## Structure
