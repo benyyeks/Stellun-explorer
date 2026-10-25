@@ -21,17 +21,35 @@ type Apod = {
 
 export const Route = createFileRoute("/apod")({
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(apodQueryOptions);
+    const result = await context.queryClient.ensureQueryData(apodQueryOptions);
+    const apod = (result as { data?: Apod } | undefined)?.data;
+    return { apod };
   },
   head: ({ loaderData }) => {
-    // head runs on server; read from query cache if available via loader
+    const apod = loaderData?.apod;
+    const img = apod?.hdurl || apod?.url || "";
+    const title = apod?.title
+      ? `${apod.title} · STELLUN`
+      : "Astronomy Picture of the Day · STELLUN";
+    const desc = (apod?.explanation || "NASA’s Astronomy Picture of the Day on STELLUN.").slice(0, 200);
     return {
       meta: [
-        { title: "Astronomy Picture of the Day · STELLUN" },
+        { title },
+        { name: "description", content: desc },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc },
+        { property: "og:type", content: "website" },
         {
-          name: "description",
-          content: "NASA’s Astronomy Picture of the Day, on STELLUN.",
+          property: "og:url",
+          content: "https://stellun-explorer.noreplyobitex.workers.dev/apod",
         },
+        ...(img
+          ? [
+              { property: "og:image", content: img },
+              { name: "twitter:card", content: "summary_large_image" },
+              { name: "twitter:image", content: img },
+            ]
+          : [{ name: "twitter:card", content: "summary_large_image" }]),
       ],
     };
   },
