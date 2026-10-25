@@ -854,7 +854,7 @@ function ApodSection() {
   const shareUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/#apod`
-      : "https://stellun-explorer.noreplyobitex.workers.dev/#apod";
+      : "https://stellun-explorer.noreplyobitex.workers.dev/apod";
 
   const caption = [
     title,
