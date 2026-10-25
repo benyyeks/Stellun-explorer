@@ -504,7 +504,10 @@ function WeatherWidget() {
               <strong>{Math.round(state.current.relative_humidity_2m ?? 0)}%</strong>
             </div>
             <div className="text-accent" style={{ alignSelf: "center" }}>
-              {skyClarityNote(state.current.cloud_cover ?? null)}
+              {observingNote(
+                state.current.cloud_cover ?? null,
+                state.current.is_day !== 0,
+              )}
             </div>
           </div>
         </div>
