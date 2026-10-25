@@ -695,43 +695,277 @@ function NewsSection() {
 }
 
 // ------------------------------ Competitions ---------------------------------
-function CompetitionCard({ comp }: { comp: CompetitionItem }) {
-  const deadline = comp.deadline
-    ? new Date(comp.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    : null;
+
+function deadlineEndMs(deadline: string | null): number | null {
+  if (!deadline) return null;
+  // End of deadline day UTC
+  const t = Date.parse(deadline + "T23:59:59.000Z");
+  return Number.isFinite(t) ? t : null;
+}
+
+function useCountdown(deadline: string | null) {
+  const end = deadlineEndMs(deadline);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (end == null) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [end]);
+  if (end == null) return { expired: false, label: "See site for dates" };
+  const ms = end - now;
+  if (ms <= 0) return { expired: true, label: "Closed" };
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const label =
+    d > 0
+      ? `${d}d ${h}h ${m}m`
+      : h > 0
+        ? `${h}h ${m}m ${sec}s`
+        : `${m}m ${sec}s`;
+  return { expired: false, label };
+}
+
+function CompetitionCountdown({ deadline }: { deadline: string | null }) {
+  const { expired, label } = useCountdown(deadline);
   return (
-    <a className="glass glass-card competition-card interactive" href={comp.url} target="_blank" rel="noopener noreferrer">
-      {comp.category ? <span className="badge badge-accent">{safeText(comp.category, 30)}</span> : null}
-      <h3>{safeText(comp.name, 80)}</h3>
-      <div className="competition-org">{safeText(comp.organizer ?? "", 60)}</div>
-      {comp.description ? <p>{safeText(comp.description, 160)}</p> : null}
-      <div className="competition-deadline">
-        {deadline ? `Deadline: ${deadline}` : "See site for current dates"}
+    <span className={`comp-countdown${expired ? " is-expired" : ""}`}>
+      {expired ? "Closed" : `Closes in ${label}`}
+    </span>
+  );
+}
+
+function CompetitionCard({
+  comp,
+  onOpen,
+}: {
+  comp: CompetitionItem;
+  onOpen: (c: CompetitionItem) => void;
+}) {
+  const { expired } = useCountdown(comp.deadline);
+  if (expired) return null;
+
+  return (
+    <button
+      type="button"
+      className="glass glass-card competition-card-v2 interactive"
+      onClick={() => onOpen(comp)}
+    >
+      <div className="comp-media">
+        {comp.image_url ? (
+          <img src={comp.image_url} alt="" loading="lazy" />
+        ) : (
+          <div className="comp-media-fallback" aria-hidden />
+        )}
+        {comp.category ? (
+          <span className="comp-cat">{safeText(comp.category, 24)}</span>
+        ) : null}
       </div>
-    </a>
+      <div className="comp-body">
+        <h3>{safeText(comp.name, 90)}</h3>
+        <div className="competition-org">
+          {safeText(comp.organizer ?? "", 70)}
+          {comp.region ? ` · ${safeText(comp.region, 40)}` : ""}
+        </div>
+        <p>{safeText(comp.summary ?? comp.description ?? "", 140)}</p>
+        <div className="comp-foot">
+          <CompetitionCountdown deadline={comp.deadline} />
+          <span className="comp-open-hint">Details</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function CompetitionModal({
+  comp,
+  onClose,
+}: {
+  comp: CompetitionItem;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div className="comp-modal-backdrop" role="presentation" onClick={onClose}>
+      <div
+        className="glass glass-card comp-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="comp-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button type="button" className="comp-modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        {comp.image_url ? (
+          <div className="comp-modal-hero">
+            <img src={comp.image_url} alt="" />
+          </div>
+        ) : null}
+        <div className="comp-modal-body">
+          {comp.category ? <span className="badge badge-accent">{comp.category}</span> : null}
+          <h2 id="comp-modal-title">{comp.name}</h2>
+          <p className="competition-org">
+            {comp.organizer}
+            {comp.region ? ` · ${comp.region}` : ""}
+          </p>
+          <CompetitionCountdown deadline={comp.deadline} />
+          <p className="comp-modal-desc">{comp.description ?? comp.summary}</p>
+          <dl className="comp-meta">
+            {comp.eligibility ? (
+              <>
+                <dt>Eligibility</dt>
+                <dd>{comp.eligibility}</dd>
+              </>
+            ) : null}
+            {comp.prizes ? (
+              <>
+                <dt>Recognition / prizes</dt>
+                <dd>{comp.prizes}</dd>
+              </>
+            ) : null}
+            {comp.fee ? (
+              <>
+                <dt>Cost</dt>
+                <dd>{comp.fee}</dd>
+              </>
+            ) : null}
+            {comp.deadline ? (
+              <>
+                <dt>Application deadline</dt>
+                <dd>
+                  {new Date(comp.deadline + "T12:00:00Z").toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </dd>
+              </>
+            ) : null}
+          </dl>
+          <a
+            className="btn btn-primary"
+            href={comp.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Apply / official site
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function CompetitionsSection() {
   const { data } = useSuspenseQuery(competitionsQueryOptions);
-  if (!data.items?.length) return null;
+  const [filter, setFilter] = useState<string>("All");
+  const [region, setRegion] = useState<string>("All");
+  const [selected, setSelected] = useState<CompetitionItem | null>(null);
+  const [, setTick] = useState(0);
+
+  // Re-render once a minute so expired cards drop without a full reload
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const raw = data.items ?? [];
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of raw) if (c.category) set.add(c.category);
+    return ["All", ...Array.from(set).sort()];
+  }, [raw]);
+  const regions = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of raw) if (c.region) set.add(c.region);
+    return ["All", ...Array.from(set).sort()];
+  }, [raw]);
+
+  const items = useMemo(() => {
+    const now = Date.now();
+    return raw.filter((c) => {
+      const end = deadlineEndMs(c.deadline);
+      if (end != null && end <= now) return false;
+      if (filter !== "All" && c.category !== filter) return false;
+      if (region !== "All" && c.region !== region) return false;
+      return true;
+    });
+  }, [raw, filter, region]);
+
+  if (!raw.length) return null;
+
   return (
-    <section className="tight">
+    <section className="tight" id="competitions">
       <div className="container">
         <div className="section-head">
           <span className="eyebrow">Get involved</span>
-          <h2>Aerospace competitions &amp; hackathons</h2>
+          <h2>STEM competitions &amp; hackathons</h2>
+          <p className="section-lead">
+            Open windows across aerospace, robotics, coding, and science. Cards disappear
+            automatically when the application deadline passes.
+          </p>
         </div>
-        <div className="news-grid">
-          {data.items.map((c) => (
-            <CompetitionCard key={c.id} comp={c} />
-          ))}
+
+        <div className="comp-filters" role="toolbar" aria-label="Filter competitions">
+          <div className="comp-filter-row">
+            <span className="comp-filter-label">Field</span>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`comp-chip${filter === cat ? " is-active" : ""}`}
+                onClick={() => setFilter(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <div className="comp-filter-row">
+            <span className="comp-filter-label">Region</span>
+            {regions.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={`comp-chip${region === r ? " is-active" : ""}`}
+                onClick={() => setRegion(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {items.length === 0 ? (
+          <p className="text-muted">No open competitions match these filters right now.</p>
+        ) : (
+          <div className="competition-grid-v2">
+            {items.map((c) => (
+              <CompetitionCard key={c.id} comp={c} onOpen={setSelected} />
+            ))}
+          </div>
+        )}
       </div>
+      {selected ? (
+        <CompetitionModal comp={selected} onClose={() => setSelected(null)} />
+      ) : null}
     </section>
   );
 }
-
 // ------------------------------ Feedback form --------------------------------
 type FormStatus = { kind: "success" | "error"; message: string } | null;
 
