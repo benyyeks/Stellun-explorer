@@ -12,7 +12,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { knowledgeBlock } from "@/lib/stellun-knowledge";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
+// Prefer the free router; fall back if a provider is out of capacity (402/429).
+const MODEL_CANDIDATES = [
+  "openrouter/free",
+  "google/gemma-4-26b-a4b-it:free",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+  "liquid/lfm-2.5-2.6b:free",
+] as const;
 const MAX_MESSAGES = 24;
 const MAX_CONTENT = 2000;
 
@@ -426,45 +432,67 @@ export const Route = createFileRoute("/api/ask")({
         const context = await liveContext();
         const system = buildSystemPrompt(parsed.mode, context);
 
-        let upstream: Response;
+        let upstream: Response | null = null;
+        let lastStatus = 0;
         try {
-          upstream = await fetch(OPENROUTER_URL, {
-            method: "POST",
-            signal: request.signal,
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-              "HTTP-Referer": "https://orbitex-explorer.lovable.app",
-              "X-OpenRouter-Title": "STELLUN",
-            },
-            body: JSON.stringify({
-              model: MODEL,
-              stream: true,
-              messages: [{ role: "system", content: system }, ...parsed.messages],
-              tools: [
-                {
-                  type: "openrouter:web_search",
-                  parameters: {
+          for (const model of MODEL_CANDIDATES) {
+            upstream = await fetch(OPENROUTER_URL, {
+              method: "POST",
+              signal: request.signal,
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + apiKey,
+                "HTTP-Referer": "https://stellun-explorer.noreplyobitex.workers.dev",
+                "X-OpenRouter-Title": "STELLUN",
+              },
+              body: JSON.stringify({
+                model,
+                stream: true,
+                messages: [{ role: "system", content: system }, ...parsed.messages],
+                // Keep tools only on models that support them; free router may ignore.
+                plugins: [
+                  {
+                    id: "web",
                     max_results: 5,
-                    max_total_results: 8,
-                    allowed_domains: [...SEARCH_DOMAINS],
+                    include_domains: [...SEARCH_DOMAINS],
                   },
-                },
-              ],
-              plugins: [
-                {
-                  id: "web",
-                  max_results: 5,
-                  include_domains: [...SEARCH_DOMAINS],
-                },
-              ],
-            }),
-          });
+                ],
+              }),
+            });
+            lastStatus = upstream.status;
+            if (upstream.ok && upstream.body) break;
+            if (upstream.body) void upstream.body.cancel().catch(() => {});
+            // Try next free model on capacity / payment / rate limit
+            if (upstream.status === 402 || upstream.status === 429) {
+              upstream = null;
+              continue;
+            }
+            break;
+          }
         } catch (err) {
           if (err instanceof DOMException && err.name === "AbortError") {
             return new Response(null, { status: 499 });
           }
           return Response.json({ error: "assistant_unavailable" }, { status: 502 });
+        }
+
+        if (!upstream || !upstream.ok || !upstream.body) {
+          if (lastStatus === 402) {
+            return Response.json(
+              {
+                error: "free_model_unavailable",
+                message: "Stellun AI is offline until a free model is available.",
+              },
+              { status: 402 },
+            );
+          }
+          if (lastStatus === 429) {
+            return Response.json({ error: "rate_limited" }, { status: 429 });
+          }
+          if (lastStatus === 401 || lastStatus === 403) {
+            return Response.json({ error: "assistant_unavailable" }, { status: lastStatus });
+          }
+          return Response.json({ error: "assistant_unavailable" }, { status: 503 });
         }
 
         if (!upstream.ok || !upstream.body) {
