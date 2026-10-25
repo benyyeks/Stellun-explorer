@@ -190,7 +190,7 @@ function MarsPage() {
             <span className="eyebrow">About this page</span>
             <p>
               Distances and sky position are computed in your browser from published
-              elements — not a live ranging feed. Surface photos come from NASA’s public
+              elements. Surface photos come from NASA’s public
               rover image APIs and may lag by sols. There is no live Mars weather panel
               here; atmospheric data from landers is sparse and mission-specific.
             </p>
