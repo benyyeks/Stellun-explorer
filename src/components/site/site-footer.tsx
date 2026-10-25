@@ -34,6 +34,7 @@ export function SiteFooter() {
           </div>
           <div className="footer-col">
             <h4>Legal</h4>
+            <Link to="/terms">Terms of Service</Link>
             <Link to="/privacy">Privacy policy</Link>
             <a
               href="https://www.nasa.gov/nasa-brand-center/images-and-media/"
