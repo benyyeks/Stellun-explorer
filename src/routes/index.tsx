@@ -405,26 +405,6 @@ function WeatherWidget() {
   const coordsRef = useRef<{ lat: number; lon: number } | null>(null);
 
   useEffect(() => {
-    if (!coordsRef.current) return;
-    const id = setInterval(async () => {
-      const c = coordsRef.current;
-      if (!c) return;
-      try {
-        const res = await fetchWeather({ data: c });
-        const current = (res?.data as { current?: CurrentWeather } | undefined)?.current;
-        if (current) setState({ status: "ok", current });
-      } catch {
-        /* keep last reading */
-      }
-    }, 5 * 60_000);
-    return () => clearInterval(id);
-  }, [fetchWeather, state.status]);
-function WeatherWidget() {
-  const fetchWeather = useServerFn(getEarthWeather);
-  const [state, setState] = useState<WeatherState>({ status: "idle" });
-  const coordsRef = useRef<{ lat: number; lon: number } | null>(null);
-
-  useEffect(() => {
     if (state.status !== "ok" || !coordsRef.current) return;
     const id = setInterval(async () => {
       const c = coordsRef.current;
