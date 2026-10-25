@@ -110,6 +110,10 @@ function AdminPage() {
 
   const [refreshNote, setRefreshNote] = useState<ManualRefreshResult | null>(null);
   const [panel, setPanel] = useState<"dashboard" | "suggestions" | "errors">("dashboard");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const suggestionsQ = useQuery({
     queryKey: ["admin-suggestions"],
