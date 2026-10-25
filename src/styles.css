@@ -4006,11 +4006,36 @@ html, body { overflow-x: clip; }
 .mars-stat-grid {
   margin-bottom: 1.5rem;
 }
-.mars-split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
+.mars-orbit-section {
   margin-bottom: 1.25rem;
+}
+.mars-sky-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in oklab, var(--color-border, #888) 35%, transparent);
+}
+.mars-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: color-mix(in oklab, var(--color-surface, #111) 50%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-border, #888) 40%, transparent);
+}
+.mars-tag-label {
+  opacity: 0.65;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mars-tag-value {
+  font-weight: 600;
 }
 @media (max-width: 800px) {
   .mars-split {
