@@ -12,7 +12,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { knowledgeBlock } from "@/lib/stellun-knowledge";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
+// Prefer the free router; fall back if a provider is out of capacity (402/429).
+const MODEL_CANDIDATES = [
+  "openrouter/free",
+  "google/gemma-4-26b-a4b-it:free",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+  "liquid/lfm-2.5-2.6b:free",
+] as const;
 const MAX_MESSAGES = 24;
 const MAX_CONTENT = 2000;
 
