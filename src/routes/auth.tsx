@@ -372,8 +372,8 @@ function SignInView({ gated }: { gated: boolean }) {
           <div className="auth-mode-block">
             <p className="auth-mode-hint">
               {mode === "signin"
-                ? "Already have an account? Stay on Sign in."
-                : "New here? You’re on Create account."}
+                ? "Welcome back, let's see what space has in store for you today"
+                : "New here? You are welcome; let's get to know you."}
             </p>
             <div className="auth-tabs" role="tablist" aria-label="Sign in or create account">
               <button
