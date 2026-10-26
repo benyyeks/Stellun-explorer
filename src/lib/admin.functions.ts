@@ -87,6 +87,7 @@ const FEED_META: Record<string, { label: string; category: FeedCategory }> = {
   "mars-perseverance": { label: "Mars Perseverance imagery", category: "missions" },
   asteroids: { label: "Near-Earth objects", category: "missions" },
   "picture-of-the-day": { label: "Astronomy Picture of the Day", category: "missions" },
+  "space-news": { label: "Space news (SNAPI + NASA)", category: "missions" },
 };
 
 function metaFor(feed: string) {
