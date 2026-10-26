@@ -436,19 +436,35 @@ function SignInView({ gated }: { gated: boolean }) {
             </p>
           ) : null}
 
-          {mode === "reset" ? (
-            <p className="text-muted" style={{ fontSize: "0.9rem", marginBottom: 14 }}>
-              Remembered it?{" "}
+          {mode !== "reset" ? (
+          <div className="auth-mode-block">
+            <p className="auth-mode-hint">
+              {mode === "signin"
+                ? "Already have an account? Stay on Sign in."
+                : "New here? You’re on Create account."}
+            </p>
+            <div className="auth-tabs" role="tablist" aria-label="Sign in or create account">
               <button
                 type="button"
-                className="btn btn-ghost btn-sm"
-                style={{ padding: 0, textDecoration: "underline", background: "none", border: "none", cursor: "pointer" }}
+                role="tab"
+                aria-selected={mode === "signin"}
+                className={`auth-tab${mode === "signin" ? " is-active" : ""}`}
                 onClick={() => switchMode("signin")}
               >
-                Back to sign in
+                Sign in
               </button>
-            </p>
-          ) : null}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "signup"}
+                className={`auth-tab${mode === "signup" ? " is-active" : ""}`}
+                onClick={() => switchMode("signup")}
+              >
+                Create account
+              </button>
+            </div>
+          </div>
+        ) : null}
 
 {mode === "signup" ? (
             <label
@@ -515,6 +531,26 @@ function SignInView({ gated }: { gated: boolean }) {
                   ? "Send reset link"
                   : "Create account"}
           </button>
+
+          {mode === "signin" || mode === "signup" ? (
+            <p className="auth-switch-line">
+              {mode === "signin" ? (
+                <>
+                  Don’t have an account?{" "}
+                  <button type="button" className="auth-switch-link" onClick={() => switchMode("signup")}>
+                    Create account
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already registered?{" "}
+                  <button type="button" className="auth-switch-link" onClick={() => switchMode("signin")}>
+                    Sign in
+                  </button>
+                </>
+              )}
+            </p>
+          ) : null}
 
           <p
             className={`form-status${status ? ` ${status.kind}` : ""}`}
