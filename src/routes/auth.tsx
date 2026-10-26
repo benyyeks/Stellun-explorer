@@ -540,9 +540,8 @@ function SignInView({ gated }: { gated: boolean }) {
 
       <p className="text-faint" style={{ marginTop: 24, fontSize: "0.85rem", textAlign: "center" }}>
         <Link to="/terms">Terms</Link>
-        {" · "}
+        {" & "}
         <Link to="/privacy">Privacy</Link>
-        . Educational tools only — not for operational or safety-critical decisions.
       </p>
     </>
   );
