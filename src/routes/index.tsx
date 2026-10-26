@@ -77,8 +77,25 @@ export const Route = createFileRoute("/")({
         property: "og:url",
         content: "https://stellun-explorer.noreplyobitex.workers.dev/",
       },
-      // Prefer a static brand image in /public when you have one, e.g. /og-home.png
-      // Until then, omit og:image so scrapers don’t attach APOD to the homepage.
+      { property: "og:title", content: "STELLUN · Space intelligence dashboard" },
+{
+  property: "og:description",
+  content:
+    "Orbit tracking, sky conditions, space weather, launches, and missions — educational space tools.",
+},
+{ property: "og:type", content: "website" },
+{ property: "og:url", content: "https://stellun-explorer.noreplyobitex.workers.dev/" },
+{ property: "og:image", content: "https://stellun-explorer.noreplyobitex.workers.dev/og-image.png" },
+{ property: "og:image:width", content: "1200" },
+{ property: "og:image:height", content: "630" },
+{ name: "twitter:card", content: "summary_large_image" },
+{ name: "twitter:title", content: "STELLUN · Space intelligence dashboard" },
+{
+  name: "twitter:description",
+  content:
+    "Orbit tracking, sky conditions, space weather, launches, and missions — educational space tools.",
+},
+{ name: "twitter:image", content: "https://stellun-explorer.noreplyobitex.workers.dev/og-image.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "STELLUN · Space intelligence dashboard" },
       {
