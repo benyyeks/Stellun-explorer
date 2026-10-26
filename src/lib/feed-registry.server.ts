@@ -361,6 +361,19 @@ function feeds(): Feed[] {
           { force: forceRefresh },
         ),
     },
+    {
+      // SNAPI articles/blogs/reports + NASA RSS → space_news table.
+      // Not a heavy CelesTrak catalog — safe on full refresh cycles.
+      name: "space-news",
+      run: async () => {
+        const { refreshNews } = await import("@/lib/news-refresh.server");
+        const r = await refreshNews();
+        if (!r.ok) {
+          throw new Error(r.message || "News refresh failed");
+        }
+        return { source: "fresh" };
+      },
+    },
   ];
 }
 
