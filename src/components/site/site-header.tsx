@@ -77,12 +77,10 @@ export function SiteHeader() {
   const [openSection, setOpenSection] = useState<string | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user, loading } = useAuth();
-  const signedIn = Boolean(user) || loading;
-
-  // Signed out visitors are sent to the sign in page by the route gate, so the
-  // pillars only appear once an account is present.
-  const pillars = signedIn ? PILLARS : [];
-
+  const signedIn = Boolean(user);
+  // Always show the full map of the product. Guests get the same labels;
+  // clicks go to /auth with redirect until they sign in.
+  const pillars = PILLARS;
   useEffect(() => {
     setMenuOpen(false);
     setOpenPillar(null);
