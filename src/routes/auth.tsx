@@ -442,36 +442,7 @@ function SignInView({ gated }: { gated: boolean }) {
             </p>
           ) : null}
 
-          {mode !== "reset" ? (
-          <div className="auth-mode-block">
-            <p className="auth-mode-hint">
-              {mode === "signin"
-                ? "Already have an account? Stay on Sign in."
-                : "New here? You’re on Create account."}
-            </p>
-            <div className="auth-tabs" role="tablist" aria-label="Sign in or create account">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "signin"}
-                className={`auth-tab${mode === "signin" ? " is-active" : ""}`}
-                onClick={() => switchMode("signin")}
-              >
-                Sign in
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "signup"}
-                className={`auth-tab${mode === "signup" ? " is-active" : ""}`}
-                onClick={() => switchMode("signup")}
-              >
-                Create account
-              </button>
-            </div>
-          </div>
-        ) : null}
-
+        
 {mode === "signup" ? (
             <label
               className="form-row"
