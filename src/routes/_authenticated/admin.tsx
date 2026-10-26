@@ -180,7 +180,9 @@ function AdminPage() {
     },
     onSettled: () => setSingleFeedBusy(null),
   });
-  if (role.isPending) {
+  // SSR and the client's first paint must match (React #418).
+  // Defer role-dependent UI until after mount.
+  if (!mounted || role.isPending) {
     return (
       <main className="page-main">
         <div className="container py-16">
@@ -490,7 +492,7 @@ function AdminPage() {
                     <header className="admin-problem-head">
                       <div>
                         <span className="eyebrow">{CATEGORY_LABEL[f.category]}</span>
-                        <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem", margin: "4px 0" }}>
+                         <h3 style={{ fontFamily: "var(--font-heading)", fontSize: "1.1rem", margin: "4px 0" }}>
                           {f.label}
                         </h3>
                         <p className="mono text-faint" style={{ fontSize: "0.75rem", margin: 0 }}>
@@ -867,3 +869,5 @@ function Stat({
     </div>
   );
 }
+
+                  
