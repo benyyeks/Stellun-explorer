@@ -1,4 +1,6 @@
-// Icon = PNG. Wordmark = text (no image background) so glass header shows through.
+// STELLUN brand lockup: PNG icon + transparent PNG wordmark (your designed lettering + U orbit).
+// Light wordmark = dark letters (for light header).
+// Dark wordmark = light letters (for dark mode / navy panels).
 
 /** Orbital mark (square). */
 export function LogoMark({ className }: { className?: string }) {
@@ -24,17 +26,26 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
-/**
- * Text wordmark — rectangular lockup, no PNG plate.
- * "G" uses a crescent accent via CSS (matches brand idea without a boxed image).
- */
+/** Designed STELLUN wordmark — rectangular, transparent background only. */
 export function BrandWord() {
   return (
-    <span className="brand-word-text" aria-label="Stellun">
-      <span className="brand-word-letters">
-        STELLUN
-        <span className="brand-word-crescent" aria-hidden="true" />
-      </span>
+    <span className="brand-word-img" role="img" aria-label="Stellun">
+      <img
+        src="/stellun-wordmark-light.png"
+        alt=""
+        className="brand-word-light"
+        width={785}
+        height={160}
+        decoding="async"
+      />
+      <img
+        src="/stellun-wordmark-dark.png"
+        alt=""
+        className="brand-word-dark"
+        width={754}
+        height={160}
+        decoding="async"
+      />
     </span>
   );
 }
