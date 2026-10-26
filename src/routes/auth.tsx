@@ -369,28 +369,34 @@ function SignInView({ gated }: { gated: boolean }) {
 
       <section className="glass glass-card auth-card">
         {mode !== "reset" ? (
-          <div className="auth-tabs" role="tablist" aria-label="Sign in or create account">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "signin"}
-              className={mode === "signin" ? "active" : ""}
-              onClick={() => switchMode("signin")}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "signup"}
-              className={mode === "signup" ? "active" : ""}
-              onClick={() => switchMode("signup")}
-            >
-              Create account
-            </button>
+          <div className="auth-mode-block">
+            <p className="auth-mode-hint">
+              {mode === "signin"
+                ? "Already have an account? Stay on Sign in."
+                : "New here? You’re on Create account."}
+            </p>
+            <div className="auth-tabs" role="tablist" aria-label="Sign in or create account">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "signin"}
+                className={`auth-tab${mode === "signin" ? " is-active" : ""}`}
+                onClick={() => switchMode("signin")}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "signup"}
+                className={`auth-tab${mode === "signup" ? " is-active" : ""}`}
+                onClick={() => switchMode("signup")}
+              >
+                Create account
+              </button>
+            </div>
           </div>
         ) : null}
-
         <form onSubmit={submit} noValidate>
           <div className="form-row">
             <label htmlFor="auth-email">Email</label>
