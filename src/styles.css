@@ -4319,7 +4319,7 @@ html, body { overflow-x: clip; }
   }
 }
 
-/* ── STELLUN brand (icon PNG + text wordmark, no plate) ── */
+/* ── STELLUN brand: real wordmark PNG, transparent, readable ── */
 .brand {
   display: flex;
   align-items: center;
@@ -4359,64 +4359,57 @@ html, body { overflow-x: clip; }
 .accent-panel .brand-mark-light { display: none !important; }
 .accent-panel .brand-mark-dark { display: block !important; }
 
-/* Text wordmark: wide, readable, no background box */
 .brand-word-img {
-  display: none !important; /* kill old PNG wordmark if still referenced */
-}
-
-.brand-word-text {
-  display: inline-flex;
-  align-items: center;
-  height: 40px;
-  min-width: 9.5rem;
-  max-width: min(220px, 55vw);
-  padding: 0 4px;
+  display: block !important;
+  position: relative;
+  height: 36px;
+  width: auto;
+  max-width: min(240px, 58vw);
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: visible;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  padding: 0 !important;
 }
 
-.brand-word-letters {
-  position: relative;
-  display: inline-block;
-  font-family: var(--font-display, var(--font-heading, system-ui, sans-serif));
-  font-size: clamp(1.15rem, 2.8vw, 1.55rem);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  line-height: 1;
-  color: var(--color-text);
-  text-transform: uppercase;
-  white-space: nowrap;
+.brand-word-img img {
+  display: block;
+  height: 36px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: left center;
+  background: transparent !important;
 }
 
-/* Small crescent sitting on the top of the letter area (brand accent) */
-.brand-word-crescent {
-  position: absolute;
-  top: -0.28em;
-  right: 0.05em;
-  width: 0.55em;
-  height: 0.55em;
-  border: 2px solid var(--color-accent, #6cf);
-  border-bottom-color: transparent;
-  border-left-color: transparent;
-  border-radius: 50%;
-  transform: rotate(-40deg);
-  pointer-events: none;
-  opacity: 0.95;
+.brand-word-light { display: block !important; }
+.brand-word-dark { display: none !important; }
+
+@media (prefers-color-scheme: dark) {
+  .brand-word-light { display: none !important; }
+  .brand-word-dark { display: block !important; }
+}
+
+.accent-panel .brand-word-light { display: none !important; }
+.accent-panel .brand-word-dark { display: block !important; }
+
+.brand-word-text,
+.brand-word-pill {
+  display: none !important;
 }
 
 @media (max-width: 480px) {
   .brand-mark,
-  .brand-mark-img {
-    width: 36px;
-    height: 36px;
-  }
-  .brand-word-text {
-    height: 34px;
-    min-width: 7.5rem;
-  }
-  .brand-word-letters {
-    font-size: 1.05rem;
-    letter-spacing: 0.1em;
-  }
+  .brand-mark-img { width: 36px; height: 36px; }
+  .brand-word-img { height: 28px; max-width: min(180px, 52vw); }
+  .brand-word-img img { height: 28px; }
+}
+
+@media (min-width: 900px) {
+  .brand-mark,
+  .brand-mark-img { width: 48px; height: 48px; }
+  .brand-word-img { height: 40px; max-width: 280px; }
+  .brand-word-img img { height: 40px; }
 }
