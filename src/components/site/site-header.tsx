@@ -114,9 +114,11 @@ export function SiteHeader() {
 
   const renderLink = (link: NavLink, withHint: boolean) => {
     const tab = ACADEMY_TAB[link.id];
+    const targetTo = tab ? "/academy" : link.to;
     const active = tab
       ? isMatch(pathname, "/academy")
       : isMatch(pathname, link.to);
+
     const common = {
       className: withHint ? undefined : "nav-mobile-link",
       "aria-current": active ? ("page" as const) : undefined,
@@ -125,6 +127,7 @@ export function SiteHeader() {
         setMenuOpen(false);
       },
     };
+
     const body = withHint ? (
       <>
         <span>{link.label}</span>
@@ -134,13 +137,36 @@ export function SiteHeader() {
       link.label
     );
 
-    if (tab) {
+    // Guests: same labels, but land on sign-in with redirect back to the tool
+    if (!signedIn && !loading) {
+      const redirect = tab
+        ? `/academy?tab=${tab}`
+        : link.to;
       return (
-        <Link key={link.id} to="/academy" search={{ tab, list: undefined }} {...common}>
+        <Link
+          key={link.id}
+          to="/auth"
+          search={{ redirect }}
+          {...common}
+        >
           {body}
         </Link>
       );
     }
+
+    if (tab) {
+      return (
+        <Link
+          key={link.id}
+          to="/academy"
+          search={{ tab, list: undefined }}
+          {...common}
+        >
+          {body}
+        </Link>
+      );
+    }
+
     return (
       <Link key={link.id} to={link.to} {...common}>
         {body}
@@ -231,6 +257,11 @@ export function SiteHeader() {
             Home
           </Link>
         </div>
+        {!signedIn && !loading ? (
+          <p className="nav-guest-note">
+            Sign in to open tools, save lists, and get results for your location.
+          </p>
+        ) : null}
         {pillars.map((pillar) => {
           const expanded = openSection === pillar.id;
           return (
