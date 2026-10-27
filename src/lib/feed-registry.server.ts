@@ -73,11 +73,19 @@ function normalizeLl2List(ll: any) {
       id: r.id,
       name: r.name,
       net: r.net,
-      status: typeof r.status === "object" ? r.status : { name: String(r.status ?? "Scheduled") },
-      launch_service_provider: { name: r.lsp_name ?? r.launch_service_provider?.name ?? "" },
+      status:
+        typeof r.status === "object"
+          ? r.status
+          : { name: String(r.status ?? "Scheduled") },
+      launch_service_provider: {
+        name: r.lsp_name ?? r.launch_service_provider?.name ?? "",
+      },
       rocket: {
         configuration: {
-          full_name: r.rocket_configuration?.full_name ?? r.rocket?.configuration?.full_name ?? null,
+          full_name:
+            r.rocket_configuration?.full_name ??
+            r.rocket?.configuration?.full_name ??
+            null,
         },
       },
       mission: {
@@ -91,21 +99,26 @@ function normalizeLl2List(ll: any) {
         country_code: r.pad?.country_code ?? null,
       },
       image:
-  typeof r.image === "string"
-    ? r.image
-    : r.image?.image_url ?? r.image?.url ?? r.rocket?.configuration?.image_url ?? null,
+        typeof r.image === "string"
+          ? r.image
+          : (r.image?.image_url ??
+            r.image?.url ??
+            r.rocket?.configuration?.image_url ??
+            null),
       webcast_live: Boolean(r.webcast_live),
       vidURLs: r.vidURLs ?? r.vid_urls ?? [],
     })),
   };
 }
 
+const LL2_UPCOMING =
+  "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&mode=detailed";
+const LL2_PREVIOUS =
+  "https://ll.thespacedevs.com/2.3.0/launches/previous/?limit=12&mode=detailed";
+
 async function fetchUpcomingLaunches() {
   try {
-    const ll = await launchFeed(
-      "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=12&mode=detailed",
-      15000,
-    );
+    const ll = await launchFeed(LL2_UPCOMING, 20000);
     const n = normalizeLl2List(ll);
     if (n.results.length > 0) return n;
   } catch (e) {
@@ -116,16 +129,23 @@ async function fetchUpcomingLaunches() {
       timeoutMs: 12000,
     })) as any[];
     if (!Array.isArray(rows) || rows.length === 0) {
-      return { count: 0, next: null, previous: null, results: [] };
+      throw new Error("SpaceX upcoming returned no launches");
     }
     const results = rows.slice(0, 12).map((l) => ({
       id: l.id,
       name: l.name ?? "SpaceX mission",
       net: l.date_utc ?? null,
-      status: { name: l.upcoming ? "Go" : "Success", abbrev: l.upcoming ? "Go" : "Success" },
+      status: {
+        name: l.upcoming ? "Go" : "Success",
+        abbrev: l.upcoming ? "Go" : "Success",
+      },
       launch_service_provider: { name: "SpaceX" },
       rocket: { configuration: { full_name: "Falcon 9 / Falcon Heavy" } },
-      mission: { type: null, description: l.details ?? null, orbit: { name: null } },
+      mission: {
+        type: null,
+        description: l.details ?? null,
+        orbit: { name: null },
+      },
       pad: { name: null, location: { name: null }, country_code: null },
       image: l.links?.patch?.large ?? l.links?.patch?.small ?? null,
       webcast_live: Boolean(l.links?.webcast),
@@ -141,16 +161,12 @@ async function fetchUpcomingLaunches() {
 }
 
 async function fetchPastLaunches() {
-  try {
-    const ll = await launchFeed(
-      "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=12&mode=detailed",
-      15000,
-    );
-    return normalizeLl2List(ll);
-  } catch (e) {
-    console.error("LL2 past failed:", e);
-    return { count: 0, next: null, previous: null, results: [] };
+  const ll = await launchFeed(LL2_PREVIOUS, 20000);
+  const n = normalizeLl2List(ll);
+  if (!n.results.length) {
+    throw new Error("LL2 previous returned no launches");
   }
+  return n;
 }
 
 /** DONKI first; on failure (often 503) use NOAA SWPC alerts.json. Always an array. */
