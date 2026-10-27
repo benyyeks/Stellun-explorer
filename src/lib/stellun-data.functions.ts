@@ -225,7 +225,7 @@ export const getISSPosition = createServerFn({ method: "GET" })
 // Free: URL only, no key required (15 req/hour/IP). Cache in Supabase via
 // cached() so the page can refresh as often as it wants without hitting LL2.
 const LL2_URL =
-  "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=12&mode=detailed";
+  "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&mode=detailed";
 const SPACEX_UPCOMING = "https://api.spacexdata.com/v5/launches/upcoming";
 
 async function fetchLaunchFeed(url: string, timeoutMs: number) {
