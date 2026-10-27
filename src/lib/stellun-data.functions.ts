@@ -566,7 +566,7 @@ export const getArchiveObservations = createServerFn({ method: "GET" })
 // Cached for six hours since the record no longer changes once a flight flew,
 // which also keeps this feed well inside the upstream request quota.
 const LL2_PREVIOUS_URL =
-  "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=24&mode=detailed";
+  "https://ll.thespacedevs.com/2.3.0/launches/previous/?limit=12&mode=detailed";
 
 export const getPastLaunches = createServerFn({ method: "GET" }).handler(async () => {
   return cached("launches-previous", {}, 21600, () => fetchLaunchFeed(LL2_PREVIOUS_URL, 12000));
