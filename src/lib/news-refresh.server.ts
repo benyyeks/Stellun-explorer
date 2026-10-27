@@ -94,13 +94,26 @@ export async function refreshNews(): Promise<RefreshResult> {
     .filter((r): r is PromiseRejectedResult => r.status === "rejected")
     .map((r) => (r.reason instanceof Error ? r.reason.message : String(r.reason)));
 
-  if (rows.length === 0) {
+if (rows.length === 0) {
     return {
       ok: false,
       statusCode: 502,
       message: `No news could be fetched this run. ${failures.join("; ")}`,
     };
   }
+
+  // Prefer one row per headline (keeps first = usually newest in our merge order).
+  const byTitle = new Map<string, (typeof rows)[number]>();
+  for (const row of rows) {
+    const key = (row.title ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+    if (!key || byTitle.has(key)) continue;
+    byTitle.set(key, row);
+  }
+  const uniqueRows = [...byTitle.values()];
+
+  const { error } = await supabaseAdmin
+    .from("space_news")
+    .upsert(uniqueRows, { onConflict: "id" });
 
   const { error } = await supabaseAdmin.from("space_news").upsert(rows, { onConflict: "id" });
   if (error) {
