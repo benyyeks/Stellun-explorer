@@ -38,6 +38,24 @@ async function fetchContentType({ endpoint, contentType }: ContentType): Promise
   }));
 }
 
+/** Pull first image URL from an RSS item block (enclosure, media:*, or HTML img). */
+function imageFromRssBlock(block: string): string | null {
+  const candidates = [
+    block.match(/<media:content[^>]+url=["']([^"']+)["']/i)?.[1],
+    block.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i)?.[1],
+    block.match(/<enclosure[^>]+url=["']([^"']+\.(?:jpg|jpeg|png|webp|gif)[^"']*)["']/i)?.[1],
+    block.match(/<enclosure[^>]+type=["']image\/[^"']*["'][^>]+url=["']([^"']+)["']/i)?.[1],
+    block.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image\//i)?.[1],
+    block.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1],
+  ];
+  for (const c of candidates) {
+    if (!c) continue;
+    const url = c.trim();
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  }
+  return null;
+}
+
 /** NASA Breaking News RSS → space_news rows (negative ids to avoid SNAPI collision). */
 async function fetchNasaRss(): Promise<NewsRow[]> {
   try {
@@ -58,7 +76,6 @@ async function fetchNasaRss(): Promise<NewsRow[]> {
       const pub = (block.match(/<pubDate>(.*?)<\/pubDate>/i))?.[1]?.trim();
       if (!title || !link) continue;
       i += 1;
-      // Stable negative id from link length + index (SNAPI uses positive ints)
       const id = -100000 - i;
       items.push({
         id,
@@ -66,7 +83,7 @@ async function fetchNasaRss(): Promise<NewsRow[]> {
         title,
         summary: desc?.slice(0, 500) ?? null,
         url: link,
-        image_url: null,
+        image_url: imageFromRssBlock(block),
         news_site: "NASA",
         published_at: pub ? new Date(pub).toISOString() : new Date().toISOString(),
         fetched_at: new Date().toISOString(),
@@ -77,7 +94,6 @@ async function fetchNasaRss(): Promise<NewsRow[]> {
     return [];
   }
 }
-
 export type RefreshResult = { ok: boolean; statusCode: number; message: string; count?: number };
 
 export async function refreshNews(): Promise<RefreshResult> {
@@ -106,8 +122,14 @@ if (rows.length === 0) {
   const byTitle = new Map<string, (typeof rows)[number]>();
   for (const row of rows) {
     const key = (row.title ?? "").toLowerCase().replace(/\s+/g, " ").trim();
-    if (!key || byTitle.has(key)) continue;
-    byTitle.set(key, row);
+    if (!key) continue;
+    const prev = byTitle.get(key);
+    if (!prev) {
+      byTitle.set(key, row);
+      continue;
+    }
+    // Prefer the copy that has an image
+    if (!prev.image_url && row.image_url) byTitle.set(key, row);
   }
   const uniqueRows = [...byTitle.values()];
 
