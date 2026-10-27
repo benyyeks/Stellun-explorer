@@ -55,7 +55,22 @@ export const getLatestNews = createServerFn({ method: "GET" }).handler(async () 
   if (error) {
     return { items: [], error: "Could not reach the news service." } satisfies NewsResult;
   }
-  return { items: (data ?? []) as NewsItem[], error: null } satisfies NewsResult;
+
+  // Same headline can arrive from SNAPI + NASA RSS under different ids.
+  const seen = new Set<string>();
+  const items: NewsItem[] = [];
+  for (const row of (data ?? []) as NewsItem[]) {
+    const key = (row.title ?? "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    items.push(row);
+    if (items.length >= 18) break;
+  }
+
+  return { items, error: null } satisfies NewsResult;
 });
 
 // ---------------------------- Competitions ---------------------------------
