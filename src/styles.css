@@ -4568,38 +4568,78 @@ h3 {
   max-width: 34rem;
 }
 
+/* Section titles: eyebrow + h2 as one block, alternating sides on large screens */
 .section-head {
-  margin: 52px 0 20px;
-  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 48px 0 18px;
+  text-align: left;
+}
+
+.section-head .eyebrow {
+  display: block;
 }
 
 .section-head h2 {
-  font-size: clamp(1.5rem, 1.25rem + 0.8vw, 2rem);
-  font-weight: 650;
+  font-family: var(--font-heading, "Lora", Georgia, serif);
+  font-size: clamp(1.5rem, 1.25rem + 0.8vw, 2.1rem);
+  font-weight: 700;
+  letter-spacing: -0.015em;
   margin: 0;
+  max-width: 22ch;
+  line-height: 1.2;
 }
 
-.section-lead,
-.section-head + p,
-.section-head p {
-  font-family: var(--font-body, Inter, system-ui, sans-serif);
-  font-size: 0.98rem;
-  font-weight: 400;
-  line-height: 1.55;
-  color: var(--color-text-muted, var(--color-text-soft));
-  max-width: 40rem;
+.section-head a {
+  font-size: 0.86rem;
+  color: var(--color-accent);
+  margin-top: 4px;
+}
+
+.section-lead {
   margin: 8px 0 0;
+  max-width: 40rem;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--color-text-muted);
 }
 
-.eyebrow {
-  font-family: var(--font-body, Inter, system-ui, sans-serif);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-text-faint);
+/* Desktop: alternate section headers left / right */
+@media (min-width: 768px) {
+  main.page-main > section:nth-of-type(odd) .section-head {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  main.page-main > section:nth-of-type(even) .section-head {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  main.page-main > section:nth-of-type(even) .section-head h2 {
+    margin-left: auto;
+  }
+
+  main.page-main > section:nth-of-type(even) .section-lead {
+    margin-left: auto;
+    text-align: right;
+  }
 }
 
+/* Phones: always left */
+@media (max-width: 767px) {
+  .section-head {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+  .section-head h2,
+  .section-lead {
+    margin-left: 0 !important;
+    text-align: left !important;
+  }
+}
 /* Cards: title heavier than body */
 .news-card h3,
 .explore-card h3,
