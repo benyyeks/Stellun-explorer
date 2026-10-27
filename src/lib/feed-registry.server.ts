@@ -15,15 +15,33 @@ export function setForceRefresh(v: boolean) {
 
 async function launchFeed(url: string, timeoutMs: number) {
   const raw = (process.env["LAUNCH_LIBRARY_KEY"] ?? "").trim();
-  const token = /^[a-f0-9]{20,}$/i.test(raw) ? raw : "";
-  return fetchJson(
-    url,
-    token
-      ? { timeoutMs, headers: { Authorization: `Token ${token}` } }
-      : { timeoutMs },
-  );
-}
+  // Only send a token if it looks non-empty; never send junk
+  const token = raw.length >= 16 ? raw : "";
 
+  const withAuth = token
+    ? { timeoutMs, headers: { Authorization: `Token ${token}` } }
+    : { timeoutMs };
+
+  try {
+    return await fetchJson(url, withAuth);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+
+    // Invalid / expired key → retry with NO auth (public free tier)
+    if (token && /HTTP (401|403)/.test(msg)) {
+      console.error("LL2 token rejected; retrying without Authorization");
+      return await fetchJson(url, { timeoutMs });
+    }
+
+    // Rate limit → wait once, then retry (prefer without burning a bad token again)
+    if (/HTTP 429/.test(msg)) {
+      await new Promise((r) => setTimeout(r, 3000));
+      return await fetchJson(url, token ? withAuth : { timeoutMs });
+    }
+
+    throw err;
+  }
+}
 function normalizeApod(raw: unknown) {
   const item = Array.isArray(raw) ? raw[0] : raw;
   if (!item || typeof item !== "object") {
