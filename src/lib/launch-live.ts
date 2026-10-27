@@ -29,8 +29,8 @@ function youtubeEmbed(href: string): string | null {
 }
 
 /**
- * Returns a stream only when webcast is live, or within 1 hour before NET.
- * Prefer YouTube embed so STELLUN can play in-page / fullscreen.
+ * Show webcast from 24 hours before NET through 2 hours after,
+ * or anytime webcast_live is true.
  */
 export function launchStream(
   videos: unknown,
@@ -39,13 +39,20 @@ export function launchStream(
   webcastLive = false,
 ): LaunchStream | null {
   const time = new Date(net).getTime();
-  if (!Number.isFinite(time) || (!webcastLive && (time - nowMs > 60 * 60 * 1000 || time < nowMs))) {
+  if (!Number.isFinite(time)) return null;
+
+  const msToNet = time - nowMs;
+  const HOUR = 60 * 60 * 1000;
+  const openEarly = 24 * HOUR;
+  const openLate = 2 * HOUR;
+
+  if (!webcastLive && (msToNet > openEarly || msToNet < -openLate)) {
     return null;
   }
   if (!Array.isArray(videos)) return null;
 
   const sorted = [...videos].sort(
-    (a, b) => (a?.priority ?? 999) - (b?.priority ?? 999),
+    (a: any, b: any) => (a?.priority ?? 999) - (b?.priority ?? 999),
   );
 
   for (const video of sorted) {
@@ -62,7 +69,7 @@ export function launchStream(
   return null;
 }
 
-/** @deprecated Prefer launchStream(); kept so older call sites still compile. */
+/** @deprecated Prefer launchStream() */
 export function launchStreamUrl(
   videos: unknown,
   net: string,
