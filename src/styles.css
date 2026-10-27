@@ -4568,34 +4568,30 @@ h3 {
   max-width: 34rem;
 }
 
-/* Section titles: eyebrow + h2 as one block, alternating sides on large screens */
+/* Section heads — original layout */
 .section-head {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 48px 0 18px;
   text-align: left;
 }
 
-.section-head .eyebrow {
-  display: block;
-}
-
 .section-head h2 {
   font-family: var(--font-heading, "Lora", Georgia, serif);
-  font-size: clamp(1.5rem, 1.25rem + 0.8vw, 2.1rem);
+  font-size: clamp(1.5rem, 1.25rem + 0.8vw, 2rem);
   font-weight: 700;
   letter-spacing: -0.015em;
   margin: 0;
-  max-width: 22ch;
+  max-width: none;
   line-height: 1.2;
 }
 
 .section-head a {
   font-size: 0.86rem;
   color: var(--color-accent);
-  margin-top: 4px;
 }
 
 .section-lead {
@@ -4604,51 +4600,24 @@ h3 {
   font-size: 0.98rem;
   line-height: 1.55;
   color: var(--color-text-muted);
+  text-align: left;
 }
 
-/* Desktop: alternate section headers left / right */
-@media (min-width: 768px) {
-  main.page-main > section:nth-of-type(odd) .section-head {
-    align-items: flex-start;
-    text-align: left;
-  }
-
-  main.page-main > section:nth-of-type(even) .section-head {
-    align-items: flex-end;
-    text-align: right;
-  }
-
-  main.page-main > section:nth-of-type(even) .section-head h2 {
-    margin-left: auto;
-  }
-
-  main.page-main > section:nth-of-type(even) .section-lead {
-    margin-left: auto;
-    text-align: right;
-  }
+/* Remove alternating left/right headers if still present */
+main.page-main > section:nth-of-type(odd) .section-head,
+main.page-main > section:nth-of-type(even) .section-head,
+main > section:nth-of-type(odd) .section-head,
+main > section:nth-of-type(even) .section-head {
+  align-items: baseline;
+  text-align: left;
 }
 
-/* Phones: always left */
-@media (max-width: 767px) {
-  .section-head {
-    align-items: flex-start !important;
-    text-align: left !important;
-  }
-  .section-head h2,
-  .section-lead {
-    margin-left: 0 !important;
-    text-align: left !important;
-  }
-}
-/* Cards: title heavier than body */
-.news-card h3,
-.explore-card h3,
-.competition-card-v2 h3,
-.glass-card h3 {
-  font-family: var(--font-heading, "Lora", Georgia, serif);
-  font-size: 1.05rem;
-  font-weight: 600;
-  line-height: 1.3;
+main.page-main > section:nth-of-type(even) .section-head h2,
+main > section:nth-of-type(even) .section-head h2,
+main.page-main > section:nth-of-type(even) .section-lead,
+main > section:nth-of-type(even) .section-lead {
+  margin-left: 0;
+  text-align: left;
 }
 
 .news-card p,
