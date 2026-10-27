@@ -122,6 +122,8 @@ const EXPLORE: ExploreCard[] = [
   { to: "/weather", icon: "weather", title: "Space Weather", blurb: "Geomagnetic index, solar wind, and aurora outlook from NOAA SWPC." },
   { to: "/neo", icon: "neo", title: "Asteroid Watch", blurb: "Upcoming close approaches, ranked by miss distance." },
   { to: "/launches", icon: "launches", title: "Launches", blurb: "Upcoming orbital launches worldwide with live countdowns." },
+  { to: "/intelligence", icon: "intelligence", title: "Mission Intelligence", blurb: "Mission profiles, agencies, and flight context in one place." },
+  { to: "/study-desk", icon: "study", title: "Study Desk", blurb: "Named workspaces, reading lists, and study plans for aerospace learning." },
   { to: "/ask", icon: "ask", title: "Stellun AI", blurb: "A grounded assistant that answers from this session's live data." },
 ];
 
@@ -152,6 +154,18 @@ const ICONS: Record<string, React.ReactNode> = {
   ),
   ask: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 5h16v11H8l-4 4V5Z" /><path d="M9 10h6M9 13h4" /></svg>
+  ),
+  intelligence: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" />
+    </svg>
+  ),
+  study: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 5h7a3 3 0 0 1 3 3v11a2.5 2.5 0 0 0-2.5-2.5H4V5Z" />
+      <path d="M20 5h-7a3 3 0 0 0-3 3v11a2.5 2.5 0 0 1 2.5-2.5H20V5Z" />
+    </svg>
   ),
 };
 
@@ -361,7 +375,7 @@ function OverviewStrip() {
         <span className="overview-label">Live data sources</span>
       </div>
       <div className="overview-item">
-        <span className="overview-value">10</span>
+        <span className="overview-value">{EXPLORE.length}</span>
         <span className="overview-label">Tools in one platform</span>
       </div>
       <div className="overview-item">
