@@ -797,6 +797,63 @@ html.nav-open-lock body {
   grid-template-columns: repeat(4, 1fr);
   gap: 18px;
 }
+
+/* Desktop zigzag: alternate offset so the eye walks the grid */
+@media (min-width: 960px) {
+  .explore-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 40px;
+    padding-block: 8px;
+  }
+
+  .explore-card:nth-child(odd) {
+    transform: translateX(-4%);
+    text-align: left;
+    align-items: flex-start;
+  }
+
+  .explore-card:nth-child(even) {
+    transform: translateX(4%);
+    text-align: right;
+    align-items: flex-end;
+  }
+
+  .explore-card:nth-child(even) .explore-icon {
+    margin-left: auto;
+  }
+
+  .explore-card:nth-child(even) .explore-lock {
+    margin-left: auto;
+  }
+}
+
+@media (min-width: 1200px) {
+  .explore-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 920px;
+    margin-inline: auto;
+  }
+
+  .explore-card:nth-child(odd) {
+    transform: translateX(-8%);
+  }
+
+  .explore-card:nth-child(even) {
+    transform: translateX(8%);
+  }
+}
+
+@media (max-width: 959px) {
+  .explore-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .explore-card {
+    transform: none !important;
+    text-align: left !important;
+    align-items: flex-start !important;
+  }
+}
 .explore-card {
   display: flex;
   flex-direction: column;
