@@ -118,7 +118,7 @@ if (rows.length === 0) {
     };
   }
 
-  // Prefer one row per headline (keeps first = usually newest in our merge order).
+  // Prefer one row per headline; keep the copy that has an image when possible.
   const byTitle = new Map<string, (typeof rows)[number]>();
   for (const row of rows) {
     const key = (row.title ?? "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -128,7 +128,6 @@ if (rows.length === 0) {
       byTitle.set(key, row);
       continue;
     }
-    // Prefer the copy that has an image
     if (!prev.image_url && row.image_url) byTitle.set(key, row);
   }
   const uniqueRows = [...byTitle.values()];
@@ -137,7 +136,6 @@ if (rows.length === 0) {
     .from("space_news")
     .upsert(uniqueRows, { onConflict: "id" });
 
-  const { error } = await supabaseAdmin.from("space_news").upsert(rows, { onConflict: "id" });
   if (error) {
     return { ok: false, statusCode: 500, message: `Database write failed: ${error.message}` };
   }
@@ -146,11 +144,16 @@ if (rows.length === 0) {
   cutoff.setUTCDate(cutoff.getUTCDate() - 60);
   await supabaseAdmin.from("space_news").delete().lt("published_at", cutoff.toISOString());
 
-  const nasaCount = rows.filter((r) => (r.news_site || "").toLowerCase().includes("nasa")).length;
+  const nasaCount = uniqueRows.filter((r) =>
+    (r.news_site || "").toLowerCase().includes("nasa"),
+  ).length;
+
   return {
     ok: true,
     statusCode: 200,
-    message: `Upserted ${rows.length} news items (${nasaCount} NASA-tagged).${failures.length ? " Partial: " + failures.join("; ") : ""}`,
-    count: rows.length,
+    message: `Upserted \( {uniqueRows.length} news items ( \){nasaCount} NASA-tagged).${
+      failures.length ? " Partial: " + failures.join("; ") : ""
+    }`,
+    count: uniqueRows.length,
   };
 }
