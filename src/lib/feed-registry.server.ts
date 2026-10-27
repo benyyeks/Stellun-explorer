@@ -130,13 +130,13 @@ function normalizeLl2List(ll: any) {
 }
 
 const LL2_UPCOMING =
-  "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=12&mode=detailed";
+  "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=10&mode=list";
 const LL2_PREVIOUS =
-  "https://ll.thespacedevs.com/2.3.0/launches/previous/?limit=12&mode=detailed";
+  "https://ll.thespacedevs.com/2.3.0/launches/previous/?limit=10&mode=list";
 
 async function fetchUpcomingLaunches() {
   try {
-    const ll = await launchFeed(LL2_UPCOMING, 20000);
+    const ll = await launchFeed(LL2_UPCOMING, 25000);
     const n = normalizeLl2List(ll);
     if (n.results.length > 0) return n;
   } catch (e) {
@@ -179,7 +179,7 @@ async function fetchUpcomingLaunches() {
 }
 
 async function fetchPastLaunches() {
-  const ll = await launchFeed(LL2_PREVIOUS, 20000);
+  const ll = await launchFeed(LL2_PREVIOUS, 25000);
   const n = normalizeLl2List(ll);
   if (!n.results.length) {
     throw new Error("LL2 previous returned no launches");
