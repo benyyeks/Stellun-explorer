@@ -75,8 +75,7 @@ function fmtWhen(net: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
-  return `${date} · \( {pad2(d.getUTCHours())}: \){pad2(d.getUTCMinutes())} UTC`;
+  });return `${date} · \( {pad2(d.getUTCHours())}: \){pad2(d.getUTCMinutes())} UTC`;
 }
 
 function outcomeTone(outcome: string): string {
