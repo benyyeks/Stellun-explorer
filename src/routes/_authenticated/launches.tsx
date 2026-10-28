@@ -178,38 +178,8 @@ function LaunchWatch({
             Open official stream
           </a>
         </div>
-        
       </div>
     );
-    const [shareHint, setShareHint] = useState("");
-
-  async function shareNextLaunch() {
-    const url =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/launches#next-launch`
-        : "/launches#next-launch";
-    const title = next?.name ? `STELLUN · ${next.name}` : "STELLUN · Next launch";
-    const text = next?.name
-      ? `Track ${next.name} on STELLUN`
-      : "Track the next orbital launch on STELLUN";
-    try {
-      if (navigator.share) {
-        await navigator.share({ title, text, url });
-        setShareHint("Shared");
-      } else {
-        await navigator.clipboard.writeText(url);
-        setShareHint("Link copied");
-      }
-    } catch {
-      try {
-        await navigator.clipboard.writeText(url);
-        setShareHint("Link copied");
-      } catch {
-        setShareHint("Copy failed");
-      }
-    }
-    window.setTimeout(() => setShareHint(""), 2500);
-  }
   }
 
   return (
@@ -351,7 +321,35 @@ function LaunchesPage() {
   const rest = launches.slice(1);
   const providers = new Set(launches.map((l) => l.provider).filter(Boolean));
   const countries = new Set(launches.map((l) => l.country).filter(Boolean));
+  const [shareHint, setShareHint] = useState("");
 
+  async function shareNextLaunch() {
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/launches#next-launch`
+        : "/launches#next-launch";
+    const title = next?.name ? `STELLUN · ${next.name}` : "STELLUN · Next launch";
+    const text = next?.name
+      ? `Track ${next.name} on STELLUN`
+      : "Track the next orbital launch on STELLUN";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url });
+        setShareHint("Shared");
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareHint("Link copied");
+      }
+    } catch {
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareHint("Link copied");
+      } catch {
+        setShareHint("Copy failed");
+      }
+    }
+    window.setTimeout(() => setShareHint(""), 2500);
+  }
   return (
     <main className="page-main">
       <section>
