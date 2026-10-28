@@ -389,13 +389,28 @@ function LaunchesPage() {
               <div className="stat-label">Next launch</div>
               <div className="stat-value" style={{ fontSize: "1.3rem" }}>{next ? next.rocket || next.name : "--"}</div>
               <div className="stat-unit">{next ? `${next.provider || "Unknown provider"} · ${fmtNet(next.net)}` : ""}</div>
-              <div className="next-launch-actions">
+              <div className="freshness-note">{fmtNet(next.net)}</div>
+                  <div className="next-launch-actions">
                     <button
                       type="button"
-                      className="btn btn-ghost btn-sm"
+                      className="btn-share-launch"
                       onClick={() => void shareNextLaunch()}
                     >
-                      Share this launch
+                      {next.image ? (
+                        <img
+                          className="btn-share-launch-thumb"
+                          src={next.image}
+                          alt=""
+                          width={40}
+                          height={40}
+                        />
+                      ) : null}
+                      <span className="btn-share-launch-label">
+                        Share this launch
+                        <span className="btn-share-launch-sub">
+                          Countdown + live watch on STELLUN
+                        </span>
+                      </span>
                     </button>
                     {shareHint ? (
                       <span className="freshness-note" role="status">
@@ -403,8 +418,6 @@ function LaunchesPage() {
                       </span>
                     ) : null}
                   </div>
-            </div>
-          </div>
 
           {launches.length === 0 && (
             <EmptyState
