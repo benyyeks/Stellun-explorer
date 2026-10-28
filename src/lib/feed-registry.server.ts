@@ -319,16 +319,15 @@ function feeds(): Feed[] {
         return { source: r.source };
       },
     },
-    
     {
       name: "launches",
       run: () =>
-        cached("launches", {}, 1800, () => fetchUpcomingLaunches(), { force: forceRefresh }),
+        cached("launches", {}, 3600, () => fetchUpcomingLaunches(), { force: forceRefresh }),
     },
     {
       name: "past-launches",
       run: () =>
-        cached("launches-previous", {}, 43200, () => fetchPastLaunches(), {
+        cached("launches-previous", {}, 21600, () => fetchPastLaunches(), {
           force: forceRefresh,
         }),
     },
