@@ -178,8 +178,38 @@ function LaunchWatch({
             Open official stream
           </a>
         </div>
+        
       </div>
     );
+    const [shareHint, setShareHint] = useState("");
+
+  async function shareNextLaunch() {
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/launches#next-launch`
+        : "/launches#next-launch";
+    const title = next?.name ? `STELLUN · ${next.name}` : "STELLUN · Next launch";
+    const text = next?.name
+      ? `Track ${next.name} on STELLUN`
+      : "Track the next orbital launch on STELLUN";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, text, url });
+        setShareHint("Shared");
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareHint("Link copied");
+      }
+    } catch {
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareHint("Link copied");
+      } catch {
+        setShareHint("Copy failed");
+      }
+    }
+    window.setTimeout(() => setShareHint(""), 2500);
+  }
   }
 
   return (
@@ -361,6 +391,20 @@ function LaunchesPage() {
               <div className="stat-label">Next launch</div>
               <div className="stat-value" style={{ fontSize: "1.3rem" }}>{next ? next.rocket || next.name : "--"}</div>
               <div className="stat-unit">{next ? `${next.provider || "Unknown provider"} · ${fmtNet(next.net)}` : ""}</div>
+              <div className="next-launch-actions">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => void shareNextLaunch()}
+                    >
+                      Share this launch
+                    </button>
+                    {shareHint ? (
+                      <span className="freshness-note" role="status">
+                        {shareHint}
+                      </span>
+                    ) : null}
+                  </div>
             </div>
           </div>
 
@@ -372,7 +416,11 @@ function LaunchesPage() {
           )}
 
           {next && (
-            <article className="glass glass-card next-launch" aria-label="Next launch">
+            <article
+  id="next-launch"
+  className="glass glass-card next-launch"
+  aria-label="Next launch"
+>
               {(next.image ||
   (now &&
     launchStream(next.vidURLs, next.net, now.getTime(), next.webcastLive))) && (
