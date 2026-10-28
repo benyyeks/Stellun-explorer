@@ -1,4 +1,4 @@
-// Past launches archive — responsive table with compact video preview.
+// Past launches archive — mobile cards + desktop table, fixed time format, compact video thumbs.
 import { useQuery } from "@tanstack/react-query";
 import { getPastLaunches } from "@/lib/stellun-data.functions";
 import { safeText, pad2 } from "@/lib/format";
@@ -24,7 +24,12 @@ function youtubeId(url: string): string | null {
     const host = u.hostname.replace(/^www\./, "");
     if (host === "youtu.be") return u.pathname.replace(/^\//, "").split("/")[0] || null;
     if (host === "youtube.com" || host === "m.youtube.com") {
-      return u.searchParams.get("v") || u.pathname.split("/").filter(Boolean)[1] || null;
+      const v = u.searchParams.get("v");
+      if (v) return v;
+      const parts = u.pathname.split("/").filter(Boolean);
+      if (parts[0] === "embed" || parts[0] === "live" || parts[0] === "shorts") {
+        return parts[1] || null;
+      }
     }
   } catch {
     /* ignore */
@@ -61,6 +66,7 @@ function parse(raw: unknown): PastLaunch[] {
   }));
 }
 
+/** Always use ${pad2(...)} — bare {pad2(...)} prints as source text. */
 function fmtWhen(net: string): string {
   const d = new Date(net);
   if (Number.isNaN(d.getTime())) return "Unknown";
@@ -80,8 +86,7 @@ function outcomeTone(outcome: string): string {
   return "muted";
 }
 
-/** Tiny preview: YouTube thumb if possible, else mission image, else muted cell. */
-function VideoCell({
+function VideoThumb({
   videoUrl,
   image,
   name,
@@ -91,12 +96,10 @@ function VideoCell({
   name: string;
 }) {
   if (!videoUrl) {
-    return <span className="past-video-empty">—</span>;
+    return <span className="past-video-empty" aria-label="No video">—</span>;
   }
   const yt = youtubeId(videoUrl);
-  const thumb = yt
-    ? `https://img.youtube.com/vi/${yt}/hqdefault.jpg`
-    : image;
+  const thumb = yt ? `https://img.youtube.com/vi/${yt}/hqdefault.jpg` : image;
 
   return (
     <a
@@ -109,7 +112,7 @@ function VideoCell({
     >
       {thumb ? (
         <span className="past-video-thumb">
-          <img src={thumb} alt="" loading="lazy" width={72} height={40} />
+          <img src={thumb} alt="" loading="lazy" width={80} height={45} />
           <span className="past-video-play" aria-hidden>
             ▶
           </span>
@@ -122,7 +125,7 @@ function VideoCell({
 }
 
 const COLUMNS = [
-  { key: "when", label: "Launch day & time (UTC)", value: (l: PastLaunch) => l.net },
+  { key: "when", label: "Launch day & time (UTC)", value: (l: PastLaunch) => fmtWhen(l.net) },
   { key: "video", label: "Launch video", value: (l: PastLaunch) => l.videoUrl ?? "" },
   { key: "name", label: "Mission", value: (l: PastLaunch) => l.name },
   { key: "outcome", label: "Outcome", value: (l: PastLaunch) => l.outcome },
@@ -150,12 +153,12 @@ export function PastLaunches() {
 
   return (
     <section className="past-launches" style={{ marginTop: 32 }}>
-      <div className="panel-head">
+      <div className="panel-head past-head">
         <div>
           <h2 className="section-title">Past launches archive</h2>
           <p className="freshness-note">
-            Recent completed orbital flights, newest first. Video opens the best available
-            webcast when LL2 listed one.
+            Recent completed orbital flights, newest first. Tap the video thumb to open the
+            best available webcast.
           </p>
         </div>
         <ExportButtons
@@ -177,44 +180,84 @@ export function PastLaunches() {
       />
 
       {rows.length > 0 ? (
-        <div className="table-scroll past-table-scroll">
-          <table className="data-table past-launches-table">
-            <thead>
-              <tr>
-                <th scope="col">Launch day &amp; time</th>
-                <th scope="col">Launch video</th>
-                <th scope="col">Mission</th>
-                <th scope="col">Outcome</th>
-                <th scope="col">Provider</th>
-                <th scope="col">Vehicle</th>
-                <th scope="col">Launch site</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((l) => (
-                <tr key={l.id || l.name}>
-                  <td className="mono past-when">{fmtWhen(l.net)}</td>
-                  <td className="past-video-cell">
-                    <VideoCell videoUrl={l.videoUrl} image={l.image} name={l.name} />
-                  </td>
-                  <td className="past-mission">{l.name}</td>
-                  <td>
-                    <span className={`badge badge-${outcomeTone(l.outcome)}`}>
-                      {l.outcome || "Recorded"}
-                    </span>
-                  </td>
-                  <td>{l.provider}</td>
-                  <td>{l.rocket}</td>
-                  <td>
-                    {l.location}
-                    {l.orbit ? ` · ${l.orbit}` : ""}
-                  </td>
+        <>
+          {/* Mobile / narrow: stacked cards */}
+          <ul className="past-card-list">
+            {rows.map((l) => (
+              <li className="past-card glass glass-card" key={l.id || l.name}>
+                <div className="past-card-top">
+                  <VideoThumb videoUrl={l.videoUrl} image={l.image} name={l.name} />
+                  <div className="past-card-main">
+                    <div className="past-card-meta">
+                      <span className="mono past-when">{fmtWhen(l.net)}</span>
+                      <span className={`badge badge-${outcomeTone(l.outcome)}`}>
+                        {l.outcome || "Recorded"}
+                      </span>
+                    </div>
+                    <h3 className="past-card-title">{l.name}</h3>
+                  </div>
+                </div>
+                <dl className="past-card-facts">
+                  <div>
+                    <dt>Provider</dt>
+                    <dd>{l.provider || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Vehicle</dt>
+                    <dd>{l.rocket || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Launch site</dt>
+                    <dd>
+                      {l.location || "—"}
+                      {l.orbit ? ` · ${l.orbit}` : ""}
+                    </dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+
+          {/* Desktop: compact table */}
+          <div className="table-scroll past-table-wrap">
+            <table className="data-table past-launches-table">
+              <thead>
+                <tr>
+                  <th scope="col">Launch day &amp; time</th>
+                  <th scope="col">Video</th>
+                  <th scope="col">Mission</th>
+                  <th scope="col">Outcome</th>
+                  <th scope="col">Provider</th>
+                  <th scope="col">Vehicle</th>
+                  <th scope="col">Launch site</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((l) => (
+                  <tr key={l.id || l.name}>
+                    <td className="mono past-when">{fmtWhen(l.net)}</td>
+                    <td className="past-video-cell">
+                      <VideoThumb videoUrl={l.videoUrl} image={l.image} name={l.name} />
+                    </td>
+                    <td className="past-mission">{l.name}</td>
+                    <td>
+                      <span className={`badge badge-${outcomeTone(l.outcome)}`}>
+                        {l.outcome || "Recorded"}
+                      </span>
+                    </td>
+                    <td>{l.provider}</td>
+                    <td>{l.rocket}</td>
+                    <td>
+                      {l.location}
+                      {l.orbit ? ` · ${l.orbit}` : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : null}
     </section>
   );
-          }
+      }
