@@ -131,3 +131,34 @@ export async function cached<T>(
     throw err;
   }
 }
+/**
+ * READ-ONLY: serve Supabase api_cache only. Never calls upstream.
+ * Use for user-facing pages (launches, etc.).
+ * Writers: cron + admin via cached() / feed-registry only.
+ */
+export async function readCachedOnly<T>(
+  endpoint: string,
+  params: unknown,
+  ttlSeconds: number,
+  empty: T,
+): Promise<CacheResult<T>> {
+  const key = cacheKey(endpoint, params);
+  const cachedRow = await readCache<T>(key, ttlSeconds);
+
+  if (cachedRow) {
+    return {
+      data: cachedRow.payload,
+      source: cachedRow.isStale ? "stale" : "cache",
+      fetchedAt: cachedRow.fetchedAt,
+      isStale: cachedRow.isStale,
+    };
+  }
+
+  // No row yet — do NOT call LL2/SpaceX/etc. Admin/cron must fill the cache.
+  return {
+    data: empty,
+    source: "cache",
+    fetchedAt: new Date(0).toISOString(),
+    isStale: true,
+  };
+}
