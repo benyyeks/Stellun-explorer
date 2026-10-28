@@ -287,17 +287,14 @@ async function fetchSpaceXUpcoming() {
   return { count: results.length, next: null, previous: null, results };
 }
 
+/** User-facing: Supabase only. Never calls Launch Library or SpaceX. */
 export const getLaunches = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("launches", {}, 3600, async () => {
-    try {
-      const ll = await fetchLaunchFeed(LL2_URL, 10000);
-      const results = (ll as any)?.results;
-      if (Array.isArray(results) && results.length > 0) return ll;
-    } catch {
-      /* fall through to SpaceX */
-    }
-    return fetchSpaceXUpcoming();
-  });
+  return readCachedOnly(
+    "launches",
+    {},
+    3600,
+    { count: 0, next: null, previous: null, results: [] },
+  );
 });
 
 // ------------------------- Open-Meteo: earth weather ----------------------
@@ -568,10 +565,15 @@ export const getArchiveObservations = createServerFn({ method: "GET" })
 const LL2_PREVIOUS_URL =
   "https://ll.thespacedevs.com/2.3.0/launches/previous/?limit=12&mode=detailed";
 
+/** User-facing: Supabase only. Never calls Launch Library. */
 export const getPastLaunches = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("launches-previous", {}, 21600, () => fetchLaunchFeed(LL2_PREVIOUS_URL, 12000));
+  return readCachedOnly(
+    "launches-previous",
+    {},
+    21600,
+    { count: 0, next: null, previous: null, results: [] },
+  );
 });
-
 // ---------------------- NASA: Mars surface image gallery ---------------------
 // One normalized feed for every surface craft in the Mars Image Gallery.
 // Perseverance and Curiosity come from the live raw image services at
