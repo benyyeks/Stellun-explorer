@@ -390,6 +390,7 @@ function LaunchesPage() {
               <div className="stat-value" style={{ fontSize: "1.3rem" }}>{next ? next.rocket || next.name : "--"}</div>
               <div className="stat-unit">{next ? `${next.provider || "Unknown provider"} · ${fmtNet(next.net)}` : ""}</div>
             </div>
+            </div>
 
           {launches.length === 0 && (
             <EmptyState
