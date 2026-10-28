@@ -97,7 +97,10 @@ function parseLaunches(raw: unknown): Launch[] {
     orbit: safeText(l?.mission?.orbit?.name, 40),
     pad: safeText(l?.pad?.name, 100),
     location: safeText(l?.pad?.location?.name, 100),
-    country: safeText(l?.pad?.country_code, 6),
+    country: safeText(
+      l?.pad?.location?.country_code || l?.pad?.country_code,
+      6,
+    ),
     webcastLive: Boolean(l?.webcast_live),
     vidURLs: l?.vidURLs ?? l?.vid_urls ?? [],
     image:
