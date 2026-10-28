@@ -1,6 +1,4 @@
-// Past launches archive: the most recent completed orbital flights worldwide,
-// with outcome, vehicle, and pad, plus CSV and JSON download. Loaded separately
-// from the upcoming schedule so a slow archive never delays the countdown.
+// Past launches archive — responsive table with compact video preview.
 import { useQuery } from "@tanstack/react-query";
 import { getPastLaunches } from "@/lib/stellun-data.functions";
 import { safeText, pad2 } from "@/lib/format";
@@ -16,7 +14,35 @@ type PastLaunch = {
   rocket: string;
   location: string;
   orbit: string;
+  image: string | null;
+  videoUrl: string | null;
 };
+
+function youtubeId(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") return u.pathname.replace(/^\//, "").split("/")[0] || null;
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      return u.searchParams.get("v") || u.pathname.split("/").filter(Boolean)[1] || null;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function bestVideo(vids: unknown): string | null {
+  if (!Array.isArray(vids) || vids.length === 0) return null;
+  const sorted = [...vids].sort(
+    (a: any, b: any) => (a?.priority ?? 999) - (b?.priority ?? 999),
+  );
+  for (const v of sorted) {
+    const href = typeof v === "string" ? v : v?.url;
+    if (typeof href === "string" && href.startsWith("https://")) return href;
+  }
+  return null;
+}
 
 function parse(raw: unknown): PastLaunch[] {
   const results = (raw as { results?: unknown } | null)?.results;
@@ -28,8 +54,10 @@ function parse(raw: unknown): PastLaunch[] {
     outcome: safeText(l?.status?.name || l?.status?.abbrev, 40),
     provider: safeText(l?.launch_service_provider?.name, 80),
     rocket: safeText(l?.rocket?.configuration?.full_name, 80),
-    location: safeText(l?.pad?.location?.name, 100),
+    location: safeText(l?.pad?.location?.name || l?.pad?.name, 100),
     orbit: safeText(l?.mission?.orbit?.name, 40),
+    image: typeof l?.image === "string" ? l.image : null,
+    videoUrl: bestVideo(l?.vidURLs ?? l?.vid_urls),
   }));
 }
 
@@ -42,7 +70,7 @@ function fmtWhen(net: string): string {
     day: "numeric",
     year: "numeric",
   });
-  return `${date} · ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())} UTC`;
+  return `${date} · \( {pad2(d.getUTCHours())}: \){pad2(d.getUTCMinutes())} UTC`;
 }
 
 function outcomeTone(outcome: string): string {
@@ -52,14 +80,55 @@ function outcomeTone(outcome: string): string {
   return "muted";
 }
 
+/** Tiny preview: YouTube thumb if possible, else mission image, else muted cell. */
+function VideoCell({
+  videoUrl,
+  image,
+  name,
+}: {
+  videoUrl: string | null;
+  image: string | null;
+  name: string;
+}) {
+  if (!videoUrl) {
+    return <span className="past-video-empty">—</span>;
+  }
+  const yt = youtubeId(videoUrl);
+  const thumb = yt
+    ? `https://img.youtube.com/vi/${yt}/hqdefault.jpg`
+    : image;
+
+  return (
+    <a
+      className="past-video-link"
+      href={videoUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`Watch ${name}`}
+      aria-label={`Watch video for ${name}`}
+    >
+      {thumb ? (
+        <span className="past-video-thumb">
+          <img src={thumb} alt="" loading="lazy" width={72} height={40} />
+          <span className="past-video-play" aria-hidden>
+            ▶
+          </span>
+        </span>
+      ) : (
+        <span className="past-video-text">Watch</span>
+      )}
+    </a>
+  );
+}
+
 const COLUMNS = [
-  { key: "when", label: "Launch time (UTC)", value: (l: PastLaunch) => l.net },
+  { key: "when", label: "Launch day & time (UTC)", value: (l: PastLaunch) => l.net },
+  { key: "video", label: "Launch video", value: (l: PastLaunch) => l.videoUrl ?? "" },
   { key: "name", label: "Mission", value: (l: PastLaunch) => l.name },
   { key: "outcome", label: "Outcome", value: (l: PastLaunch) => l.outcome },
   { key: "provider", label: "Provider", value: (l: PastLaunch) => l.provider },
   { key: "rocket", label: "Vehicle", value: (l: PastLaunch) => l.rocket },
   { key: "location", label: "Launch site", value: (l: PastLaunch) => l.location },
-  { key: "orbit", label: "Target orbit", value: (l: PastLaunch) => l.orbit },
 ];
 
 export function PastLaunches() {
@@ -80,13 +149,13 @@ export function PastLaunches() {
         : "live";
 
   return (
-    <section style={{ marginTop: 32 }}>
+    <section className="past-launches" style={{ marginTop: 32 }}>
       <div className="panel-head">
         <div>
           <h2 className="section-title">Past launches archive</h2>
           <p className="freshness-note">
-            The most recent completed orbital flights worldwide, newest first, with the
-            outcome as the launch database records it.
+            Recent completed orbital flights, newest first. Video opens the best available
+            webcast when LL2 listed one.
           </p>
         </div>
         <ExportButtons
@@ -108,11 +177,12 @@ export function PastLaunches() {
       />
 
       {rows.length > 0 ? (
-        <div className="table-scroll">
-          <table className="data-table">
+        <div className="table-scroll past-table-scroll">
+          <table className="data-table past-launches-table">
             <thead>
               <tr>
-                <th scope="col">Launch time</th>
+                <th scope="col">Launch day &amp; time</th>
+                <th scope="col">Launch video</th>
                 <th scope="col">Mission</th>
                 <th scope="col">Outcome</th>
                 <th scope="col">Provider</th>
@@ -123,8 +193,11 @@ export function PastLaunches() {
             <tbody>
               {rows.map((l) => (
                 <tr key={l.id || l.name}>
-                  <td className="mono">{fmtWhen(l.net)}</td>
-                  <td>{l.name}</td>
+                  <td className="mono past-when">{fmtWhen(l.net)}</td>
+                  <td className="past-video-cell">
+                    <VideoCell videoUrl={l.videoUrl} image={l.image} name={l.name} />
+                  </td>
+                  <td className="past-mission">{l.name}</td>
                   <td>
                     <span className={`badge badge-${outcomeTone(l.outcome)}`}>
                       {l.outcome || "Recorded"}
@@ -144,4 +217,4 @@ export function PastLaunches() {
       ) : null}
     </section>
   );
-}
+          }
