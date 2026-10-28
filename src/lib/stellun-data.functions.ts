@@ -11,7 +11,7 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { cached, type CacheResult } from "@/lib/api-cache.server";
+import { cached, readCachedOnly } from "@/lib/api-cache.server";
 import { fetchJson, fetchText, isoDate, nasaKey } from "@/lib/stellun-fetch.server";
 
 // ------------------------------- Types ------------------------------------
