@@ -4629,54 +4629,27 @@ main > section:nth-of-type(even) .section-lead {
   line-height: 1.5;
   color: var(--color-text-muted, var(--color-text-soft));
 }
-
-/* Past launches — compact video column */
-.past-table-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin-top: 12px;
-}
-
-.past-launches-table {
-  width: 100%;
-  min-width: 720px;
-  table-layout: fixed;
-}
-
-.past-launches-table th:nth-child(1),
-.past-launches-table td.past-when {
-  width: 9.5rem;
-}
-
-.past-launches-table th:nth-child(2),
-.past-launches-table td.past-video-cell {
-  width: 5.5rem;
-  text-align: center;
-  vertical-align: middle;
-}
-
-.past-launches-table th:nth-child(3),
-.past-launches-table td.past-mission {
-  width: auto;
+/* ===== Past launches archive ===== */
+.past-head {
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .past-video-link {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   text-decoration: none;
+  flex-shrink: 0;
 }
 
 .past-video-thumb {
   position: relative;
   display: block;
-  width: 72px;
-  height: 40px;
-  border-radius: 6px;
+  width: 80px;
+  height: 45px;
+  border-radius: 8px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  flex-shrink: 0;
 }
 
 .past-video-thumb img {
@@ -4692,29 +4665,172 @@ main > section:nth-of-type(even) .section-lead {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   color: #fff;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.32);
   pointer-events: none;
 }
 
 .past-video-text {
   font-size: 0.75rem;
-  color: var(--color-accent, #6cb6ff);
+  color: var(--color-accent);
   text-decoration: underline;
 }
 
 .past-video-empty {
-  color: var(--color-text-soft, #888);
+  color: var(--color-text-faint);
+  font-size: 0.9rem;
+}
+
+.past-when {
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+/* Mobile cards — default visible */
+.past-card-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.past-card {
+  padding: 14px 16px;
+}
+
+.past-card-top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.past-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.past-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.past-card-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.past-card-facts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.past-card-facts div {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 8px;
   font-size: 0.85rem;
 }
 
-@media (max-width: 640px) {
-  .past-launches-table {
-    min-width: 640px;
+.past-card-facts dt {
+  color: var(--color-text-faint);
+  margin: 0;
+}
+
+.past-card-facts dd {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* Desktop table — hidden on small screens */
+.past-table-wrap {
+  display: none;
+  margin-top: 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.past-launches-table {
+  width: 100%;
+  min-width: 780px;
+}
+
+.past-launches-table th:nth-child(2),
+.past-launches-table td.past-video-cell {
+  width: 96px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.past-launches-table td.past-mission {
+  max-width: 220px;
+}
+
+@media (min-width: 900px) {
+  .past-card-list {
+    display: none;
   }
-  .past-video-thumb {
-    width: 64px;
-    height: 36px;
+  .past-table-wrap {
+    display: block;
   }
+}
+
+/* Share under countdown */
+.next-launch-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.btn-share-launch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--color-accent);
+  color: #eef2f9;
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.btn-share-launch:hover {
+  background: var(--color-accent-strong);
+}
+
+.btn-share-launch-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.btn-share-launch-label {
+  text-align: left;
+  line-height: 1.25;
+}
+
+.btn-share-launch-sub {
+  display: block;
+  font-weight: 500;
+  font-size: 0.72rem;
+  opacity: 0.85;
 }
