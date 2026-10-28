@@ -389,35 +389,7 @@ function LaunchesPage() {
               <div className="stat-label">Next launch</div>
               <div className="stat-value" style={{ fontSize: "1.3rem" }}>{next ? next.rocket || next.name : "--"}</div>
               <div className="stat-unit">{next ? `${next.provider || "Unknown provider"} · ${fmtNet(next.net)}` : ""}</div>
-              <div className="freshness-note">{fmtNet(next.net)}</div>
-                  <div className="next-launch-actions">
-                    <button
-                      type="button"
-                      className="btn-share-launch"
-                      onClick={() => void shareNextLaunch()}
-                    >
-                      {next.image ? (
-                        <img
-                          className="btn-share-launch-thumb"
-                          src={next.image}
-                          alt=""
-                          width={40}
-                          height={40}
-                        />
-                      ) : null}
-                      <span className="btn-share-launch-label">
-                        Share this launch
-                        <span className="btn-share-launch-sub">
-                          Countdown + live watch on STELLUN
-                        </span>
-                      </span>
-                    </button>
-                    {shareHint ? (
-                      <span className="freshness-note" role="status">
-                        {shareHint}
-                      </span>
-                    ) : null}
-                  </div>
+            </div>
 
           {launches.length === 0 && (
             <EmptyState
@@ -467,6 +439,34 @@ function LaunchesPage() {
                   <div className="stat-label">Time until launch (NET)</div>
                   <Countdown net={next.net} status={next.status} />
                   <div className="freshness-note">{fmtNet(next.net)}</div>
+                  <div className="next-launch-actions">
+                    <button
+                      type="button"
+                      className="btn-share-launch"
+                      onClick={() => void shareNextLaunch()}
+                    >
+                      {next.image ? (
+                        <img
+                          className="btn-share-launch-thumb"
+                          src={next.image}
+                          alt=""
+                          width={40}
+                          height={40}
+                        />
+                      ) : null}
+                      <span className="btn-share-launch-label">
+                        Share this launch
+                        <span className="btn-share-launch-sub">
+                          Countdown + live watch on STELLUN
+                        </span>
+                      </span>
+                    </button>
+                    {shareHint ? (
+                      <span className="freshness-note" role="status">
+                        {shareHint}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </article>
