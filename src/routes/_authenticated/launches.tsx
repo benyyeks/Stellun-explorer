@@ -324,31 +324,64 @@ function LaunchesPage() {
   const [shareHint, setShareHint] = useState("");
 
   async function shareNextLaunch() {
-    const url =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/launches#next-launch`
-        : "/launches#next-launch";
-    const title = next?.name ? `STELLUN · ${next.name}` : "STELLUN · Next launch";
-    const text = next?.name
-      ? `Track ${next.name} on STELLUN`
-      : "Track the next orbital launch on STELLUN";
+    if (!next) return;
+
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://stellun-explorer.noreplyobitex.workers.dev";
+    const url = origin + "/launches#next-launch";
+    const name = next.name || "the next orbital launch";
+    const title = "STELLUN · " + name;
+    // Prefilled message for WhatsApp / Messages / etc.
+    const text =
+      "Hi — check out " +
+      name +
+      ". We can track the countdown and watch the launch live on STELLUN.\n\n" +
+      url;
+
+    const finish = (msg: string) => {
+      setShareHint(msg);
+      window.setTimeout(() => setShareHint(""), 2500);
+    };
+
     try {
-      if (navigator.share) {
-        await navigator.share({ title, text, url });
-        setShareHint("Shared");
-      } else {
-        await navigator.clipboard.writeText(url);
-        setShareHint("Link copied");
+      // Prefer sharing the launch image as a real file when the OS allows it
+      // (Android Chrome + WhatsApp often shows the photo in the composer).
+      if (next.image && typeof navigator.canShare === "function") {
+        try {
+          const imgRes = await fetch(next.image, { mode: "cors" });
+          if (imgRes.ok) {
+            const blob = await imgRes.blob();
+            const type = blob.type || "image/jpeg";
+            const ext = type.indexOf("png") >= 0 ? "png" : "jpg";
+            const file = new File([blob], "stellun-launch." + ext, { type: type });
+            const withFile = { title: title, text: text, url: url, files: [file] };
+            if (navigator.canShare(withFile)) {
+              await navigator.share(withFile);
+              finish("Shared");
+              return;
+            }
+          }
+        } catch {
+          // CORS or share-with-files not supported — fall through
+        }
       }
+
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title: title, text: text, url: url });
+        finish("Shared");
+        return;
+      }
+
+      await navigator.clipboard.writeText(text);
+      finish("Message copied");
     } catch {
       try {
-        await navigator.clipboard.writeText(url);
-        setShareHint("Link copied");
+        await navigator.clipboard.writeText(text);
+        finish("Message copied");
       } catch {
-        setShareHint("Copy failed");
+        finish("Copy failed");
       }
     }
-    window.setTimeout(() => setShareHint(""), 2500);
   }
   return (
     <main className="page-main">
