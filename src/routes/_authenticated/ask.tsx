@@ -111,11 +111,21 @@ function AskPage() {
   const [renameValue, setRenameValue] = useState("");
   const activeIdRef = useRef<string | null>(null);
 
+  const prefillHandled = useRef(false);
   useEffect(() => {
+    if (prefillHandled.current) return;
     const prefill = consumeAskPrefill();
     if (!prefill) return;
+    prefillHandled.current = true;
     if (prefill.mode) setMode(prefill.mode);
     setInput(prefill.text);
+    if (prefill.autoSend && prefill.text.trim()) {
+      // Defer so mode/input state is applied before send runs.
+      window.setTimeout(() => {
+        void send(prefill.text);
+      }, 0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot prefill on mount
   }, []);
   activeIdRef.current = activeId;
 
