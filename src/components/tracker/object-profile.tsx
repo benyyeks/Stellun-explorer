@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { satnogsProfileQuery, satnogsTransmittersQuery } from "@/lib/sat-queries";
 import { SkeletonImage } from "@/components/site/skeleton-image";
 import { safeText, utcDateStr } from "@/lib/format";
 import { matchDebrisEvent, orbitRegime, type TLE } from "@/lib/satellite";
+import { setAskPrefill } from "@/lib/study-workspace";
 
 // Community mission profile and radio transmitter records for a catalog
-// object, sourced from the SatNOGS DB. Rendered on the shared satellite
-// detail template beneath the orbital element data. Every field is
-// rendered only when the community record actually contains it; nothing
-// is invented for objects with sparse records.
+// object, sourced from the SatNOGS DB. When no profile exists, offer
+// Stellun AI with a pre-filled mission-profile question.
 
 type SatnogsSat = {
   name?: string;
@@ -47,8 +47,6 @@ function fmtDate(value: unknown): string | null {
   return Number.isNaN(d.getTime()) ? null : utcDateStr(d);
 }
 
-// The community record stores literal placeholder strings such as "None"
-// for empty fields. Treat those as absent so they never reach the page.
 function cleanField(value: unknown, maxLen = 120): string {
   const text = safeText(value, maxLen);
   return /^(none|n\/a|null|unknown)$/i.test(text) ? "" : text;
@@ -60,7 +58,10 @@ function fmtFreq(hz: number | null | undefined): string | null {
   return `${(hz / 1e6).toFixed(3)} MHz`;
 }
 
-function fmtFreqRange(low: number | null | undefined, high: number | null | undefined): string | null {
+function fmtFreqRange(
+  low: number | null | undefined,
+  high: number | null | undefined,
+): string | null {
   const lo = fmtFreq(low);
   const hi = fmtFreq(high);
   if (!lo) return hi;
@@ -77,23 +78,19 @@ function DetailCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Compose a short factual profile paragraph from the fields the community
-// record actually carries. No detail is guessed; sparse records produce a
-// shorter paragraph.
 function buildWriteUp(sat: SatnogsSat, displayName: string, noradId: string): string {
   const name = cleanField(sat.name, 120) || displayName;
   const alt = cleanField(sat.names, 160);
   const sentences: string[] = [];
   sentences.push(
-    `${name}${alt ? `, also catalogued as ${alt},` : ""} is tracked in the public catalog as NORAD ${noradId}.`
+    `\( {name} \){alt ? `, also catalogued as ${alt},` : ""} is tracked in the public catalog as NORAD ${noradId}.`,
   );
 
   const operator = cleanField(sat.operator, 120);
-  // Country codes arrive packed as "RU,US"; add breathing room for prose.
   const countries = cleanField(sat.countries, 120).replace(/,/g, ", ");
   const launched = fmtDate(sat.launched);
   let mission = "";
-  if (operator) mission = `It is operated by ${operator}${countries ? ` (${countries})` : ""}`;
+  if (operator) mission = `It is operated by \( {operator} \){countries ? ` (${countries})` : ""}`;
   else if (countries) mission = `It is registered to ${countries}`;
   if (mission && launched) mission += ` and was launched on ${launched}.`;
   else if (mission) mission += ".";
@@ -110,6 +107,19 @@ function buildWriteUp(sat: SatnogsSat, displayName: string, noradId: string): st
   return sentences.join(" ");
 }
 
+function buildMissionAskPrompt(displayName: string, noradId: string, tle?: TLE | null): string {
+  const regime = tle ? orbitRegime(tle) : null;
+  const bits = [
+    `Can you help me with the mission profile and background for satellite "${displayName}" (NORAD catalog ${noradId})?`,
+    regime ? `Orbit regime from published elements: ${regime}.` : null,
+    tle
+      ? `Approximate altitudes from elements: apogee \~\( {Math.round(tle.apogeeAlt)} km, perigee \~ \){Math.round(tle.perigeeAlt)} km, period \~${tle.periodMin.toFixed(1)} min.`
+      : null,
+    "Summarize what is publicly known about its purpose, operator, and history. If little is published, say so clearly and do not invent details.",
+  ];
+  return bits.filter(Boolean).join(" ");
+}
+
 function TransmitterRow({ tx }: { tx: SatnogsTx }) {
   const description = cleanField(tx.description, 120) || "Unnamed transmitter";
   const downlink = fmtFreqRange(tx.downlink_low, tx.downlink_high);
@@ -119,7 +129,7 @@ function TransmitterRow({ tx }: { tx: SatnogsTx }) {
   const active = tx.alive === true || tx.status === "active";
 
   const meta: string[] = [];
-  if (downlink) meta.push(`Downlink ${downlink}${tx.invert ? " (inverted)" : ""}`);
+  if (downlink) meta.push(`Downlink \( {downlink} \){tx.invert ? " (inverted)" : ""}`);
   if (uplink) meta.push(`Uplink ${uplink}`);
   if (mode) meta.push(mode);
   if (typeof tx.baud === "number" && tx.baud > 0) meta.push(`${tx.baud.toLocaleString("en-US")} baud`);
@@ -142,7 +152,16 @@ function TransmitterRow({ tx }: { tx: SatnogsTx }) {
   );
 }
 
-export function ObjectProfile({ noradId, displayName, tle }: { noradId: string; displayName: string; tle?: TLE | null }) {
+export function ObjectProfile({
+  noradId,
+  displayName,
+  tle,
+}: {
+  noradId: string;
+  displayName: string;
+  tle?: TLE | null;
+}) {
+  const navigate = useNavigate();
   const profileQuery = useQuery(satnogsProfileQuery(noradId));
   const txQuery = useQuery(satnogsTransmittersQuery(noradId));
   const [showInactive, setShowInactive] = useState(false);
@@ -165,6 +184,12 @@ export function ObjectProfile({ noradId, displayName, tle }: { noradId: string; 
 
   const debrisEvent = tle ? matchDebrisEvent(tle.name) : null;
   const isDebris = tle ? orbitRegime(tle) === "Orbital debris" : false;
+
+  const openAskMissionProfile = () => {
+    const text = buildMissionAskPrompt(displayName, noradId, tle);
+    setAskPrefill({ mode: "chat", text, autoSend: true });
+    void navigate({ to: "/ask" });
+  };
 
   return (
     <div className="sat-detail-grid" style={{ marginTop: 18 }}>
@@ -208,34 +233,62 @@ export function ObjectProfile({ noradId, displayName, tle }: { noradId: string; 
           <>
             {sat.image ? (
               <div className="profile-figure">
-                <SkeletonImage src={sat.image} className="profile-img" alt={`${displayName} spacecraft`} hideOnError />
+                <SkeletonImage
+                  src={sat.image}
+                  className="profile-img"
+                  alt={`${displayName} spacecraft`}
+                  hideOnError
+                />
               </div>
             ) : null}
             <p className="profile-lede">{writeUp}</p>
             <div className="detail-rows">
-              {cleanField(sat.operator, 80) ? <DetailCell label="Operator" value={cleanField(sat.operator, 80)} /> : null}
-              {cleanField(sat.countries, 80) ? <DetailCell label="Countries" value={cleanField(sat.countries, 80).replace(/,/g, ", ")} /> : null}
+              {cleanField(sat.operator, 80) ? (
+                <DetailCell label="Operator" value={cleanField(sat.operator, 80)} />
+              ) : null}
+              {cleanField(sat.countries, 80) ? (
+                <DetailCell
+                  label="Countries"
+                  value={cleanField(sat.countries, 80).replace(/,/g, ", ")}
+                />
+              ) : null}
               {cleanField(sat.status, 40) ? (
                 <DetailCell
                   label="Status"
-                  value={cleanField(sat.status, 40).charAt(0).toUpperCase() + cleanField(sat.status, 40).slice(1)}
+                  value={
+                    cleanField(sat.status, 40).charAt(0).toUpperCase() +
+                    cleanField(sat.status, 40).slice(1)
+                  }
                 />
               ) : null}
-              {fmtDate(sat.launched) ? <DetailCell label="Launched" value={fmtDate(sat.launched)!} /> : null}
-              {fmtDate(sat.deployed) ? <DetailCell label="Deployed" value={fmtDate(sat.deployed)!} /> : null}
-              {fmtDate(sat.decayed) ? <DetailCell label="Reentered" value={fmtDate(sat.decayed)!} /> : null}
+              {fmtDate(sat.launched) ? (
+                <DetailCell label="Launched" value={fmtDate(sat.launched)!} />
+              ) : null}
+              {fmtDate(sat.deployed) ? (
+                <DetailCell label="Deployed" value={fmtDate(sat.deployed)!} />
+              ) : null}
+              {fmtDate(sat.decayed) ? (
+                <DetailCell label="Reentered" value={fmtDate(sat.decayed)!} />
+              ) : null}
             </div>
           </>
         ) : (
-          <p className="detail-note">
-            No community mission record exists for this object yet. The orbital elements and
-            live telemetry above remain complete; many small payloads and debris objects
-            simply have no published profile.
-          </p>
+          <div className="profile-empty">
+            <p className="detail-note" style={{ marginBottom: 12 }}>
+              No community mission record is published for this object yet. Orbital
+              elements and live telemetry above are still complete; many small payloads
+              and debris simply have no profile on file.
+            </p>
+            <p className="detail-note" style={{ marginBottom: 14 }}>
+              Stellun AI can still summarize what is publicly known from the catalog name
+              and NORAD number.
+            </p>
+            <button type="button" className="btn btn-primary" onClick={openAskMissionProfile}>
+              Ask Stellun AI for a mission profile
+            </button>
+          </div>
         )}
-        <p className="detail-note">
-          Profile maintained by the SatNOGS observer community.
-        </p>
+        <p className="detail-note">Profile maintained by the SatNOGS observer community.</p>
       </div>
 
       <div className="glass glass-card side-card">
