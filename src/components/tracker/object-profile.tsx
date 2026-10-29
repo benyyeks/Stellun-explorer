@@ -82,7 +82,8 @@ function buildWriteUp(sat: SatnogsSat, displayName: string, noradId: string): st
   const name = cleanField(sat.name, 120) || displayName;
   const alt = cleanField(sat.names, 160);
   const sentences: string[] = [];
-  sentences.push(
+  
+ sentences.push(
     `\( {name} \){alt ? `, also catalogued as ${alt},` : ""} is tracked in the public catalog as NORAD ${noradId}.`,
   );
 
@@ -93,18 +94,11 @@ function buildWriteUp(sat: SatnogsSat, displayName: string, noradId: string): st
   if (operator) mission = `It is operated by \( {operator} \){countries ? ` (${countries})` : ""}`;
   else if (countries) mission = `It is registered to ${countries}`;
   if (mission && launched) mission += ` and was launched on ${launched}.`;
-  else if (mission) mission += ".";
   else if (launched) mission = `It was launched on ${launched}.`;
-  if (mission) sentences.push(mission);
-
-  const deployed = fmtDate(sat.deployed);
+  ...
   if (deployed) sentences.push(`Deployment followed on ${deployed}.`);
-  const decayed = fmtDate(sat.decayed);
   if (decayed) sentences.push(`The object reentered the atmosphere on ${decayed}.`);
-  const rawStatus = cleanField(sat.status, 40);
-  const status = rawStatus ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1) : "";
   if (status && !decayed) sentences.push(`Observers currently report its status as ${status}.`);
-  return sentences.join(" ");
 }
 
 function buildMissionAskPrompt(displayName: string, noradId: string, tle?: TLE | null): string {
