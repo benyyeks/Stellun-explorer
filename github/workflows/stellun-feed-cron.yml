@@ -1,0 +1,63 @@
+# STELLUN automatic feed refresh
+# Requires repo secret: STELLUN_CRON_SECRET (same value as LOVABLE_CRON_SECRET on Cloudflare)
+# Optional secret: STELLUN_SITE_URL (default: production workers URL)
+
+name: Stellun feed refresh
+
+on:
+  schedule:
+    # Light cycle every 15 minutes (KP, solar wind, xray, ISS, news soft, stations)
+    - cron: "*/15 * * * *"
+    # Morning batch 06:05 UTC — APOD + Neo + DONKI friendly window
+    - cron: "5 6 * * *"
+    # Heavy satellite catalogs 4x/day
+    - cron: "20 0,6,12,18 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full | heavy | morning"
+        required: true
+        default: "full"
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call Stellun refresh endpoint
+        env:
+          SECRET: ${{ secrets.STELLUN_CRON_SECRET }}
+          BASE: ${{ secrets.STELLUN_SITE_URL }}
+          MODE: ${{ github.event.inputs.mode || '' }}
+          CRON_HOUR: ${{ github.event.schedule }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SECRET:-}" ]; then
+            echo "Missing STELLUN_CRON_SECRET"
+            exit 1
+          fi
+          BASE="${BASE:-https://stellun-explorer.noreplyobitex.workers.dev}"
+          BASE="${BASE%/}"
+
+          # Decide mode from schedule if not manual
+          if [ -z "$MODE" ]; then
+            case "${{ github.event.schedule }}" in
+              "5 6 * * *") MODE=morning ;;
+              "20 0,6,12,18 * * *") MODE=heavy ;;
+              *) MODE=full ;;
+            esac
+          fi
+
+          echo "Mode=$MODE Base=$BASE"
+          if [ "$MODE" = "heavy" ]; then
+            curl -fsS -X POST \
+              -H "Authorization: Bearer ${SECRET}" \
+              "${BASE}/api/public/refresh?heavy=1"
+          else
+            # full covers light feeds; morning is same endpoint (APOD keyed by day)
+            curl -fsS -X POST \
+              -H "Authorization: Bearer ${SECRET}" \
+              "${BASE}/api/public/refresh"
+          fi
+          echo
+          echo "OK"
