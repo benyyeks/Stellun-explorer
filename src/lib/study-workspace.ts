@@ -40,6 +40,8 @@ export const ASK_PREFILL_KEY = "stellun-ask-prefill";
 export type AskPrefill = {
   mode?: "chat" | "quiz" | "explain" | "resources";
   text: string;
+  /** If true, /ask sends the message as soon as the page loads. */
+  autoSend?: boolean;
 };
 
 export const LEARNING_MODES: { id: LearningMode; label: string; hint: string }[] = [
