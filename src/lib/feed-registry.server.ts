@@ -1,7 +1,7 @@
 // Combined refresh cycle. Scheduler walks this registry; cached() only hits
 // upstream when TTL is past (unless forceRefresh is set by admin).
 
-import { cached } from "@/lib/api-cache.server";
+import { cached, readCachedOnly } from "@/lib/api-cache.server";
 import { fetchJson, isoDate, nasaKey } from "@/lib/stellun-fetch.server";
 
 type Feed = { name: string; run: () => Promise<{ source: string }> };
@@ -19,8 +19,7 @@ function allowForce(feedName: string): boolean {
   if (!forceRefresh) return false;
   // Single-feed admin refresh may force that feed only.
   if (forceOnly) return forceOnly === feedName;
-  // Full "refresh all": never force LL2 (cron + TTL handle it).
-  if (feedName === "launches" || feedName === "past-launches") return false;
+  // Full "refresh all" may force light feeds (LL2 is not on the Worker anymore).
   return true;
 }
 
@@ -92,147 +91,7 @@ function normalizeApod(raw: unknown) {
   };
 }
 
-function normalizeLl2List(ll: any) {
-  const results = Array.isArray(ll?.results) ? ll.results : [];
-  return {
-    count: ll?.count ?? results.length,
-    next: null,
-    previous: null,
-    results: results.map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      net: r.net,
-      status:
-        typeof r.status === "object"
-          ? r.status
-          : { name: String(r.status ?? "Scheduled") },
-      launch_service_provider: {
-        name: r.lsp_name ?? r.launch_service_provider?.name ?? "",
-      },
-      rocket: {
-        configuration: {
-          full_name:
-            r.rocket_configuration?.full_name ??
-            r.rocket?.configuration?.full_name ??
-            null,
-        },
-      },
-      mission: {
-        type: r.mission_type ?? r.mission?.type ?? null,
-        description: r.mission_description ?? r.mission?.description ?? null,
-        orbit: { name: r.orbit ?? r.mission?.orbit?.name ?? null },
-      },
-      pad: {
-        name: r.pad?.name ?? null,
-        location: { name: r.pad?.location?.name ?? r.pad_location ?? null },
-        country_code: r.pad?.country_code ?? null,
-      },
-      image:
-        typeof r.image === "string"
-          ? r.image
-          : (r.image?.image_url ??
-            r.image?.url ??
-            r.rocket?.configuration?.image_url ??
-            null),
-      webcast_live: Boolean(r.webcast_live),
-      vidURLs: r.vidURLs ?? r.vid_urls ?? [],
-    })),
-  };
-}
 
-
-/** Dual-write launch rows into public.launches so Table Editor stays in sync with cache. */
-async function persistLaunchesTable(kind: "upcoming" | "past", list: { results?: any[] }) {
-  const rows = Array.isArray(list?.results) ? list.results : [];
-  if (!rows.length) return;
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const payload = rows.map((r: any) => {
-      const vids = r.vidURLs ?? r.vid_urls ?? [];
-      return {
-        id: String(r.id),
-        name: r.name ?? null,
-        net: r.net ?? null,
-        status: r.status?.abbrev ?? r.status?.name ?? null,
-        provider: r.launch_service_provider?.name ?? r.lsp_name ?? null,
-        rocket: r.rocket?.configuration?.full_name ?? null,
-        image: typeof r.image === "string" ? r.image : (r.image?.image_url ?? null),
-        video_urls: vids,
-        kind,
-        raw: r,
-        updated_at: new Date().toISOString(),
-      };
-    });
-    const { error } = await supabaseAdmin.from("launches").upsert(payload, { onConflict: "id" });
-    if (error) console.error("launches upsert:", error.message);
-  } catch (e) {
-    console.error("persistLaunchesTable:", e);
-  }
-}
-
-const LL2_UPCOMING =
-  "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=10&mode=list";
-const LL2_PREVIOUS =
-  "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=10&mode=list";
-
-async function fetchUpcomingLaunches() {
-  try {
-    const ll = await launchFeed(LL2_UPCOMING, 25000);
-    const n = normalizeLl2List(ll);
-    if (n.results.length > 0) {
-      await persistLaunchesTable("upcoming", n);
-      return n;
-    }
-  } catch (e) {
-    console.error("LL2 upcoming failed, trying SpaceX:", e);
-  }
-  try {
-    const rows = (await fetchJson("https://api.spacexdata.com/v5/launches/upcoming", {
-      timeoutMs: 12000,
-    })) as any[];
-    if (!Array.isArray(rows) || rows.length === 0) {
-      throw new Error("SpaceX upcoming returned no launches");
-    }
-    const results = rows.slice(0, 12).map((l) => ({
-      id: l.id,
-      name: l.name ?? "SpaceX mission",
-      net: l.date_utc ?? null,
-      status: {
-        name: l.upcoming ? "Go" : "Success",
-        abbrev: l.upcoming ? "Go" : "Success",
-      },
-      launch_service_provider: { name: "SpaceX" },
-      rocket: { configuration: { full_name: "Falcon 9 / Falcon Heavy" } },
-      mission: {
-        type: null,
-        description: l.details ?? null,
-        orbit: { name: null },
-      },
-      pad: { name: null, location: { name: null }, country_code: null },
-      image: l.links?.patch?.large ?? l.links?.patch?.small ?? null,
-      webcast_live: Boolean(l.links?.webcast),
-      vidURLs: l.links?.youtube_id
-        ? [{ url: `https://www.youtube.com/watch?v=${l.links.youtube_id}`, priority: 0 }]
-        : [],
-    }));
-    const out = { count: results.length, next: null, previous: null, results };
-    await persistLaunchesTable("upcoming", out);
-    return out;
-  } catch (e) {
-    console.error("SpaceX upcoming also failed:", e);
-    throw e;
-  }
-}
-
-async function fetchPastLaunches() {
-  const ll = await launchFeed(LL2_PREVIOUS, 25000);
-  const n = normalizeLl2List(ll);
-  if (!n.results.length) {
-    throw new Error("LL2 previous returned no launches");
-  }
-  await persistLaunchesTable("past", n);
-  return n;
-}
 
 /** DONKI first; on failure (often 503) use NOAA SWPC alerts.json. Always an array. */
 async function fetchSpaceWeatherAlerts(start: string, end: string, key: string) {
@@ -391,20 +250,29 @@ function feeds(): Feed[] {
         return { source: r.source };
       },
     },
-   {
-      name: "launches",
-      run: () =>
-        cached("launches", {}, 3600, () => fetchUpcomingLaunches(), {
-          force: allowForce("launches"),
-        }),
-    },
-    {
-      name: "past-launches",
-      run: () =>
-        cached("launches-previous", {}, 21600, () => fetchPastLaunches(), {
-          force: allowForce("past-launches"),
-        }),
-    },
+/**
+ * Launches are written by GitHub Action "Stellun LL2 seed" into api_cache + launches.
+ * The Worker never calls Launch Library or SpaceX (avoids CF egress rate limits).
+ */
+async function readLaunchesFromCache(endpoint: "launches" | "launches-previous") {
+  const empty = { count: 0, next: null, previous: null, results: [] as unknown[] };
+  const ttl = endpoint === "launches" ? 7200 : 43200;
+  const row = await readCachedOnly<typeof empty>(endpoint, {}, ttl, empty);
+  const n = Array.isArray(row.data?.results) ? row.data.results.length : 0;
+  if (n === 0) {
+    return {
+      source: "none" as const,
+      error: "No launch data in cache yet. Run GitHub Action: Stellun LL2 seed.",
+    };
+  }
+  // Treat GitHub-seeded cache as healthy even if slightly past TTL.
+  return {
+    source: row.isStale ? ("stale" as const) : ("cache" as const),
+    error: row.isStale
+      ? "Launch cache is older than usual — waiting for next GitHub LL2 seed."
+      : null,
+  };
+}
     {
       name: "mars-perseverance",
       run: () =>
@@ -536,13 +404,26 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
     for (const f of toRun) {
       const t0 = Date.now();
       try {
-        const r = await f.run();
+        const r = (await f.run()) as {
+          source: string;
+          error?: string | null;
+        };
+        const src = r.source;
+        const err =
+          r.error ??
+          (src === "stale"
+            ? "Source unavailable, showing last saved copy"
+            : src === "none"
+              ? "No data"
+              : null);
+        // cache = healthy seed from GitHub; skipped = intentional; none/stale = problem
+        const ok = src === "fresh" || src === "cache" || src === "skipped";
         results.push({
           feed: f.name,
-          ok: r.source !== "stale",
-          source: r.source,
+          ok,
+          source: src,
           duration_ms: Date.now() - t0,
-          error: r.source === "stale" ? "Source unavailable, showing last saved copy" : null,
+          error: ok ? null : err,
         });
       } catch (e) {
         results.push({
