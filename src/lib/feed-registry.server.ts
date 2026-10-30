@@ -171,9 +171,9 @@ async function persistLaunchesTable(kind: "upcoming" | "past", list: { results?:
 }
 
 const LL2_UPCOMING =
-  "https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=10&mode=list";
+  "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=10&mode=list";
 const LL2_PREVIOUS =
-  "https://ll.thespacedevs.com/2.3.0/launches/previous/?limit=10&mode=list";
+  "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=10&mode=list";
 
 async function fetchUpcomingLaunches() {
   try {
@@ -358,12 +358,12 @@ function feeds(): Feed[] {
         cached(
           "satellites",
           { group: "stations" },
-          7200,
+          10800,
           () =>
             fetchJson("https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=json", {
-              timeoutMs: 45000,
+              timeoutMs: 60000,
             }),
-          { force: forceRefresh },
+          { force: allowForce("satellites-stations") },
         ),
     },
 
@@ -391,16 +391,18 @@ function feeds(): Feed[] {
         return { source: r.source };
       },
     },
-    {
+   {
       name: "launches",
       run: () =>
-        cached("launches", {}, 3600, () => fetchUpcomingLaunches(), { force: forceRefresh }),
+        cached("launches", {}, 3600, () => fetchUpcomingLaunches(), {
+          force: allowForce("launches"),
+        }),
     },
     {
       name: "past-launches",
       run: () =>
         cached("launches-previous", {}, 21600, () => fetchPastLaunches(), {
-          force: forceRefresh,
+          force: allowForce("past-launches"),
         }),
     },
     {
@@ -451,19 +453,20 @@ function feeds(): Feed[] {
     },
     {
       name: "picture-of-the-day",
-      // Key by calendar day so the image rotates every morning even if TTL is still warm.
+      // Key by calendar day so a new UTC day always allows a new image.
+      // TTL 6h so a late NASA publish is picked up without hitting every 15 min.
       run: () =>
         cached(
           "apod",
           { day },
-          86400,
+          21600,
           async () => {
             const raw = await fetchJson("https://science.nasa.gov/wp-json/wp/v2/apod-basic/", {
               timeoutMs: 15000,
             });
             return normalizeApod(raw);
           },
-          { force: forceRefresh },
+          { force: allowForce("picture-of-the-day") },
         ),
     },
     {
