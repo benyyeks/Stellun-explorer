@@ -41,7 +41,7 @@ export const Route = createFileRoute("/apod")({
         { property: "og:type", content: "website" },
         {
           property: "og:url",
-          content: "https://stellun-explorer.noreplyobitex.workers.dev/apod",
+          content: "https://stellun.space/apod",
         },
         ...(img
           ? [
@@ -80,7 +80,7 @@ function ApodPage() {
     setMeta("og:title", `${title} · STELLUN`);
     setMeta("og:description", explanation.slice(0, 200) || "NASA APOD on STELLUN");
     setMeta("og:image", img);
-    setMeta("og:url", "https://stellun-explorer.noreplyobitex.workers.dev/apod");
+    setMeta("og:url", "https://stellun.space/apod");
     setMeta("og:type", "website");
     setMeta("twitter:card", "summary_large_image", true);
     setMeta("twitter:image", img, true);

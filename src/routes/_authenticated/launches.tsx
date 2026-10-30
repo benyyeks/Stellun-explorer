@@ -330,7 +330,7 @@ function LaunchesPage() {
     if (!next) return;
 
     const origin =
-      typeof window !== "undefined" ? window.location.origin : "https://stellun-explorer.noreplyobitex.workers.dev";
+      typeof window !== "undefined" ? window.location.origin : "https://stellun.space";
     const url = origin + "/launches#next-launch";
     const name = next.name || "the next orbital launch";
     const title = "STELLUN · " + name;

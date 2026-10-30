@@ -11,13 +11,16 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as ApodRouteImport } from './routes/apod'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as EngineeringRouteImport } from './routes/engineering'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AuthenticatedAboutRouteImport } from './routes/_authenticated/about'
 import { Route as AuthenticatedAcademyRouteImport } from './routes/_authenticated/academy'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAskRouteImport } from './routes/_authenticated/ask'
+import { Route as AuthenticatedConditionsRouteImport } from './routes/_authenticated/conditions'
 import { Route as AuthenticatedDeepspaceRouteImport } from './routes/_authenticated/deepspace'
 import { Route as AuthenticatedIntelligenceRouteImport } from './routes/_authenticated/intelligence'
 import { Route as AuthenticatedLaunchesRouteImport } from './routes/_authenticated/launches'
@@ -27,6 +30,7 @@ import { Route as AuthenticatedResearchRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedResourcesRouteImport } from './routes/_authenticated/resources'
 import { Route as AuthenticatedRomanRouteImport } from './routes/_authenticated/roman'
 import { Route as AuthenticatedSkyRouteImport } from './routes/_authenticated/sky'
+import { Route as AuthenticatedStudyDeskRouteImport } from './routes/_authenticated/study-desk'
 import { Route as AuthenticatedTrackerRouteImport } from './routes/_authenticated/tracker'
 import { Route as AuthenticatedWeatherRouteImport } from './routes/_authenticated/weather'
 import { Route as ApiAskRouteImport } from './routes/api/ask'
@@ -47,6 +51,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApodRoute = ApodRouteImport.update({
+  id: '/apod',
+  path: '/apod',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -60,6 +69,11 @@ const EngineeringRoute = EngineeringRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAboutRoute = AuthenticatedAboutRouteImport.update({
@@ -80,6 +94,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
 const AuthenticatedAskRoute = AuthenticatedAskRouteImport.update({
   id: '/ask',
   path: '/ask',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedConditionsRoute = AuthenticatedConditionsRouteImport.update({
+  id: '/conditions',
+  path: '/conditions',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDeepspaceRoute = AuthenticatedDeepspaceRouteImport.update({
@@ -126,6 +145,11 @@ const AuthenticatedRomanRoute = AuthenticatedRomanRouteImport.update({
 const AuthenticatedSkyRoute = AuthenticatedSkyRouteImport.update({
   id: '/sky',
   path: '/sky',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStudyDeskRoute = AuthenticatedStudyDeskRouteImport.update({
+  id: '/study-desk',
+  path: '/study-desk',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTrackerRoute = AuthenticatedTrackerRouteImport.update({
@@ -185,13 +209,16 @@ const ApiPublicRefreshNewsRoute = ApiPublicRefreshNewsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/apod': typeof ApodRoute
   '/auth': typeof AuthRoute
   '/engineering': typeof EngineeringRoute
   '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/about': typeof AuthenticatedAboutRoute
   '/academy': typeof AuthenticatedAcademyRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/ask': typeof AuthenticatedAskRoute
+  '/conditions': typeof AuthenticatedConditionsRoute
   '/deepspace': typeof AuthenticatedDeepspaceRouteWithChildren
   '/intelligence': typeof AuthenticatedIntelligenceRoute
   '/launches': typeof AuthenticatedLaunchesRoute
@@ -201,6 +228,7 @@ export interface FileRoutesByFullPath {
   '/resources': typeof AuthenticatedResourcesRoute
   '/roman': typeof AuthenticatedRomanRoute
   '/sky': typeof AuthenticatedSkyRoute
+  '/study-desk': typeof AuthenticatedStudyDeskRoute
   '/tracker': typeof AuthenticatedTrackerRouteWithChildren
   '/weather': typeof AuthenticatedWeatherRoute
   '/api/ask': typeof ApiAskRoute
@@ -214,13 +242,16 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/apod': typeof ApodRoute
   '/auth': typeof AuthRoute
   '/engineering': typeof EngineeringRoute
   '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/about': typeof AuthenticatedAboutRoute
   '/academy': typeof AuthenticatedAcademyRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/ask': typeof AuthenticatedAskRoute
+  '/conditions': typeof AuthenticatedConditionsRoute
   '/intelligence': typeof AuthenticatedIntelligenceRoute
   '/launches': typeof AuthenticatedLaunchesRoute
   '/mars': typeof AuthenticatedMarsRoute
@@ -229,6 +260,7 @@ export interface FileRoutesByTo {
   '/resources': typeof AuthenticatedResourcesRoute
   '/roman': typeof AuthenticatedRomanRoute
   '/sky': typeof AuthenticatedSkyRoute
+  '/study-desk': typeof AuthenticatedStudyDeskRoute
   '/weather': typeof AuthenticatedWeatherRoute
   '/api/ask': typeof ApiAskRoute
   '/list/$shareId': typeof ListShareIdRoute
@@ -243,13 +275,16 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/apod': typeof ApodRoute
   '/auth': typeof AuthRoute
   '/engineering': typeof EngineeringRoute
   '/privacy': typeof PrivacyRoute
+  '/terms': typeof TermsRoute
   '/_authenticated/about': typeof AuthenticatedAboutRoute
   '/_authenticated/academy': typeof AuthenticatedAcademyRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/ask': typeof AuthenticatedAskRoute
+  '/_authenticated/conditions': typeof AuthenticatedConditionsRoute
   '/_authenticated/deepspace': typeof AuthenticatedDeepspaceRouteWithChildren
   '/_authenticated/intelligence': typeof AuthenticatedIntelligenceRoute
   '/_authenticated/launches': typeof AuthenticatedLaunchesRoute
@@ -259,6 +294,7 @@ export interface FileRoutesById {
   '/_authenticated/resources': typeof AuthenticatedResourcesRoute
   '/_authenticated/roman': typeof AuthenticatedRomanRoute
   '/_authenticated/sky': typeof AuthenticatedSkyRoute
+  '/_authenticated/study-desk': typeof AuthenticatedStudyDeskRoute
   '/_authenticated/tracker': typeof AuthenticatedTrackerRouteWithChildren
   '/_authenticated/weather': typeof AuthenticatedWeatherRoute
   '/api/ask': typeof ApiAskRoute
@@ -274,13 +310,16 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/apod'
     | '/auth'
     | '/engineering'
     | '/privacy'
+    | '/terms'
     | '/about'
     | '/academy'
     | '/admin'
     | '/ask'
+    | '/conditions'
     | '/deepspace'
     | '/intelligence'
     | '/launches'
@@ -290,6 +329,7 @@ export interface FileRouteTypes {
     | '/resources'
     | '/roman'
     | '/sky'
+    | '/study-desk'
     | '/tracker'
     | '/weather'
     | '/api/ask'
@@ -303,13 +343,16 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/apod'
     | '/auth'
     | '/engineering'
     | '/privacy'
+    | '/terms'
     | '/about'
     | '/academy'
     | '/admin'
     | '/ask'
+    | '/conditions'
     | '/intelligence'
     | '/launches'
     | '/mars'
@@ -318,6 +361,7 @@ export interface FileRouteTypes {
     | '/resources'
     | '/roman'
     | '/sky'
+    | '/study-desk'
     | '/weather'
     | '/api/ask'
     | '/list/$shareId'
@@ -331,13 +375,16 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/apod'
     | '/auth'
     | '/engineering'
     | '/privacy'
+    | '/terms'
     | '/_authenticated/about'
     | '/_authenticated/academy'
     | '/_authenticated/admin'
     | '/_authenticated/ask'
+    | '/_authenticated/conditions'
     | '/_authenticated/deepspace'
     | '/_authenticated/intelligence'
     | '/_authenticated/launches'
@@ -347,6 +394,7 @@ export interface FileRouteTypes {
     | '/_authenticated/resources'
     | '/_authenticated/roman'
     | '/_authenticated/sky'
+    | '/_authenticated/study-desk'
     | '/_authenticated/tracker'
     | '/_authenticated/weather'
     | '/api/ask'
@@ -362,9 +410,11 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  ApodRoute: typeof ApodRoute
   AuthRoute: typeof AuthRoute
   EngineeringRoute: typeof EngineeringRoute
   PrivacyRoute: typeof PrivacyRoute
+  TermsRoute: typeof TermsRoute
   ApiAskRoute: typeof ApiAskRoute
   ListShareIdRoute: typeof ListShareIdRoute
   ApiPublicRefreshRoute: typeof ApiPublicRefreshRoute
@@ -387,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/apod': {
+      id: '/apod'
+      path: '/apod'
+      fullPath: '/apod'
+      preLoaderRoute: typeof ApodRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -406,6 +463,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/about': {
@@ -434,6 +498,13 @@ declare module '@tanstack/react-router' {
       path: '/ask'
       fullPath: '/ask'
       preLoaderRoute: typeof AuthenticatedAskRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/conditions': {
+      id: '/_authenticated/conditions'
+      path: '/conditions'
+      fullPath: '/conditions'
+      preLoaderRoute: typeof AuthenticatedConditionsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/deepspace': {
@@ -497,6 +568,13 @@ declare module '@tanstack/react-router' {
       path: '/sky'
       fullPath: '/sky'
       preLoaderRoute: typeof AuthenticatedSkyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/study-desk': {
+      id: '/_authenticated/study-desk'
+      path: '/study-desk'
+      fullPath: '/study-desk'
+      preLoaderRoute: typeof AuthenticatedStudyDeskRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/tracker': {
@@ -606,6 +684,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAcademyRoute: typeof AuthenticatedAcademyRoute
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
+  AuthenticatedConditionsRoute: typeof AuthenticatedConditionsRoute
   AuthenticatedDeepspaceRoute: typeof AuthenticatedDeepspaceRouteWithChildren
   AuthenticatedIntelligenceRoute: typeof AuthenticatedIntelligenceRoute
   AuthenticatedLaunchesRoute: typeof AuthenticatedLaunchesRoute
@@ -615,6 +694,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedResourcesRoute: typeof AuthenticatedResourcesRoute
   AuthenticatedRomanRoute: typeof AuthenticatedRomanRoute
   AuthenticatedSkyRoute: typeof AuthenticatedSkyRoute
+  AuthenticatedStudyDeskRoute: typeof AuthenticatedStudyDeskRoute
   AuthenticatedTrackerRoute: typeof AuthenticatedTrackerRouteWithChildren
   AuthenticatedWeatherRoute: typeof AuthenticatedWeatherRoute
 }
@@ -624,6 +704,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAcademyRoute: AuthenticatedAcademyRoute,
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedAskRoute: AuthenticatedAskRoute,
+  AuthenticatedConditionsRoute: AuthenticatedConditionsRoute,
   AuthenticatedDeepspaceRoute: AuthenticatedDeepspaceRouteWithChildren,
   AuthenticatedIntelligenceRoute: AuthenticatedIntelligenceRoute,
   AuthenticatedLaunchesRoute: AuthenticatedLaunchesRoute,
@@ -633,6 +714,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedResourcesRoute: AuthenticatedResourcesRoute,
   AuthenticatedRomanRoute: AuthenticatedRomanRoute,
   AuthenticatedSkyRoute: AuthenticatedSkyRoute,
+  AuthenticatedStudyDeskRoute: AuthenticatedStudyDeskRoute,
   AuthenticatedTrackerRoute: AuthenticatedTrackerRouteWithChildren,
   AuthenticatedWeatherRoute: AuthenticatedWeatherRoute,
 }
@@ -643,9 +725,11 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  ApodRoute: ApodRoute,
   AuthRoute: AuthRoute,
   EngineeringRoute: EngineeringRoute,
   PrivacyRoute: PrivacyRoute,
+  TermsRoute: TermsRoute,
   ApiAskRoute: ApiAskRoute,
   ListShareIdRoute: ListShareIdRoute,
   ApiPublicRefreshRoute: ApiPublicRefreshRoute,

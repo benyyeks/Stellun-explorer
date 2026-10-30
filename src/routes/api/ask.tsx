@@ -362,7 +362,7 @@ async function officialDomainSearch(query: string): Promise<string> {
       signal: AbortSignal.timeout(8000),
       headers: {
         "User-Agent":
-          "STELLUN-SpaceIntelligence/1.0 (https://stellun-explorer.noreplyobitex.workers.dev)",
+          "STELLUN-SpaceIntelligence/1.0 (https://stellun.space)",
       },
     });
     if (!res.ok) return "";
@@ -625,7 +625,7 @@ export const Route = createFileRoute("/api/ask")({
                 "Content-Type": "application/json",
                 Authorization: "Bearer " + apiKey,
                 "HTTP-Referer":
-                  "https://stellun-explorer.noreplyobitex.workers.dev",
+                  "https://stellun.space",
                 "X-OpenRouter-Title": "STELLUN",
               },
               body: JSON.stringify(body),

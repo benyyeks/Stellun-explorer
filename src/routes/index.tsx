@@ -75,7 +75,7 @@ export const Route = createFileRoute("/")({
       { property: "og:type", content: "website" },
       {
         property: "og:url",
-        content: "https://stellun-explorer.noreplyobitex.workers.dev/",
+        content: "https://stellun.space/",
       },
       { property: "og:title", content: "STELLUN · Space intelligence dashboard" },
 {
@@ -84,8 +84,8 @@ export const Route = createFileRoute("/")({
     "Orbit tracking, sky conditions, space weather, launches, and missions — educational space tools.",
 },
 { property: "og:type", content: "website" },
-{ property: "og:url", content: "https://stellun-explorer.noreplyobitex.workers.dev/" },
-{ property: "og:image", content: "https://stellun-explorer.noreplyobitex.workers.dev/og-image.png" },
+{ property: "og:url", content: "https://stellun.space/" },
+{ property: "og:image", content: "https://stellun.space/og-image.png" },
 { property: "og:image:width", content: "1200" },
 { property: "og:image:height", content: "630" },
 { name: "twitter:card", content: "summary_large_image" },
@@ -95,7 +95,7 @@ export const Route = createFileRoute("/")({
   content:
     "Orbit tracking, sky conditions, space weather, launches, and missions — educational space tools.",
 },
-{ name: "twitter:image", content: "https://stellun-explorer.noreplyobitex.workers.dev/og-image.png" },
+{ name: "twitter:image", content: "https://stellun.space/og-image.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "STELLUN · Space intelligence dashboard" },
       {
@@ -1119,7 +1119,7 @@ function ApodSection() {
   const shareUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/#apod`
-      : "https://stellun-explorer.noreplyobitex.workers.dev/apod";
+      : "https://stellun.space/apod";
 
   const caption = [
     title,
