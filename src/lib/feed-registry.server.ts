@@ -6,11 +6,22 @@ import { fetchJson, isoDate, nasaKey } from "@/lib/stellun-fetch.server";
 
 type Feed = { name: string; run: () => Promise<{ source: string }> };
 
-/** Set true for one admin cycle so every feed ignores TTL and re-hits upstream. */
+/** Set true for one admin cycle so feeds can ignore TTL and re-hit upstream. */
 let forceRefresh = false;
+/** When set, only this feed name may honour force (avoids LL2 spam on "refresh all"). */
+let forceOnly: string | null = null;
 
 export function setForceRefresh(v: boolean) {
   forceRefresh = v;
+}
+
+function allowForce(feedName: string): boolean {
+  if (!forceRefresh) return false;
+  // Single-feed admin refresh may force that feed only.
+  if (forceOnly) return forceOnly === feedName;
+  // Full "refresh all": never force LL2 (cron + TTL handle it).
+  if (feedName === "launches" || feedName === "past-launches") return false;
+  return true;
 }
 
 async function launchFeed(url: string, timeoutMs: number) {
@@ -477,6 +488,7 @@ export function listRegisteredFeeds(): string[] {
 }
 export async function runRefreshCycle(opts?: { force?: boolean; only?: string }) {
   forceRefresh = Boolean(opts?.force);
+  forceOnly = opts?.only ?? null;
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const all = feeds();
@@ -566,5 +578,6 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
     return results;
   } finally {
     forceRefresh = false;
+    forceOnly = null;
   }
 }
