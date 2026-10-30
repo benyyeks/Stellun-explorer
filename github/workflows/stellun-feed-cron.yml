@@ -36,7 +36,7 @@ jobs:
             echo "Missing STELLUN_CRON_SECRET"
             exit 1
           fi
-          BASE="${BASE:-https://stellun-explorer.noreplyobitex.workers.dev}"
+          BASE="${BASE:-https://stellun.space}"
           BASE="${BASE%/}"
 
           # Decide mode from schedule if not manual
