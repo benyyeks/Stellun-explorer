@@ -1,0 +1,229 @@
+# STELLUN — Launch Library seed (runs on GitHub, NOT Cloudflare Worker)
+# Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+# Optional: LAUNCH_LIBRARY_TOKEN
+
+name: Stellun LL2 seed
+
+on:
+  schedule:
+    # Upcoming every 2 hours (safe for free LL2)
+    - cron: "15 */2 * * *"
+    # Past launches twice a day
+    - cron: "40 7,19 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "upcoming | past | both"
+        required: true
+        default: "both"
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch LL2 and write Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          LL2_TOKEN: ${{ secrets.LAUNCH_LIBRARY_TOKEN }}
+          MODE: ${{ github.event.inputs.mode || '' }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          set -euo pipefail
+          if [ -z "\( {SUPABASE_URL:-}" ] || [ -z " \){SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
+            exit 1
+          fi
+          SUPABASE_URL="${SUPABASE_URL%/}"
+
+          if [ -z "${MODE}" ]; then
+            case "${SCHEDULE}" in
+              "40 7,19 * * *") MODE=past ;;
+              *) MODE=upcoming ;;
+            esac
+          fi
+          echo "Mode=$MODE"
+
+          python3 <<'PY'
+          import json, os, urllib.request, urllib.error, datetime
+
+          BASE = os.environ["SUPABASE_URL"].rstrip("/")
+          KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+          TOKEN = (os.environ.get("LL2_TOKEN") or "").strip()
+          MODE = os.environ.get("MODE") or "both"
+
+          def js_cache_key(endpoint: str) -> str:
+              s = "{}"
+              h = 5381
+              for ch in s:
+                  h = (h * 33) ^ ord(ch)
+                  h = h & 0xFFFFFFFF
+                  if h >= 0x80000000:
+                      h -= 0x100000000
+              hu = h % 0x100000000
+              chars = "0123456789abcdefghijklmnopqrstuvwxyz"
+              out = []
+              n = hu
+              if n == 0:
+                  return f"{endpoint}:0"
+              while n:
+                  n, r = divmod(n, 36)
+                  out.append(chars[r])
+              return f"{endpoint}:{''.join(reversed(out))}"
+
+          def http_json(url, headers=None, timeout=45):
+              req = urllib.request.Request(url, headers=headers or {})
+              with urllib.request.urlopen(req, timeout=timeout) as r:
+                  return json.loads(r.read().decode())
+
+          def sb_upsert(table: str, rows: list, on_conflict: str):
+              if not rows:
+                  return
+              body = json.dumps(rows).encode()
+              req = urllib.request.Request(
+                  f"{BASE}/rest/v1/{table}?on_conflict={on_conflict}",
+                  data=body,
+                  method="POST",
+                  headers={
+                      "apikey": KEY,
+                      "Authorization": f"Bearer {KEY}",
+                      "Content-Type": "application/json",
+                      "Prefer": "resolution=merge-duplicates,return=minimal",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      print(table, "upsert", r.status)
+              except urllib.error.HTTPError as e:
+                  err = e.read().decode()[:500]
+                  raise SystemExit(f"Supabase {table} failed {e.code}: {err}")
+
+          def ll2(url: str):
+              headers = {
+                  "User-Agent": "STELLUN-LL2-seed/1.0 (GitHub Actions; https://stellun.space)",
+                  "Accept": "application/json",
+              }
+              if len(TOKEN) >= 16:
+                  headers["Authorization"] = f"Token {TOKEN}"
+              try:
+                  return http_json(url, headers=headers)
+              except urllib.error.HTTPError as e:
+                  if e.code in (401, 403) and TOKEN:
+                      print("Token rejected; retry public")
+                      headers.pop("Authorization", None)
+                      return http_json(url, headers=headers)
+                  if e.code == 429:
+                      print("429 — wait 5s and retry once")
+                      import time
+                      time.sleep(5)
+                      return http_json(url, headers=headers)
+                  raise
+
+          def normalize(ll: dict) -> dict:
+              results = []
+              for r in (ll.get("results") or []):
+                  status = r.get("status")
+                  if not isinstance(status, dict):
+                      status = {"name": str(status or "Scheduled")}
+                  image = r.get("image")
+                  if isinstance(image, dict):
+                      image = image.get("image_url") or image.get("url")
+                  if not isinstance(image, str):
+                      image = None
+                  rocket = r.get("rocket") if isinstance(r.get("rocket"), dict) else {}
+                  conf = rocket.get("configuration") if isinstance(rocket.get("configuration"), dict) else {}
+                  rc = r.get("rocket_configuration") if isinstance(r.get("rocket_configuration"), dict) else {}
+                  full = rc.get("full_name") or conf.get("full_name")
+                  mission = r.get("mission") if isinstance(r.get("mission"), dict) else {}
+                  orbit = r.get("orbit")
+                  if isinstance(orbit, dict):
+                      orbit_name = orbit.get("name")
+                  elif isinstance(mission.get("orbit"), dict):
+                      orbit_name = mission["orbit"].get("name")
+                  else:
+                      orbit_name = orbit if isinstance(orbit, str) else None
+                  pad = r.get("pad") if isinstance(r.get("pad"), dict) else {}
+                  loc = pad.get("location") if isinstance(pad.get("location"), dict) else {}
+                  lsp = r.get("launch_service_provider") if isinstance(r.get("launch_service_provider"), dict) else {}
+                  vids = r.get("vidURLs") or r.get("vid_urls") or []
+                  results.append({
+                      "id": r.get("id"),
+                      "name": r.get("name"),
+                      "net": r.get("net"),
+                      "status": status,
+                      "launch_service_provider": {
+                          "name": r.get("lsp_name") or lsp.get("name") or ""
+                      },
+                      "rocket": {"configuration": {"full_name": full}},
+                      "mission": {
+                          "type": r.get("mission_type") or mission.get("type"),
+                          "description": r.get("mission_description") or mission.get("description"),
+                          "orbit": {"name": orbit_name},
+                      },
+                      "pad": {
+                          "name": pad.get("name"),
+                          "location": {"name": loc.get("name") or r.get("pad_location")},
+                          "country_code": pad.get("country_code"),
+                      },
+                      "image": image,
+                      "webcast_live": bool(r.get("webcast_live")),
+                      "vidURLs": vids,
+                  })
+              return {
+                  "count": ll.get("count", len(results)),
+                  "next": None,
+                  "previous": None,
+                  "results": results,
+              }
+
+          def write_kind(kind: str, payload: dict, ttl: int, endpoint: str):
+              cache_key = js_cache_key(endpoint)
+              now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+              sb_upsert(
+                  "api_cache",
+                  [{
+                      "cache_key": cache_key,
+                      "endpoint": endpoint,
+                      "payload": payload,
+                      "fetched_at": now,
+                      "ttl_seconds": ttl,
+                  }],
+                  "cache_key",
+              )
+              rows = []
+              for r in payload.get("results") or []:
+                  st = r.get("status") or {}
+                  rows.append({
+                      "id": str(r.get("id")),
+                      "name": r.get("name"),
+                      "net": r.get("net"),
+                      "status": st.get("abbrev") or st.get("name"),
+                      "provider": (r.get("launch_service_provider") or {}).get("name"),
+                      "rocket": ((r.get("rocket") or {}).get("configuration") or {}).get("full_name"),
+                      "image": r.get("image"),
+                      "video_urls": r.get("vidURLs") or [],
+                      "kind": kind,
+                      "raw": r,
+                      "updated_at": now,
+                  })
+              sb_upsert("launches", rows, "id")
+              print(kind, "rows", len(rows), "cache", cache_key)
+
+          do_up = MODE in ("upcoming", "both")
+          do_past = MODE in ("past", "both")
+
+          if do_up:
+              raw = ll2(
+                  "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=15&mode=list"
+              )
+              write_kind("upcoming", normalize(raw), 7200, "launches")
+
+          if do_past:
+              raw = ll2(
+                  "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=15&mode=list"
+              )
+              write_kind("past", normalize(raw), 43200, "launches-previous")
+
+          print("DONE")
+          PY
