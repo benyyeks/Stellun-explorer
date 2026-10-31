@@ -337,7 +337,7 @@ function TrackerPage() {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [zoomCmd, setZoomCmd] = useState(0);
-const [fsChromeOpen, setFsChromeOpen] = useState(true);
+  const [fsChromeOpen, setFsChromeOpen] = useState(true);
   useEffect(() => setMounted(true), []);
 
   // Restore a comparison from a shared link on first load.
@@ -552,72 +552,6 @@ const [fsChromeOpen, setFsChromeOpen] = useState(true);
   const failed = query.isError || (query.isSuccess && !query.data.data);
 
   const hud = (
-              <div className={`scene-hud${expanded ? "" : " scene-hud-docked"}`} role="toolbar" aria-label="Tracker controls">
-                <div className="scene-hud-group" role="group" aria-label="Satellite groups">
-                  <div className="regime-tabs" role="tablist" aria-label="Orbital regime">
-                    {REGIMES.map((r) => (
-                      <button
-                        key={r.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={currentRegime === r.id}
-                        className={`regime-tab ${currentRegime === r.id ? "regime-tab-active" : ""}`}
-                        onClick={() => {
-                          const first = r.groups[0]!;
-                          setGroup(first.id);
-                          setFilter("");
-                          setCompareIds([]);
-                        }}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="chip-row" role="group" aria-label={`Satellite groups in ${regimeDef.label}`}>
-                    {regimeDef.groups.map((g) => (
-                      <button
-                        key={g.id}
-                        type="button"
-                        className={`chip ${group === g.id ? "chip-active" : ""}`}
-                        aria-pressed={group === g.id}
-                        onClick={() => {
-                          setGroup(g.id);
-                          setFilter("");
-                          setCompareIds([]);
-                        }}
-                      >
-                        {g.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <button type="button" className="chip" aria-label="Zoom in" onClick={() => setZoomCmd((z) => z + 1)}>
-  Zoom in
-</button>
-<button type="button" className="chip" aria-label="Zoom out" onClick={() => setZoomCmd((z) => z - 1)}>
-  Zoom out
-</button>
-                <button
-                  type="button"
-                  className={`chip ${autoRotate ? "chip-active" : ""}`}
-                  aria-pressed={autoRotate}
-                  aria-label="Toggle globe rotation"
-                  onClick={() => setAutoRotate((v) => !v)}
-                >
-                  Rotate
-                </button>
-                <button
-                  type="button"
-                  className={`chip ${compareMode ? "chip-active" : ""}`}
-                  aria-pressed={compareMode}
-                  aria-label="Toggle satellite compare mode"
-                  onClick={() => {
-                    if (compareMode) {
-                      exitCompare();
-                    } else {
-                      setCompareMode(true);
-                      setCompareNote("Compare mode on. Pick objects to compare them side by side.");
-const hud = (
     <div
       className={
         "tracker-fs-chrome" +
@@ -750,11 +684,9 @@ const hud = (
           <span className="eyebrow">CelesTrak orbital elements</span>
           <h1>Orbit Tracker</h1>
           <p className="tagline">
-            <p className="tagline">
             Satellites are positioned from published orbital elements (CelesTrak and
             related sources), propagated in real time with a Kepler solver corrected for Earth's
-            oblateness.<br/>Click a satellite for details, favorites, or comparison.
-          </p>
+            oblateness. Click a satellite for details, favorites, or comparison.
           </p>
         </div>
       </section>
@@ -1084,4 +1016,5 @@ const hud = (
       </section>
     </main>
   );
-}
+                }
+      
