@@ -362,13 +362,42 @@ function LaunchesPage() {
     const url = origin + "/launches#next-launch";
     const name = next.name || "the next orbital launch";
     const title = "STELLUN · " + name;
-    // Prefilled message for WhatsApp / Messages / etc.
-    const text =
-      "Hi — check out " +
-      name +
-      ". We can track the countdown and watch the launch live on STELLUN.\n\n" +
-      url;
 
+    const ms = new Date(next.net).getTime() - Date.now();
+    let text: string;
+    if (!Number.isFinite(ms)) {
+      text = "Check out " + name + " on STELLUN — countdown and live watch in one place.";
+    } else if (ms <= 0) {
+      text =
+        "Liftoff window for " +
+        name +
+        " is underway / just passed. Follow it on STELLUN: " +
+        url;
+    } else if (ms <= 30 * 60 * 1000) {
+      text =
+        "About 30 minutes (or less) to " +
+        name +
+        ". Join me and watch it live on STELLUN: " +
+        url;
+    } else if (ms <= 2 * 60 * 60 * 1000) {
+      text =
+        "A couple of hours to " +
+        name +
+        ". Countdown is live on STELLUN — watch with me: " +
+        url;
+    } else if (ms <= 24 * 60 * 60 * 1000) {
+      text =
+        "Today is launch day for " +
+        name +
+        ". Join me on STELLUN for the countdown and webcast: " +
+        url;
+    } else {
+      text =
+        "Hi — check out " +
+        name +
+        ". We can track the countdown and watch the launch on STELLUN: " +
+        url;
+    }
     const finish = (msg: string) => {
       setShareHint(msg);
       window.setTimeout(() => setShareHint(""), 2500);
