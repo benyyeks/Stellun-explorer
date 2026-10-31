@@ -331,7 +331,17 @@ export const getLaunches = createServerFn({ method: "GET" }).handler(async () =>
       .eq("kind", "upcoming")
       .order("net", { ascending: true });
     if (!error && data && data.length > 0) {
-      const results = data.map((r) => r.raw).filter(Boolean);
+      const results = data
+        .map((r) => r.raw)
+        .filter((raw) => {
+          if (!raw || typeof raw !== "object") return false;
+          const name = (raw as { name?: unknown }).name;
+          const net = (raw as { net?: unknown }).net;
+          return typeof name === "string" && name.trim().length > 0 && !!net;
+        });
+      if (results.length === 0) {
+        /* fall through to api_cache */
+      } else {
       return {
         data: { count: results.length, next: null, previous: null, results },
         source: "cache" as const,
@@ -628,7 +638,17 @@ export const getPastLaunches = createServerFn({ method: "GET" }).handler(async (
       .eq("kind", "past")
       .order("net", { ascending: false });
     if (!error && data && data.length > 0) {
-      const results = data.map((r) => r.raw).filter(Boolean);
+      const results = data
+        .map((r) => r.raw)
+        .filter((raw) => {
+          if (!raw || typeof raw !== "object") return false;
+          const name = (raw as { name?: unknown }).name;
+          const net = (raw as { net?: unknown }).net;
+          return typeof name === "string" && name.trim().length > 0 && !!net;
+        });
+      if (results.length === 0) {
+        /* fall through to api_cache */
+      } else {
       return {
         data: { count: results.length, next: null, previous: null, results },
         source: "cache" as const,
