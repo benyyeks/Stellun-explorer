@@ -289,7 +289,22 @@ function FitCamera() {
   }, [camera, size]);
   return null;
 }
-
+function ZoomCommand({ cmd }: { cmd: number }) {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as { update?: () => void } | null;
+  const last = useRef(0);
+  useEffect(() => {
+    if (!cmd || cmd === last.current) return;
+    const factor = cmd > last.current ? 0.82 : 1.22;
+    last.current = cmd;
+    camera.position.multiplyScalar(factor);
+    const len = camera.position.length();
+    if (len < 2.7) camera.position.setLength(2.7);
+    if (len > 30) camera.position.setLength(30);
+    controls?.update?.();
+  }, [cmd, camera, controls]);
+  return null;
+}
 export type TrackerGlobeProps = {
   tles: TLE[];
   color: string;
@@ -299,6 +314,7 @@ export type TrackerGlobeProps = {
   altitudeScale?: number;
   pointSize?: number;
   resetKey?: number;
+  zoomCommand?: number;
   observer?: { lat: number; lon: number } | null;
   /** NORAD ids to highlight with orbit paths (compare mode). */
   highlightIds?: string[];
@@ -334,6 +350,7 @@ export default function TrackerGlobe({
   altitudeScale = 1,
   pointSize = 0.075,
   resetKey = 0,
+  zoomCommand = 0,
   observer = null,
   highlightIds = [],
   frameAltKm = null,
@@ -369,7 +386,7 @@ export default function TrackerGlobe({
       <FitCamera />
       <FrameCamera altKm={frameAltKm} altitudeScale={altitudeScale} tick={resetKey} />
       <ResetView resetKey={resetKey} />
-      <ZoomCommand cmd={zoomCommand ?? 0} />
+      <ZoomCommand cmd={zoomCommand} />
       <color attach="background" args={["#04060d"]} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[6, 3, 8]} intensity={2.6} />
