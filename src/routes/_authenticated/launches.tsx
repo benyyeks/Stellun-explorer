@@ -427,7 +427,8 @@ function LaunchesPage() {
       }
 
       if (typeof navigator.share === "function") {
-        await navigator.share({ title: title, text: text, url: url });
+        await navigator.share({ title, text });
+// not: { title, text, url }
         finish("Shared");
         return;
       }
