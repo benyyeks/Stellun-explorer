@@ -655,6 +655,25 @@ const [fsChromeOpen, setFsChromeOpen] = useState(true);
                   {expanded ? "Exit fullscreen" : "Fullscreen"}
                 </button>
               </div>
+    <div
+  className={
+    "tracker-fs-chrome" +
+    (expanded ? " is-fs" : "") +
+    (expanded && !fsChromeOpen ? " is-collapsed" : "")
+  }
+>
+  {expanded ? (
+    <button
+      type="button"
+      className="tracker-fs-handle"
+      aria-label={fsChromeOpen ? "Hide controls" : "Show controls"}
+      onClick={() => setFsChromeOpen((v) => !v)}
+    >
+      <span className="tracker-fs-handle-bar" aria-hidden />
+    </button>
+  ) : null}
+  <div className="tracker-fs-body">{/* existing chips / group buttons */}</div>
+</div>
   );
 
   return (
