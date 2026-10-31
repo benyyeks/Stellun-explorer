@@ -146,9 +146,6 @@ function LaunchWatch({
 }) {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const boxRef = useRef<HTMLDivElement>(null);
-
   const goFullscreen = async () => {
     const el = boxRef.current;
     if (!el) return;
