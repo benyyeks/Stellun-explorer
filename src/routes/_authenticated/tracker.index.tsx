@@ -251,9 +251,17 @@ function SatelliteDetail({ tle }: { tle: TLE }) {
         <span className="live-dot" aria-hidden />
         {rate === 1
           ? f
-            ? "Live ISS telemetry, updated every 5 seconds"
-            : "Live position, updated 4 times a second"
-          : `Simulated time at ${rate}x: ${now ? now.toISOString().slice(11, 19) : "--"} UTC`}
+            ? "Live ISS telemetry · " +
+              timeAgo(new Date(live.dataUpdatedAt || Date.now())) +
+              " · polls every 5s"
+            : live.isError
+              ? "Live ISS feed unavailable — showing orbit from elements only"
+              : "Connecting to live ISS feed…"
+          : "Simulated time at " +
+            String(rate) +
+            "x: " +
+            (now ? now.toISOString().slice(11, 19) : "--") +
+            " UTC"}
       </p>
       {f && typeof f.latitude === "number" ? (
         <div className="side-item-meta">
