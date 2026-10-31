@@ -339,15 +339,14 @@ export const getLaunches = createServerFn({ method: "GET" }).handler(async () =>
           const net = (raw as { net?: unknown }).net;
           return typeof name === "string" && name.trim().length > 0 && !!net;
         });
-      if (results.length === 0) {
-        /* fall through to api_cache */
-      } else {
-      return {
-        data: { count: results.length, next: null, previous: null, results },
-        source: "cache" as const,
-        fetchedAt: data[0]?.updated_at ?? new Date().toISOString(),
-        isStale: false,
-      };
+      if (results.length > 0) {
+        return {
+          data: { count: results.length, next: null, previous: null, results },
+          source: "cache" as const,
+          fetchedAt: data[0]?.updated_at ?? new Date().toISOString(),
+          isStale: false,
+        };
+      }
     }
   } catch (e) {
     console.error("getLaunches table read failed:", e);
@@ -646,15 +645,14 @@ export const getPastLaunches = createServerFn({ method: "GET" }).handler(async (
           const net = (raw as { net?: unknown }).net;
           return typeof name === "string" && name.trim().length > 0 && !!net;
         });
-      if (results.length === 0) {
-        /* fall through to api_cache */
-      } else {
-      return {
-        data: { count: results.length, next: null, previous: null, results },
-        source: "cache" as const,
-        fetchedAt: data[0]?.updated_at ?? new Date().toISOString(),
-        isStale: false,
-      };
+      if (results.length > 0) {
+        return {
+          data: { count: results.length, next: null, previous: null, results },
+          source: "cache" as const,
+          fetchedAt: data[0]?.updated_at ?? new Date().toISOString(),
+          isStale: false,
+        };
+      }
     }
   } catch (e) {
     console.error("getPastLaunches table read failed:", e);
