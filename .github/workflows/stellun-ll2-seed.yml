@@ -215,13 +215,13 @@ jobs:
 
           if do_up:
               raw = ll2(
-                  "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=15&mode=list"
+                  "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=15&mode=detailed"
               )
               write_kind("upcoming", normalize(raw), 7200, "launches")
 
           if do_past:
               raw = ll2(
-                  "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=15&mode=list"
+                  "https://ll.thespacedevs.com/2.2.0/launch/previous/?limit=15&mode=detailed"
               )
               write_kind("past", normalize(raw), 43200, "launches-previous")
 
