@@ -145,15 +145,7 @@ function LaunchWatch({
   className: string;
 }) {
   const [open, setOpen] = useState(false);
-function LaunchWatch({
-  stream,
-  image,
-  className,
-}: {
-  stream: LaunchStream | null;
-  image: string | null;
-  className: string;
-}) {
+  const boxRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
