@@ -338,6 +338,24 @@ export default function TrackerGlobe({
   highlightIds = [],
   frameAltKm = null,
 }: TrackerGlobeProps) {
+  
+  zoomCommand?: number; // increment = zoom in, decrement = zoom out
+  function ZoomCommand({ cmd }: { cmd: number }) {
+  const camera = useThree((s) => s.camera);
+  const controls = useThree((s) => s.controls) as { update?: () => void } | null;
+  const last = useRef(0);
+  useEffect(() => {
+    if (!cmd || cmd === last.current) return;
+    const factor = cmd > last.current ? 0.82 : 1.22;
+    last.current = cmd;
+    camera.position.multiplyScalar(factor);
+    const len = camera.position.length();
+    if (len < 2.7) camera.position.setLength(2.7);
+    if (len > 30) camera.position.setLength(30);
+    controls?.update?.();
+  }, [cmd, camera, controls]);
+  return null;
+  }
   return (
     <Canvas
       camera={{ position: [0, 1.3, 5.8], fov: 42, near: 0.1, far: 200 }}
@@ -351,6 +369,7 @@ export default function TrackerGlobe({
       <FitCamera />
       <FrameCamera altKm={frameAltKm} altitudeScale={altitudeScale} tick={resetKey} />
       <ResetView resetKey={resetKey} />
+      <ZoomCommand cmd={zoomCommand ?? 0} />
       <color attach="background" args={["#04060d"]} />
       <ambientLight intensity={0.55} />
       <directionalLight position={[6, 3, 8]} intensity={2.6} />
