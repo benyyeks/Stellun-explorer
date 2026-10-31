@@ -116,6 +116,29 @@ async function fetchSpaceWeatherAlerts(start: string, end: string, key: string) 
   }));
 }
 
+/**
+ * Launches are written by GitHub Action "Stellun LL2 seed" into api_cache + launches.
+ * The Worker never calls Launch Library or SpaceX (avoids CF egress rate limits).
+ */
+async function readLaunchesFromCache(endpoint: "launches" | "launches-previous") {
+  const empty = { count: 0, next: null, previous: null, results: [] as unknown[] };
+  const ttl = endpoint === "launches" ? 7200 : 43200;
+  const row = await readCachedOnly<typeof empty>(endpoint, {}, ttl, empty);
+  const n = Array.isArray(row.data?.results) ? row.data.results.length : 0;
+  if (n === 0) {
+    return {
+      source: "none" as const,
+      error: "No launch data in cache yet. Run GitHub Action: Stellun LL2 seed.",
+    };
+  }
+  return {
+    source: row.isStale ? ("stale" as const) : ("cache" as const),
+    error: row.isStale
+      ? "Launch cache is older than usual — waiting for next GitHub LL2 seed."
+      : null,
+  };
+}
+
 function feeds(): Feed[] {
   const today = new Date();
   const weekAgo = new Date();
@@ -235,14 +258,6 @@ function feeds(): Feed[] {
       },
     },
     {
-      name: "satellites-active",
-      run: async () => {
-        const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
-        const r = await refreshSatelliteGroup("active", { force: forceRefresh });
-        return { source: r.source };
-      },
-    },
-    {
       name: "satellites-geo",
       run: async () => {
         const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
@@ -250,29 +265,14 @@ function feeds(): Feed[] {
         return { source: r.source };
       },
     },
-/**
- * Launches are written by GitHub Action "Stellun LL2 seed" into api_cache + launches.
- * The Worker never calls Launch Library or SpaceX (avoids CF egress rate limits).
- */
-async function readLaunchesFromCache(endpoint: "launches" | "launches-previous") {
-  const empty = { count: 0, next: null, previous: null, results: [] as unknown[] };
-  const ttl = endpoint === "launches" ? 7200 : 43200;
-  const row = await readCachedOnly<typeof empty>(endpoint, {}, ttl, empty);
-  const n = Array.isArray(row.data?.results) ? row.data.results.length : 0;
-  if (n === 0) {
-    return {
-      source: "none" as const,
-      error: "No launch data in cache yet. Run GitHub Action: Stellun LL2 seed.",
-    };
-  }
-  // Treat GitHub-seeded cache as healthy even if slightly past TTL.
-  return {
-    source: row.isStale ? ("stale" as const) : ("cache" as const),
-    error: row.isStale
-      ? "Launch cache is older than usual — waiting for next GitHub LL2 seed."
-      : null,
-  };
-}
+    {
+      name: "launches",
+      run: async () => readLaunchesFromCache("launches"),
+    },
+    {
+      name: "past-launches",
+      run: async () => readLaunchesFromCache("launches-previous"),
+    },
     {
       name: "mars-perseverance",
       run: () =>
