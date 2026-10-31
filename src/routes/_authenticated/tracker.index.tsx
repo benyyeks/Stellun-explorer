@@ -617,65 +617,132 @@ const [fsChromeOpen, setFsChromeOpen] = useState(true);
                     } else {
                       setCompareMode(true);
                       setCompareNote("Compare mode on. Pick objects to compare them side by side.");
-                    }
-                  }}
-                >
-                  Compare
-                </button>
-                <div className="chip-row" role="group" aria-label="Time speed">
-                  {TIME_RATES.map((r) => (
-                    <button
-                      key={r.rate}
-                      type="button"
-                      className={`chip ${simRate === r.rate ? "chip-active" : ""}`}
-                      aria-pressed={simRate === r.rate}
-                      title={r.hint}
-                      onClick={() => setSimRate(r.rate)}
-                    >
-                      {r.label} <span className="chip-sub">{r.hint}</span>
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="chip"
-                  aria-label="Reset the globe zoom and angle"
-                  onClick={() => setResetKey((k) => k + 1)}
-                >
-                  Reset zoom
-                </button>
-                <span className="scene-hud-spacer" />
-                <button
-                  type="button"
-                  className={`chip ${expanded ? "chip-active" : ""}`}
-                  aria-pressed={expanded}
-                  aria-label={expanded ? "Exit fullscreen tracker view" : "Expand the tracker to fill the screen"}
-                  onClick={toggleFullscreen}
-                >
-                  {expanded ? "Exit fullscreen" : "Fullscreen"}
-                </button>
-              </div>
+const hud = (
     <div
-  className={
-    "tracker-fs-chrome" +
-    (expanded ? " is-fs" : "") +
-    (expanded && !fsChromeOpen ? " is-collapsed" : "")
-  }
->
-  {expanded ? (
-    <button
-      type="button"
-      className="tracker-fs-handle"
-      aria-label={fsChromeOpen ? "Hide controls" : "Show controls"}
-      onClick={() => setFsChromeOpen((v) => !v)}
+      className={
+        "tracker-fs-chrome" +
+        (expanded ? " is-fs" : "") +
+        (expanded && !fsChromeOpen ? " is-collapsed" : "")
+      }
     >
-      <span className="tracker-fs-handle-bar" aria-hidden />
-    </button>
-  ) : null}
-  <div className="tracker-fs-body">{/* existing chips / group buttons */}</div>
-</div>
+      {expanded ? (
+        <button
+          type="button"
+          className="tracker-fs-handle"
+          aria-label={fsChromeOpen ? "Hide controls" : "Show controls"}
+          onClick={() => setFsChromeOpen((v) => !v)}
+        >
+          <span className="tracker-fs-handle-bar" aria-hidden />
+        </button>
+      ) : null}
+      <div
+        className={`scene-hud tracker-fs-body${expanded ? "" : " scene-hud-docked"}`}
+        role="toolbar"
+        aria-label="Tracker controls"
+      >
+        <div className="scene-hud-group" role="group" aria-label="Satellite groups">
+          <div className="regime-tabs" role="tablist" aria-label="Orbital regime">
+            {REGIMES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                role="tab"
+                aria-selected={currentRegime === r.id}
+                className={`regime-tab ${currentRegime === r.id ? "regime-tab-active" : ""}`}
+                onClick={() => {
+                  const first = r.groups[0]!;
+                  setGroup(first.id);
+                  setFilter("");
+                  setCompareIds([]);
+                }}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <div className="chip-row" role="group" aria-label={`Satellite groups in ${regimeDef.label}`}>
+            {regimeDef.groups.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                className={`chip ${group === g.id ? "chip-active" : ""}`}
+                aria-pressed={group === g.id}
+                onClick={() => {
+                  setGroup(g.id);
+                  setFilter("");
+                  setCompareIds([]);
+                }}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button type="button" className="chip" aria-label="Zoom in" onClick={() => setZoomCmd((z) => z + 1)}>
+          Zoom in
+        </button>
+        <button type="button" className="chip" aria-label="Zoom out" onClick={() => setZoomCmd((z) => z - 1)}>
+          Zoom out
+        </button>
+        <button
+          type="button"
+          className={`chip ${autoRotate ? "chip-active" : ""}`}
+          aria-pressed={autoRotate}
+          aria-label={autoRotate ? "Stop auto-rotation" : "Start auto-rotation"}
+          onClick={() => setAutoRotate((v) => !v)}
+        >
+          {autoRotate ? "Spinning" : "Spin"}
+        </button>
+        <button
+          type="button"
+          className={`chip ${compareMode ? "chip-active" : ""}`}
+          aria-pressed={compareMode}
+          onClick={() => {
+            if (compareMode) {
+              exitCompare();
+            } else {
+              setCompareMode(true);
+              setCompareNote("Compare mode on. Pick objects to compare them side by side.");
+            }
+          }}
+        >
+          Compare
+        </button>
+        <div className="chip-row" role="group" aria-label="Time speed">
+          {TIME_RATES.map((r) => (
+            <button
+              key={r.rate}
+              type="button"
+              className={`chip ${simRate === r.rate ? "chip-active" : ""}`}
+              aria-pressed={simRate === r.rate}
+              title={r.hint}
+              onClick={() => setSimRate(r.rate)}
+            >
+              {r.label} <span className="chip-sub">{r.hint}</span>
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="chip"
+          aria-label="Reset the globe zoom and angle"
+          onClick={() => setResetKey((k) => k + 1)}
+        >
+          Reset zoom
+        </button>
+        <span className="scene-hud-spacer" />
+        <button
+          type="button"
+          className={`chip ${expanded ? "chip-active" : ""}`}
+          aria-pressed={expanded}
+          aria-label={expanded ? "Exit fullscreen tracker view" : "Expand the tracker to fill the screen"}
+          onClick={toggleFullscreen}
+        >
+          {expanded ? "Exit fullscreen" : "Fullscreen"}
+        </button>
+      </div>
+    </div>
   );
-
   return (
     <main className="page-main">
       <section className="page-hero">
@@ -718,6 +785,7 @@ const [fsChromeOpen, setFsChromeOpen] = useState(true);
                     frameAltKm={frameAltKm}
                     altitudeScale={regimeDef.altScale}
                     pointSize={regimeDef.pointSize}
+                    zoomCommand={zoomCmd}
                     onSelect={(t) => {
                       if (!t) return;
                       handlePick(tles.find((x) => x.noradId === t.noradId) ?? t);
