@@ -145,16 +145,48 @@ function LaunchWatch({
   className: string;
 }) {
   const [open, setOpen] = useState(false);
+function LaunchWatch({
+  stream,
+  image,
+  className,
+}: {
+  stream: LaunchStream | null;
+  image: string | null;
+  className: string;
+}) {
+  const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  const goFullscreen = () => {
+  const goFullscreen = async () => {
     const el = boxRef.current;
     if (!el) return;
-    const req =
-      el.requestFullscreen?.bind(el) ||
-      (el as any).webkitRequestFullscreen?.bind(el);
-    void req?.();
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen();
+      else if ((el as any).webkitRequestFullscreen) await (el as any).webkitRequestFullscreen();
+    } catch {
+      /* ignore */
+    }
+    try {
+      const o = screen.orientation as { lock?: (m: string) => Promise<void> } | undefined;
+      await o?.lock?.("landscape");
+    } catch {
+      /* iOS / unsupported */
+    }
   };
+
+  useEffect(() => {
+    const onFs = () => {
+      if (!document.fullscreenElement) {
+        try {
+          (screen.orientation as { unlock?: () => void } | undefined)?.unlock?.();
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
 
   if (!stream) {
     return image ? <LaunchImage src={image} className={className} /> : null;
@@ -162,31 +194,28 @@ function LaunchWatch({
 
   if (open && stream.embedUrl) {
     return (
-      <div ref={boxRef} className={`launch-watch-player ${className}`}>
+      <div ref={boxRef} className={"launch-watch-player " + className}>
         <iframe
           title="Launch webcast"
           src={stream.embedUrl}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
-          style={{ width: "100%", height: "100%", minHeight: 220, border: 0, borderRadius: 12 }}
+          className="launch-watch-iframe"
         />
-        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={goFullscreen}>
+        <div className="launch-watch-bar">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => void goFullscreen()}>
             Full screen
           </button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
             Show poster
           </button>
-          <a className="btn btn-ghost btn-sm" href={stream.url} target="_blank" rel="noopener noreferrer">
-            Open official stream
-          </a>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`launch-watch-poster ${className}`} style={{ position: "relative" }}>
+    <div className={"launch-watch-poster " + className} style={{ position: "relative" }}>
       {image ? (
         <LaunchImage src={image} className={className} />
       ) : (
@@ -198,7 +227,7 @@ function LaunchWatch({
         style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}
         onClick={() => {
           if (stream.embedUrl) setOpen(true);
-          else window.open(stream.url, "_blank", "noopener,noreferrer");
+          // No window.open — stay inside STELLUN when embed exists
         }}
       >
         Watch live
@@ -206,7 +235,6 @@ function LaunchWatch({
     </div>
   );
 }
-
 // After the scheduled moment passes, the countdown switches to a post-liftoff
 // state read from the launch feed's own status: in flight, then the confirmed
 // outcome once the provider reports it.
