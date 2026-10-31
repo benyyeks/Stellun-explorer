@@ -336,6 +336,8 @@ function TrackerPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const [zoomCmd, setZoomCmd] = useState(0);
+const [fsChromeOpen, setFsChromeOpen] = useState(true);
   useEffect(() => setMounted(true), []);
 
   // Restore a comparison from a shared link on first load.
@@ -589,6 +591,12 @@ function TrackerPage() {
                     ))}
                   </div>
                 </div>
+                <button type="button" className="chip" aria-label="Zoom in" onClick={() => setZoomCmd((z) => z + 1)}>
+  Zoom in
+</button>
+<button type="button" className="chip" aria-label="Zoom out" onClick={() => setZoomCmd((z) => z - 1)}>
+  Zoom out
+</button>
                 <button
                   type="button"
                   className={`chip ${autoRotate ? "chip-active" : ""}`}
