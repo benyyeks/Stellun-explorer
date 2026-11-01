@@ -266,6 +266,8 @@ function DeepSpacePage() {
   const [clockReset, setClockReset] = useState<number>(0);
   const [isFs, setIsFs] = useState(false);
   const [pseudoFs, setPseudoFs] = useState(false);
+  const [fsChromeOpen, setFsChromeOpen] = useState(true);
+  const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shellRef = useRef<HTMLDivElement>(null);
   const catalogRef = useRef<HTMLUListElement>(null);
   useEffect(() => setMounted(true), []);
@@ -318,6 +320,23 @@ function DeepSpacePage() {
   }, [pseudoFs]);
 
   const expanded = isFs || pseudoFs;
+  const bumpFsChrome = () => {
+    setFsChromeOpen(true);
+    if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+    chromeTimerRef.current = setTimeout(() => setFsChromeOpen(false), 3000);
+  };
+
+  useEffect(() => {
+    if (!expanded) {
+      setFsChromeOpen(true);
+      if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+      return;
+    }
+    bumpFsChrome();
+    return () => {
+      if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+    };
+  }, [expanded]);
 
   const toggleFullscreen = async () => {
     const el = shellRef.current;
