@@ -578,14 +578,19 @@ function TrackerPage() {
         (expanded ? " is-fs" : "") +
         (expanded && !fsChromeOpen ? " is-collapsed" : "")
       }
-      onPointerDown={expanded ? bumpFsChrome : undefined}
     >
       {expanded ? (
         <button
           type="button"
           className="tracker-fs-handle"
           aria-label={fsChromeOpen ? "Hide controls" : "Show controls"}
-          onClick={() => {
+          onPointerDown={(e) => {
+            // Do not let this bubble; only the button toggles open/close.
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
             if (fsChromeOpen) {
               setFsChromeOpen(false);
               if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
@@ -603,6 +608,7 @@ function TrackerPage() {
         className={`scene-hud tracker-fs-body${expanded ? "" : " scene-hud-docked"}`}
         role="toolbar"
         aria-label="Tracker controls"
+        onPointerDown={expanded ? () => bumpFsChrome() : undefined}
       >
         <div className="scene-hud-group" role="group" aria-label="Satellite groups">
           <div className="regime-tabs" role="tablist" aria-label="Orbital regime">
