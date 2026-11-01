@@ -68,7 +68,7 @@ function SatelliteDetailPage() {
       `Can you help me with the mission profile and orbital background for NORAD catalog ` +
       `${noradId}? Summarize what is publicly known about its purpose, operator, and history. ` +
       `If little is published, say so clearly and do not invent details.`;
-    setAskPrefill({ mode: "chat", text, autoSend: true });
+    setAskPrefill({ mode: "chat", text, autoSend: true, noradId });
     void navigate({ to: "/ask" });
   };
 
