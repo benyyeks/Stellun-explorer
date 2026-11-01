@@ -42,6 +42,8 @@ export type AskPrefill = {
   text: string;
   /** If true, /ask sends the message as soon as the page loads. */
   autoSend?: boolean;
+  /** NORAD catalog id when Ask was opened from a satellite detail page. */
+  noradId?: string;
 };
 
 export const LEARNING_MODES: { id: LearningMode; label: string; hint: string }[] = [
