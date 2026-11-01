@@ -248,8 +248,7 @@ function postLiftoffState(status: string): PostState {
   return { label: "LIFTOFF", tone: "accent", note: "Liftoff time has passed. Outcome pending confirmation." };
 }
 
-function elapsedLabel(ms: number): string {
-  const HOLD_AFTER_MS = 2 * 60 * 60 * 1000; // 2h after NET
+const HOLD_AFTER_MS = 2 * 60 * 60 * 1000; // 2h after NET
 const MAX_FEATURE_MS = 10 * 60 * 60 * 1000; // absolute max in hero
 const PAIR_WINDOW_MS = 4 * 60 * 60 * 1000; // same-day dual feature
 
@@ -284,13 +283,14 @@ function shouldFeaturePair(a: Launch, b: Launch, nowMs: number): boolean {
   if (isRetiredFromFeature(a, nowMs) || isRetiredFromFeature(b, nowMs)) return false;
   return true;
 }
+
+function elapsedLabel(ms: number): string {
   const total = Math.floor(ms / 1000);
   const hrs = Math.floor(total / 3600);
   const mins = Math.floor((total % 3600) / 60);
   const secs = total % 60;
-  return hrs > 0 ? `T+ ${hrs}:${pad2(mins)}:${pad2(secs)}` : `T+ ${pad2(mins)}:${pad2(secs)}`;
+  return hrs > 0 ? `T+ \( {hrs}: \){pad2(mins)}:${pad2(secs)}` : `T+ \( {pad2(mins)}: \){pad2(secs)}`;
 }
-
 // Ticking countdown; clock-dependent, so it renders only after hydration.
 function Countdown({ net, status = "" }: { net: string; status?: string }) {
   const [now, setNow] = useState<number | null>(null);
@@ -526,18 +526,7 @@ function LaunchesPage() {
             />
           )}
 
-          {next && (
-            <article
-  id="next-launch"
-  className="glass glass-card next-launch"
-  aria-label="Next launch"
->
-              {(next.image ||
-  (now &&
-    launchStream(next.vidURLs, next.net, now.getTime(), next.webcastLive))) && (
-  <div className="next-launch-media">
-    <LaunchWatch
-{featured.map((item, idx) => (
+          {featured.map((item, idx) => (
             <article
               key={item.id || item.name || idx}
               id={idx === 0 ? "next-launch" : undefined}
