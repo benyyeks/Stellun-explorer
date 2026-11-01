@@ -578,15 +578,25 @@ function TrackerPage() {
         (expanded ? " is-fs" : "") +
         (expanded && !fsChromeOpen ? " is-collapsed" : "")
       }
+      onPointerDown={expanded ? bumpFsChrome : undefined}
     >
       {expanded ? (
         <button
           type="button"
           className="tracker-fs-handle"
           aria-label={fsChromeOpen ? "Hide controls" : "Show controls"}
-          onClick={() => setFsChromeOpen((v) => !v)}
+          onClick={() => {
+            if (fsChromeOpen) {
+              setFsChromeOpen(false);
+              if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+            } else {
+              bumpFsChrome();
+            }
+          }}
         >
-          <span className="tracker-fs-handle-bar" aria-hidden />
+          <span className="tracker-fs-handle-chevron" aria-hidden>
+            {fsChromeOpen ? "▴" : "▾"}
+          </span>
         </button>
       ) : null}
       <div
