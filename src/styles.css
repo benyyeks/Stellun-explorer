@@ -4874,3 +4874,53 @@ main > section:nth-of-type(even) .section-lead {
   font-size: 0.72rem;
   opacity: 0.85;
 }
+/* Fullscreen chrome: slide-away toolbar (tracker + deep space) */
+.tracker-fs-chrome {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  pointer-events: none;
+}
+.tracker-fs-chrome > * {
+  pointer-events: auto;
+}
+.tracker-fs-handle {
+  align-self: center;
+  margin-top: 8px;
+  width: 44px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(10, 14, 26, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #c6cede;
+  z-index: 9;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.tracker-fs-handle:hover {
+  border-color: rgba(255, 212, 137, 0.45);
+  color: #ffd489;
+}
+.tracker-fs-handle-chevron {
+  font-size: 0.85rem;
+  line-height: 1;
+  font-family: var(--font-mono);
+}
+.tracker-fs-chrome.is-fs .tracker-fs-body {
+  transition: transform 0.28s ease, opacity 0.28s ease;
+}
+.tracker-fs-chrome.is-fs.is-collapsed .tracker-fs-body {
+  transform: translateY(calc(-100% - 12px));
+  opacity: 0;
+  pointer-events: none;
+}
