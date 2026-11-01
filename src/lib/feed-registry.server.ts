@@ -236,8 +236,8 @@ function feeds(): Feed[] {
     },
     {
       name: "satellites-stations",
-      run: () =>
-        cached(
+      run: async () => {
+        const res = await cached(
           "satellites",
           { group: "stations" },
           10800,
@@ -246,14 +246,67 @@ function feeds(): Feed[] {
               timeoutMs: 60000,
             }),
           { force: allowForce("satellites-stations") },
-        ),
+        );
+        // Warm SatNOGS for station objects (small list: ISS, etc.)
+        if (Array.isArray(res.data) && (res.source === "fresh" || allowForce("satellites-stations"))) {
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { cacheKey } = await import("@/lib/api-cache.server");
+          for (const rec of res.data.slice(0, 40)) {
+            const id = String(rec?.NORAD_CAT_ID ?? "").replace(/^0+/, "");
+            if (!/^\d{1,6}$/.test(id)) continue;
+            try {
+              const raw = await fetchJson<any>(
+                `https://db.satnogs.org/api/satellites/?norad_cat_id=${id}&format=json`,
+                { timeoutMs: 10000 },
+              );
+              const rows = Array.isArray(raw) ? raw : (raw?.results ?? []);
+              const sat = rows[0] ?? null;
+              await supabaseAdmin.from("api_cache").upsert(
+                {
+                  cache_key: cacheKey("satnogs-satellite", { id }),
+                  endpoint: "satnogs-satellite",
+                  payload: sat,
+                  fetched_at: new Date().toISOString(),
+                  ttl_seconds: 21600,
+                } as any,
+                { onConflict: "cache_key" },
+              );
+              const txRaw = await fetchJson<any>(
+                `https://db.satnogs.org/api/transmitters/?satellite__norad_cat_id=${id}&format=json`,
+                { timeoutMs: 10000 },
+              );
+              const tx = Array.isArray(txRaw) ? txRaw : (txRaw?.results ?? []);
+              await supabaseAdmin.from("api_cache").upsert(
+                {
+                  cache_key: cacheKey("satnogs-transmitters", { id }),
+                  endpoint: "satnogs-transmitters",
+                  payload: tx,
+                  fetched_at: new Date().toISOString(),
+                  ttl_seconds: 21600,
+                } as any,
+                { onConflict: "cache_key" },
+              );
+            } catch {
+              /* skip one NORAD */
+            }
+          }
+        }
+        return res;
+      },
     },
-
-{
+    {
       name: "satellites-starlink",
       run: async () => {
         const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
         const r = await refreshSatelliteGroup("starlink", { force: forceRefresh });
+        return { source: r.source };
+      },
+    },
+    {
+      name: "satellites-active",
+      run: async () => {
+        const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
+        const r = await refreshSatelliteGroup("active", { force: forceRefresh });
         return { source: r.source };
       },
     },
@@ -264,6 +317,103 @@ function feeds(): Feed[] {
         const r = await refreshSatelliteGroup("geo", { force: forceRefresh });
         return { source: r.source };
       },
+    },
+    {
+      name: "satellites-weather",
+      run: () =>
+        cached(
+          "satellites",
+          { group: "weather" },
+          14400,
+          () =>
+            fetchJson("https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=json", {
+              timeoutMs: 25000,
+            }),
+          { force: allowForce("satellites-weather") },
+        ),
+    },
+    {
+      name: "satellites-science",
+      run: () =>
+        cached(
+          "satellites",
+          { group: "science" },
+          14400,
+          () =>
+            fetchJson("https://celestrak.org/NORAD/elements/gp.php?GROUP=science&FORMAT=json", {
+              timeoutMs: 25000,
+            }),
+          { force: allowForce("satellites-science") },
+        ),
+    },
+    {
+      name: "satellites-resource",
+      run: () =>
+        cached(
+          "satellites",
+          { group: "resource" },
+          14400,
+          () =>
+            fetchJson("https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=json", {
+              timeoutMs: 25000,
+            }),
+          { force: allowForce("satellites-resource") },
+        ),
+    },
+    {
+      name: "satellites-gps-ops",
+      run: () =>
+        cached(
+          "satellites",
+          { group: "gps-ops" },
+          14400,
+          () =>
+            fetchJson("https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=json", {
+              timeoutMs: 25000,
+            }),
+          { force: allowForce("satellites-gps-ops") },
+        ),
+    },
+    {
+      name: "satellites-sso",
+      run: () =>
+        cached(
+          "satellites-sso",
+          {},
+          14400,
+          async () => {
+            const urls = [
+              "https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=json",
+              "https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=json",
+              "https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=json",
+            ];
+            const chunks = await Promise.all(
+              urls.map(async (url) => {
+                try {
+                  const data = await fetchJson<any[]>(url, { timeoutMs: 20000 });
+                  return Array.isArray(data) ? data : [];
+                } catch {
+                  return [];
+                }
+              }),
+            );
+            const seen = new Set<string>();
+            const merged: any[] = [];
+            for (const list of chunks) {
+              for (const rec of list) {
+                const id = String(rec?.NORAD_CAT_ID ?? "");
+                if (!id || seen.has(id)) continue;
+                seen.add(id);
+                merged.push(rec);
+              }
+            }
+            return merged.filter((rec) => {
+              const inc = Number(rec?.INCLINATION ?? rec?.inclination);
+              return Number.isFinite(inc) && inc >= 94 && inc <= 102;
+            });
+          },
+          { force: allowForce("satellites-sso") },
+        ),
     },
     {
       name: "launches",
