@@ -110,6 +110,7 @@ function AskPage() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const activeIdRef = useRef<string | null>(null);
+  const objectNoradRef = useRef<string | null>(null);
 
   const prefillHandled = useRef(false);
   useEffect(() => {
