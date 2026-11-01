@@ -336,6 +336,164 @@ async function liveContext(): Promise<string> {
   lines.push(...newsLines);
   return lines.join("\n");
         }
+/** Load one catalog object from Supabase only (never CelesTrak). */
+async function objectContextFromNorad(noradId: string): Promise<string> {
+  const norad = String(noradId).replace(/^0+/, "") || noradId;
+  if (!/^\d{1,6}$/.test(norad)) return "";
+
+  try {
+    const { supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
+
+    const matchId = (r: any) => {
+      const id = String(
+        r?.NORAD_CAT_ID ?? r?.OBJECT_ID ?? r?.noradId ?? "",
+      ).replace(/^0+/, "");
+      return id === norad;
+    };
+
+    let hit: any = null;
+    let fetchedAt = "";
+
+    const { data: cacheRow } = await supabaseAdmin
+      .from("api_cache")
+      .select("payload, fetched_at")
+      .eq("cache_key", `satellite:${norad}`)
+      .maybeSingle();
+
+    if (cacheRow?.payload) {
+      const p = cacheRow.payload;
+      hit = Array.isArray(p) ? p[0] : p;
+      fetchedAt = cacheRow.fetched_at ?? "";
+    }
+
+    if (!hit) {
+      const { data: blobs } = await supabaseAdmin
+        .from("satellite_catalog_blob")
+        .select("payload, fetched_at");
+      for (const blob of blobs ?? []) {
+        const rows = Array.isArray(blob.payload) ? blob.payload : [];
+        const found = rows.find(matchId);
+        if (found) {
+          hit = found;
+          fetchedAt = blob.fetched_at ?? "";
+          break;
+        }
+      }
+    }
+
+    if (!hit) {
+      const { data: groupCaches } = await supabaseAdmin
+        .from("api_cache")
+        .select("payload, fetched_at")
+        .in("endpoint", ["satellites", "satellites-sso"]);
+      for (const row of groupCaches ?? []) {
+        const rows = Array.isArray(row.payload) ? row.payload : [];
+        const found = rows.find(matchId);
+        if (found) {
+          hit = found;
+          fetchedAt = row.fetched_at ?? "";
+          break;
+        }
+      }
+    }
+
+    // Optional SatNOGS cache (may be empty)
+    let satnogsLine = "";
+    const { data: sn } = await supabaseAdmin
+      .from("api_cache")
+      .select("payload")
+      .eq("cache_key", `satnogs-satellite:${/* hash not known; try id param key */ norad}`)
+      .maybeSingle();
+    // Prefer same key scheme as readCachedOnly("satnogs-satellite", { id: norad })
+    const { readCachedOnly } = await import("@/lib/api-cache.server");
+    const snRow = await readCachedOnly<any>(
+      "satnogs-satellite",
+      { id: norad },
+      21600,
+      null,
+    );
+    if (snRow.data && typeof snRow.data === "object") {
+      const s = snRow.data as {
+        name?: string;
+        names?: string;
+        operator?: string;
+        countries?: string;
+        launched?: string;
+        status?: string;
+        website?: string;
+      };
+      const bits = [
+        s.name || s.names,
+        s.operator ? "operator " + s.operator : "",
+        s.countries ? "countries " + s.countries : "",
+        s.launched ? "launched " + s.launched : "",
+        s.status ? "status " + s.status : "",
+      ].filter(Boolean);
+      if (bits.length) satnogsLine = "SatNOGS community record: " + bits.join("; ") + ".";
+    }
+
+    if (!hit) {
+      return [
+        "Object under discussion: NORAD " + norad + ".",
+        "No orbital element set for this catalog number is stored in STELLUN yet.",
+        satnogsLine,
+        "Do not invent TLE numbers. You may still give general public background if you know it, and say what is missing from STELLUN storage.",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    const name = String(hit.OBJECT_NAME ?? hit.name ?? hit.SATNAME ?? "Unknown");
+    const line = (k: string, alt?: string) => {
+      const v = hit[k] ?? (alt ? hit[alt] : undefined);
+      return v != null && v !== "" ? String(v) : null;
+    };
+
+    const facts = [
+      "Object under discussion (from STELLUN catalog store, not a live CelesTrak call):",
+      "- Name: " + name,
+      "- NORAD catalog: " + norad,
+      line("OBJECT_TYPE", "objectType") && "- Type: " + line("OBJECT_TYPE", "objectType"),
+      line("OBJECT_ID") && "- Object ID: " + line("OBJECT_ID"),
+      line("EPOCH", "epoch") && "- Element epoch: " + line("EPOCH", "epoch"),
+      line("MEAN_MOTION", "meanMotion") &&
+        "- Mean motion (rev/day): " + line("MEAN_MOTION", "meanMotion"),
+      line("ECCENTRICITY", "eccentricity") &&
+        "- Eccentricity: " + line("ECCENTRICITY", "eccentricity"),
+      line("INCLINATION", "inclination") &&
+        "- Inclination (deg): " + line("INCLINATION", "inclination"),
+      line("RA_OF_ASC_NODE", "raan") &&
+        "- RAAN (deg): " + line("RA_OF_ASC_NODE", "raan"),
+      line("ARG_OF_PERICENTER", "argPerigee") &&
+        "- Arg of perigee (deg): " + line("ARG_OF_PERICENTER", "argPerigee"),
+      line("MEAN_ANOMALY", "meanAnomaly") &&
+        "- Mean anomaly (deg): " + line("MEAN_ANOMALY", "meanAnomaly"),
+      line("BSTAR") && "- BSTAR: " + line("BSTAR"),
+      fetchedAt ? "- Catalog row fetched_at: " + fetchedAt : "",
+      satnogsLine,
+      "Prefer these numbers over training memory for this object. If mission history is not in STELLUN storage, say so clearly.",
+    ].filter(Boolean);
+
+    return facts.join("\n");
+  } catch (err) {
+    console.error("objectContextFromNorad failed:", err);
+    return (
+      "Object under discussion: NORAD " +
+      norad +
+      ". STELLUN could not read catalog storage for this id right now."
+    );
+  }
+}
+
+function extractNoradFromText(text: string): string | null {
+  const m =
+    text.match(/\bNORAD(?:\s+catalog)?\s*(?:number|#|id)?\s*[#:.]?\s*(\d{1,6})\b/i) ||
+    text.match(/\bcatalog\s*(?:number|#|id)?\s*[#:.]?\s*(\d{1,6})\b/i);
+  return m?.[1] ? String(Number(m[1])) : null; // strip leading zeros via Number
+}
+
 
 /** True when the question likely needs facts beyond live STELLUN feeds. */
 function needsExternalSearch(question: string): boolean {
