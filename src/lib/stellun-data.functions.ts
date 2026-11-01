@@ -497,12 +497,10 @@ export const getHorizons = createServerFn({ method: "GET" })
 const SatnogsInput = z.object({ noradId: z.string().regex(/^\d{1,6}$/) });
 
 export const getSatnogsSatellite = createServerFn({ method: "GET" })
-export const getSatnogsSatellite = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => SatnogsInput.parse(input ?? {}))
   .handler(async ({ data }) => {
     return readCachedOnly("satnogs-satellite", { id: data.noradId }, 21600, null as any);
   });
-
 export const getSatnogsTransmitters = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => SatnogsInput.parse(input ?? {}))
   .handler(async ({ data }) => {
