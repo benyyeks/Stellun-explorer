@@ -138,97 +138,40 @@ export const getSatellites = createServerFn({ method: "GET" })
     const {
       readCatalogPayloads,
       getCatalogStatus,
-      refreshSatelliteGroup,
       isHeavySatGroup,
     } = await import("@/lib/satellite-catalog.server");
 
-    // Heavy groups: table-backed, progressive, no cap.
+    // User path: Supabase only. Admin / GitHub cron call refreshSatelliteGroup.
     if (isHeavySatGroup(data.group)) {
-      let status = await getCatalogStatus(data.group);
+      const status = await getCatalogStatus(data.group);
       const { rows, fetchedAt } = await readCatalogPayloads(data.group);
-
-      // First visit / empty: kick a background-style refresh (await so first
-      // load still works; admin/cron will keep it warm later).
-      if (rows.length === 0 && status?.status !== "loading") {
-        try {
-          await refreshSatelliteGroup(data.group, { force: true });
-          status = await getCatalogStatus(data.group);
-          const again = await readCatalogPayloads(data.group);
-          return {
-            data: again.rows,
-            source: "fresh" as const,
-            fetchedAt: again.fetchedAt ?? new Date().toISOString(),
-            isStale: status?.status === "loading",
-          };
-        } catch (e) {
-          if (rows.length === 0) throw e;
-        }
-      }
 
       return {
         data: rows,
         source: status?.status === "ready" ? ("cache" as const) : ("stale" as const),
-        fetchedAt: fetchedAt ?? status?.finished_at ?? status?.updated_at ?? new Date().toISOString(),
-        isStale: status?.status === "loading",
+        fetchedAt:
+          fetchedAt ?? status?.finished_at ?? status?.updated_at ?? new Date(0).toISOString(),
+        isStale: status?.status !== "ready" || rows.length === 0,
       };
     }
 
-// Small groups: existing short-TTL cache path (unchanged idea).
-    const url = `https://celestrak.org/NORAD/elements/gp.php?GROUP=${data.group}&FORMAT=json`;
-    return cached("satellites", { group: data.group }, 3600, () =>
-      fetchJson(url, { timeoutMs: 18000 }),
-    );
+    // Light groups: api_cache only — never CelesTrak on a user request.
+    return readCachedOnly("satellites", { group: data.group }, 3600, [] as any[]);
   });
 
-// Sun-synchronous orbit (SSO): CelesTrak has no single SSO group, so we
-// merge NOAA + resource and keep inclinations in the sun-sync band.
 export const getSatellitesSSO = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("satellites-sso", {}, 7200, async () => {
-    // CelesTrak has no SSO group. NOAA / resource / weather fleets are mostly sun-sync.
-    const urls = [
-      "https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=json",
-      "https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=json",
-      "https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=json",
-    ];
-    const chunks = await Promise.all(
-      urls.map(async (url) => {
-        try {
-          const data = await fetchJson<any[]>(url, { timeoutMs: 18000 });
-          return Array.isArray(data) ? data : [];
-        } catch (e) {
-          console.error("SSO source failed:", url, e);
-          return [];
-        }
-      }),
-    );
-    const seen = new Set<string>();
-    const merged: any[] = [];
-    for (const list of chunks) {
-      for (const rec of list) {
-        const id = String(rec?.NORAD_CAT_ID ?? rec?.OBJECT_ID ?? "");
-        if (id && seen.has(id)) continue;
-        if (id) seen.add(id);
-        merged.push(rec);
-      }
-    }
-    // Typical SSO band \~97–99°; allow 94–102 so catalogs are not empty when elements vary.
-    return merged.filter((rec) => {
-      const inc = Number(rec?.INCLINATION ?? rec?.inclination);
-      return Number.isFinite(inc) && inc >= 94 && inc <= 102;
-    });
-  });
-});
-// Single-object lookup by NORAD catalog number, used by the satellite
-// detail template page.
-const SatIdInput = z.object({ noradId: z.string().regex(/^\d{1,6}$/) });
-
 export const getSatellite = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => SatIdInput.parse(input ?? {}))
   .handler(async ({ data }) => {
     const norad = String(data.noradId).replace(/^0+/, "") || data.noradId;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1) Prefer a previously stored single-object row in api_cache (if any).
+    const matchId = (r: any) => {
+      const id = String(r?.NORAD_CAT_ID ?? r?.OBJECT_ID ?? r?.noradId ?? "").replace(/^0+/, "");
+      return id === norad;
+    };
+
+    // 1) Single-object row warmed earlier
     const { data: cacheRow } = await supabaseAdmin
       .from("api_cache")
       .select("payload, fetched_at")
@@ -244,26 +187,23 @@ export const getSatellite = createServerFn({ method: "GET" })
       };
     }
 
-    // 2) Search catalog blobs already seeded into Supabase (no CelesTrak).
+    // 2) Heavy-group blobs (starlink, active, geo, debris)
     const { data: blobs } = await supabaseAdmin
       .from("satellite_catalog_blob")
       .select("group_id, payload, fetched_at");
 
     for (const blob of blobs ?? []) {
       const rows = Array.isArray(blob.payload) ? blob.payload : [];
-      const hit = rows.find((r: any) => {
-        const id = String(r?.NORAD_CAT_ID ?? r?.OBJECT_ID ?? r?.noradId ?? "").replace(/^0+/, "");
-        return id === norad;
-      });
+      const hit = rows.find(matchId);
       if (hit) {
         const payload = [hit];
-        // Optional: warm single-object cache for faster next open (still no upstream).
         void supabaseAdmin.from("api_cache").upsert(
           {
             cache_key: `satellite:${norad}`,
             endpoint: "satellite",
             payload,
             fetched_at: blob.fetched_at ?? new Date().toISOString(),
+            ttl_seconds: 86400,
           } as any,
           { onConflict: "cache_key" },
         );
@@ -276,7 +216,37 @@ export const getSatellite = createServerFn({ method: "GET" })
       }
     }
 
-    // 3) Not in STELLUN storage — do not call CelesTrak on the user path.
+    // 3) Light groups already in api_cache (stations, weather, …)
+    const { data: groupCaches } = await supabaseAdmin
+      .from("api_cache")
+      .select("payload, fetched_at, endpoint")
+      .in("endpoint", ["satellites", "satellites-sso"]);
+
+    for (const row of groupCaches ?? []) {
+      const rows = Array.isArray(row.payload) ? row.payload : [];
+      const hit = rows.find(matchId);
+      if (hit) {
+        const payload = [hit];
+        void supabaseAdmin.from("api_cache").upsert(
+          {
+            cache_key: `satellite:${norad}`,
+            endpoint: "satellite",
+            payload,
+            fetched_at: row.fetched_at ?? new Date().toISOString(),
+            ttl_seconds: 86400,
+          } as any,
+          { onConflict: "cache_key" },
+        );
+        return {
+          data: payload,
+          source: "cache" as const,
+          fetchedAt: row.fetched_at ?? new Date().toISOString(),
+          isStale: false,
+        };
+      }
+    }
+
+    // 4) Not stored — never call CelesTrak on the user path
     return {
       data: null,
       source: "none" as const,
@@ -517,24 +487,16 @@ export const getHorizons = createServerFn({ method: "GET" })
 const SatnogsInput = z.object({ noradId: z.string().regex(/^\d{1,6}$/) });
 
 export const getSatnogsSatellite = createServerFn({ method: "GET" })
+export const getSatnogsSatellite = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => SatnogsInput.parse(input ?? {}))
   .handler(async ({ data }) => {
-    const url = `https://db.satnogs.org/api/satellites/?norad_cat_id=${data.noradId}&format=json`;
-    return cached("satnogs-satellite", { id: data.noradId }, 21600, async () => {
-      const res = await fetchJson<any>(url, { timeoutMs: 12000 });
-      const rows = Array.isArray(res) ? res : (res?.results ?? []);
-      return rows[0] ?? null;
-    });
+    return readCachedOnly("satnogs-satellite", { id: data.noradId }, 21600, null as any);
   });
 
 export const getSatnogsTransmitters = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => SatnogsInput.parse(input ?? {}))
   .handler(async ({ data }) => {
-    const url = `https://db.satnogs.org/api/transmitters/?satellite__norad_cat_id=${data.noradId}&format=json`;
-    return cached("satnogs-transmitters", { id: data.noradId }, 21600, async () => {
-      const res = await fetchJson<any>(url, { timeoutMs: 12000 });
-      return Array.isArray(res) ? res : (res?.results ?? []);
-    });
+    return readCachedOnly("satnogs-transmitters", { id: data.noradId }, 21600, [] as any[]);
   });
 
 // ----------------------- Spaceflight News API (live) ----------------------
