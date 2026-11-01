@@ -378,7 +378,38 @@ function DeepSpacePage() {
   };
 
   const hud = (
-              <div className={`scene-hud${expanded ? "" : " scene-hud-docked"}`} role="toolbar" aria-label="Deep space controls">
+    <div
+      className={
+        "tracker-fs-chrome" +
+        (expanded ? " is-fs" : "") +
+        (expanded && !fsChromeOpen ? " is-collapsed" : "")
+      }
+      onPointerDown={expanded ? bumpFsChrome : undefined}
+    >
+      {expanded ? (
+        <button
+          type="button"
+          className="tracker-fs-handle"
+          aria-label={fsChromeOpen ? "Hide controls" : "Show controls"}
+          onClick={() => {
+            if (fsChromeOpen) {
+              setFsChromeOpen(false);
+              if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+            } else {
+              bumpFsChrome();
+            }
+          }}
+        >
+          <span className="tracker-fs-handle-chevron" aria-hidden>
+            {fsChromeOpen ? "▴" : "▾"}
+          </span>
+        </button>
+      ) : null}
+      <div
+        className={`scene-hud tracker-fs-body${expanded ? "" : " scene-hud-docked"}`}
+        role="toolbar"
+        aria-label="Deep space controls"
+      >
                 <div className="chip-row" role="group" aria-label="Time controls">
                   <button
                     type="button"
@@ -438,6 +469,7 @@ function DeepSpacePage() {
                   {expanded ? "Exit fullscreen" : "Fullscreen"}
                 </button>
               </div>
+    </div>
   );
 
   return (
