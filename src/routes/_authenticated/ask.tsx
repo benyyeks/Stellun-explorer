@@ -117,6 +117,9 @@ function AskPage() {
     const prefill = consumeAskPrefill();
     if (!prefill) return;
     prefillHandled.current = true;
+    if (prefill.noradId && /^\d{1,6}$/.test(prefill.noradId)) {
+      objectNoradRef.current = prefill.noradId;
+    }
     if (prefill.mode) setMode(prefill.mode);
     setInput(prefill.text);
     if (prefill.autoSend && prefill.text.trim()) {
@@ -210,7 +213,12 @@ function AskPage() {
           "content-type": "application/json",
           ...(token ? { authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ mode, messages: thread.slice(-20), conversationId }),
+        body: JSON.stringify({
+          mode,
+          messages: thread.slice(-20),
+          conversationId,
+          noradId: objectNoradRef.current || undefined,
+        }),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {
