@@ -384,14 +384,18 @@ function DeepSpacePage() {
         (expanded ? " is-fs" : "") +
         (expanded && !fsChromeOpen ? " is-collapsed" : "")
       }
-      onPointerDown={expanded ? bumpFsChrome : undefined}
     >
       {expanded ? (
         <button
           type="button"
           className="tracker-fs-handle"
           aria-label={fsChromeOpen ? "Hide controls" : "Show controls"}
-          onClick={() => {
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
             if (fsChromeOpen) {
               setFsChromeOpen(false);
               if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
@@ -409,6 +413,7 @@ function DeepSpacePage() {
         className={`scene-hud tracker-fs-body${expanded ? "" : " scene-hud-docked"}`}
         role="toolbar"
         aria-label="Deep space controls"
+        onPointerDown={expanded ? () => bumpFsChrome() : undefined}
       >
                 <div className="chip-row" role="group" aria-label="Time controls">
                   <button
