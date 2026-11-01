@@ -249,6 +249,41 @@ function postLiftoffState(status: string): PostState {
 }
 
 function elapsedLabel(ms: number): string {
+  const HOLD_AFTER_MS = 2 * 60 * 60 * 1000; // 2h after NET
+const MAX_FEATURE_MS = 10 * 60 * 60 * 1000; // absolute max in hero
+const PAIR_WINDOW_MS = 4 * 60 * 60 * 1000; // same-day dual feature
+
+function isTerminalStatus(status: string): boolean {
+  const s = status.toLowerCase();
+  if (s.includes("partial")) return false;
+  return s.includes("success") || s.includes("fail");
+}
+
+function isInFlightStatus(status: string): boolean {
+  const s = status.toLowerCase();
+  return s.includes("flight") || s.includes("liftoff");
+}
+
+/** True when this launch should leave the hero and only appear in Following / Past. */
+function isRetiredFromFeature(l: Launch, nowMs: number): boolean {
+  const net = Date.parse(l.net);
+  if (!Number.isFinite(net)) return false;
+  const age = nowMs - net;
+  if (age < 0) return false; // still upcoming
+  if (isInFlightStatus(l.status)) return age > MAX_FEATURE_MS;
+  if (isTerminalStatus(l.status) && age > HOLD_AFTER_MS) return true;
+  if (age > MAX_FEATURE_MS) return true;
+  return false;
+}
+
+function shouldFeaturePair(a: Launch, b: Launch, nowMs: number): boolean {
+  const na = Date.parse(a.net);
+  const nb = Date.parse(b.net);
+  if (!Number.isFinite(na) || !Number.isFinite(nb)) return false;
+  if (Math.abs(na - nb) > PAIR_WINDOW_MS) return false;
+  if (isRetiredFromFeature(a, nowMs) || isRetiredFromFeature(b, nowMs)) return false;
+  return true;
+}
   const total = Math.floor(ms / 1000);
   const hrs = Math.floor(total / 3600);
   const mins = Math.floor((total % 3600) / 60);
