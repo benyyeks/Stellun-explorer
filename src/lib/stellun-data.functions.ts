@@ -160,6 +160,14 @@ export const getSatellites = createServerFn({ method: "GET" })
   });
 
 export const getSatellitesSSO = createServerFn({ method: "GET" }).handler(async () => {
+  // User path: Supabase api_cache only (SSO pack written by cron/admin).
+  return readCachedOnly("satellites-sso", {}, 7200, [] as any[]);
+});
+
+const SatIdInput = z.object({
+  noradId: z.string().regex(/^\d{1,6}$/),
+});
+
 export const getSatellite = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => SatIdInput.parse(input ?? {}))
   .handler(async ({ data }) => {
@@ -167,7 +175,10 @@ export const getSatellite = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const matchId = (r: any) => {
-      const id = String(r?.NORAD_CAT_ID ?? r?.OBJECT_ID ?? r?.noradId ?? "").replace(/^0+/, "");
+      const id = String(r?.NORAD_CAT_ID ?? r?.OBJECT_ID ?? r?.noradId ?? "").replace(
+        /^0+/,
+        "",
+      );
       return id === norad;
     };
 
@@ -216,7 +227,7 @@ export const getSatellite = createServerFn({ method: "GET" })
       }
     }
 
-    // 3) Light groups already in api_cache (stations, weather, …)
+    // 3) Light groups already in api_cache (stations, weather, SSO, …)
     const { data: groupCaches } = await supabaseAdmin
       .from("api_cache")
       .select("payload, fetched_at, endpoint")
@@ -254,7 +265,6 @@ export const getSatellite = createServerFn({ method: "GET" })
       isStale: false,
     };
   });
-
 // ------------------------- ISS position (live, ~5s) -----------------------
 // Client polls every 5s. Server cache TTL is 5s so each poll can get new data.
 // wheretheiss first; Open-Notify fallback so Worker IP issues never freeze the UI.
