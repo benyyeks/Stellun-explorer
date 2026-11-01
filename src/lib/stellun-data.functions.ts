@@ -183,23 +183,41 @@ export const getSatellites = createServerFn({ method: "GET" })
 // Sun-synchronous orbit (SSO): CelesTrak has no single SSO group, so we
 // merge NOAA + resource and keep inclinations in the sun-sync band.
 export const getSatellitesSSO = createServerFn({ method: "GET" }).handler(async () => {
-  return cached("satellites-sso", {}, 3600, async () => {
-    const [noaaRes, resourceRes] = await Promise.all([
-      fetchJson<any[]>("https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=json", {
-        timeoutMs: 12000,
+  return cached("satellites-sso", {}, 7200, async () => {
+    // CelesTrak has no SSO group. NOAA / resource / weather fleets are mostly sun-sync.
+    const urls = [
+      "https://celestrak.org/NORAD/elements/gp.php?GROUP=noaa&FORMAT=json",
+      "https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=json",
+      "https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=json",
+    ];
+    const chunks = await Promise.all(
+      urls.map(async (url) => {
+        try {
+          const data = await fetchJson<any[]>(url, { timeoutMs: 18000 });
+          return Array.isArray(data) ? data : [];
+        } catch (e) {
+          console.error("SSO source failed:", url, e);
+          return [];
+        }
       }),
-      fetchJson<any[]>("https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=json", {
-        timeoutMs: 12000,
-      }),
-    ]);
-    const merged = [...(Array.isArray(noaaRes) ? noaaRes : []), ...(Array.isArray(resourceRes) ? resourceRes : [])];
+    );
+    const seen = new Set<string>();
+    const merged: any[] = [];
+    for (const list of chunks) {
+      for (const rec of list) {
+        const id = String(rec?.NORAD_CAT_ID ?? rec?.OBJECT_ID ?? "");
+        if (id && seen.has(id)) continue;
+        if (id) seen.add(id);
+        merged.push(rec);
+      }
+    }
+    // Typical SSO band \~97–99°; allow 94–102 so catalogs are not empty when elements vary.
     return merged.filter((rec) => {
-      const inc = Number(rec?.INCLINATION);
-      return !Number.isNaN(inc) && inc >= 96 && inc <= 100;
+      const inc = Number(rec?.INCLINATION ?? rec?.inclination);
+      return Number.isFinite(inc) && inc >= 94 && inc <= 102;
     });
   });
 });
-
 // Single-object lookup by NORAD catalog number, used by the satellite
 // detail template page.
 const SatIdInput = z.object({ noradId: z.string().regex(/^\d{1,6}$/) });
