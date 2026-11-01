@@ -3,6 +3,7 @@
 // Free OpenRouter models work with $0 credit. Paid credit is optional (better models / optional web plugin).
 import { createFileRoute } from "@tanstack/react-router";
 import { knowledgeBlock } from "@/lib/stellun-knowledge";
+import { readCachedOnly } from "@/lib/api-cache.server";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -281,47 +282,188 @@ async function liveContext(): Promise<string> {
   if (msl.status === "fulfilled") {
     const imgs = (msl.value as { images?: { sol?: number; date_taken?: string }[] })
       ?.images;
-    const img = imgs?.[0];
-    if (img && typeof img.sol === "number") {
+async function liveContext(): Promise<string> {
+  // Phase A: read only what cron/admin already stored in Supabase.
+  // Never call LL2, NOAA, ISS, SNAPI, or NASA from the Ask path.
+  const today = isoDateUTC();
+  const weekAgo = new Date();
+  weekAgo.setUTCDate(weekAgo.getUTCDate() - 7);
+  const startDonki = isoDateUTC(weekAgo);
+
+  const emptyLaunch = {
+    count: 0,
+    next: null,
+    previous: null,
+    results: [] as {
+      name?: string;
+      net?: string;
+      pad?: { name?: string };
+      status?: { name?: string } | string;
+    }[],
+  };
+
+  const [
+    iss,
+    kp,
+    launches,
+    xray,
+    neo,
+    mars2020,
+    donki,
+  ] = await Promise.all([
+    readCachedOnly<Record<string, unknown>>("iss-position", { id: "25544" }, 60, {}),
+    readCachedOnly<unknown[]>("kp-index", {}, 300, []),
+    readCachedOnly<typeof emptyLaunch>("launches", {}, 7200, emptyLaunch),
+    readCachedOnly<unknown[]>("xray-flux", {}, 300, []),
+    readCachedOnly<{ element_count?: number }>("neo", { start: today }, 43200, {}),
+    readCachedOnly<{ images?: { sol?: number; date_taken?: string }[] }>(
+      "mars-imagery",
+      { mission: "mars2020" },
+      7200,
+      { images: [] },
+    ),
+    readCachedOnly<unknown[]>("donki", { start: startDonki }, 14400, []),
+  ]);
+
+  // News lives in space_news (filled by the news refresh job), not api_cache.
+  let newsLines: string[] = [];
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const cutoff = new Date(Date.now() - 14 * 86400000).toISOString();
+    const { data: newsRows } = await supabaseAdmin
+      .from("space_news")
+      .select("title,news_site,published_at")
+      .gte("published_at", cutoff)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .limit(5);
+    if (Array.isArray(newsRows) && newsRows.length > 0) {
+      newsLines.push("Recent space news headlines (from STELLUN store):");
+      for (const n of newsRows) {
+        if (n?.title) {
+          newsLines.push(
+            "- " +
+              n.title +
+              (n.news_site ? " (" + n.news_site + ")" : "") +
+              (n.published_at ? " · " + n.published_at : ""),
+          );
+        }
+      }
+    }
+  } catch {
+    // News optional for context; never block the answer.
+  }
+
+  const lines: string[] = [
+    "Current UTC time: " + new Date().toISOString(),
+    "Live STELLUN telemetry for this answer (from STELLUN cache only). Prefer these figures over training memory. Missing lines mean that feed has not been refreshed yet.",
+  ];
+
+  const d = iss.data as {
+    latitude?: number;
+    longitude?: number;
+    altitude?: number;
+    velocity?: number;
+  };
+  if (typeof d?.latitude === "number" && typeof d?.longitude === "number") {
+    lines.push(
+      "ISS (NORAD 25544)" +
+        (iss.isStale ? " [stale cache]" : "") +
+        ": latitude " +
+        d.latitude.toFixed(2) +
+        ", longitude " +
+        d.longitude.toFixed(2) +
+        (typeof d.altitude === "number" ? ", altitude " + d.altitude.toFixed(0) + " km" : "") +
+        (typeof d.velocity === "number" ? ", speed " + d.velocity.toFixed(2) + " km/s" : "") +
+        (iss.fetchedAt && iss.fetchedAt !== new Date(0).toISOString()
+          ? " · cached " + iss.fetchedAt
+          : ""),
+    );
+  }
+
+  if (Array.isArray(kp.data) && kp.data.length > 1) {
+    const rows = (kp.data as unknown[][]).slice(1);
+    const last = rows[rows.length - 1];
+    if (Array.isArray(last) && last.length >= 2) {
       lines.push(
-        "Curiosity (MSL) latest published raw frame: sol " +
-          img.sol +
-          (img.date_taken ? " · " + img.date_taken : "") +
-          " · Gale Crater region",
+        "Latest NOAA planetary Kp index (cached): " +
+          last[1] +
+          " (observed " +
+          last[0] +
+          ")" +
+          (kp.isStale ? " [stale]" : ""),
       );
     }
   }
 
-  if (m2020.status === "fulfilled") {
-    const imgs = (
-      m2020.value as { images?: { sol?: number; date_taken?: string }[] }
-    )?.images;
-    const img = imgs?.[0];
-    if (img && typeof img.sol === "number") {
-      lines.push(
-        "Perseverance (Mars 2020) latest published raw frame: sol " +
-          img.sol +
-          (img.date_taken ? " · " + img.date_taken : "") +
-          " · Jezero Crater",
-      );
+  const launchResults = launches.data?.results;
+  if (Array.isArray(launchResults) && launchResults.length > 0) {
+    lines.push(
+      "Next orbital launches (from STELLUN launch cache" +
+        (launches.isStale ? ", stale" : "") +
+        "):",
+    );
+    for (const L of launchResults.slice(0, 3)) {
+      if (L?.name && L?.net) {
+        const pad =
+          typeof L.pad === "object" && L.pad && "name" in L.pad
+            ? String((L.pad as { name?: string }).name ?? "")
+            : "";
+        lines.push(
+          "- " + L.name + " at " + L.net + " UTC" + (pad ? " from " + pad : ""),
+        );
+      }
     }
   }
 
-  if (neo.status === "fulfilled") {
-    const near = neo.value as { element_count?: number };
-    if (typeof near.element_count === "number") {
-      lines.push(
-        "NASA NEO feed: " +
-          near.element_count +
-          " close-approach objects in the returned window starting " +
-          today +
-          ".",
-      );
-    }
+  if (Array.isArray(xray.data) && xray.data.length > 0) {
+    const list = xray.data as { flux?: string | number; energy?: string; time_tag?: string }[];
+    const last = list[list.length - 1];
+    lines.push(
+      "GOES X-ray flux sample (cached, last point): " +
+        (last?.flux != null ? String(last.flux) : "n/a") +
+        (last?.energy ? " (" + last.energy + ")" : "") +
+        (last?.time_tag ? " at " + last.time_tag : "") +
+        (xray.isStale ? " [stale]" : ""),
+    );
   }
+
+  if (Array.isArray(donki.data) && donki.data.length > 0) {
+    lines.push(
+      "Space weather alerts/notifications in cache: " +
+        donki.data.length +
+        " item(s)" +
+        (donki.isStale ? " [stale]" : "") +
+        ".",
+    );
+  }
+
+  const marsImgs = mars2020.data?.images;
+  const marsImg = Array.isArray(marsImgs) ? marsImgs[0] : undefined;
+  if (marsImg && typeof marsImg.sol === "number") {
+    lines.push(
+      "Perseverance (Mars 2020) latest cached raw frame: sol " +
+        marsImg.sol +
+        (marsImg.date_taken ? " · " + marsImg.date_taken : "") +
+        " · Jezero Crater" +
+        (mars2020.isStale ? " [stale]" : ""),
+    );
+  }
+
+  if (typeof neo.data?.element_count === "number") {
+    lines.push(
+      "NASA NEO feed (cached): " +
+        neo.data.element_count +
+        " close-approach objects in the window starting " +
+        today +
+        (neo.isStale ? " [stale]" : "") +
+        ".",
+    );
+  }
+
+  lines.push(...newsLines);
 
   return lines.join("\n");
-}
+      }
 
 /** True when the question likely needs facts beyond live STELLUN feeds. */
 function needsExternalSearch(question: string): boolean {
