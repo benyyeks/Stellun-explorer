@@ -338,6 +338,15 @@ function TrackerPage() {
   const [copied, setCopied] = useState(false);
   const [zoomCmd, setZoomCmd] = useState(0);
   const [fsChromeOpen, setFsChromeOpen] = useState(true);
+  const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const bumpFsChrome = () => {
+    setFsChromeOpen(true);
+    if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+    chromeTimerRef.current = setTimeout(() => setFsChromeOpen(false), 3000);
+  };
+
+  
   useEffect(() => setMounted(true), []);
 
   // Restore a comparison from a shared link on first load.
@@ -514,6 +523,17 @@ function TrackerPage() {
   }, [pseudoFs]);
 
   const expanded = isFs || pseudoFs;
+  useEffect(() => {
+    if (!expanded) {
+      setFsChromeOpen(true);
+      if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+      return;
+    }
+    bumpFsChrome();
+    return () => {
+      if (chromeTimerRef.current) clearTimeout(chromeTimerRef.current);
+    };
+  }, [expanded]);
 
   const toggleFullscreen = async () => {
     const el = shellRef.current;
