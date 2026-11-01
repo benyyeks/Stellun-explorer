@@ -371,9 +371,18 @@ function LaunchesError({ reset }: { reset: () => void }) {
 function LaunchesPage() {
   const now = useNow(1000);
   const { data: res } = useSuspenseQuery(launchesQueryOptions);
-  const launches = parseLaunches(res?.data);
-  const next = launches[0] ?? null;
-  const rest = launches.slice(1);
+ const launches = parseLaunches(res?.data);
+  const nowMs = now ?? Date.now();
+  const active = launches.filter((l) => !isRetiredFromFeature(l, nowMs));
+  const featured: Launch[] = [];
+  if (active[0]) {
+    featured.push(active[0]);
+    if (active[1] && shouldFeaturePair(active[0], active[1], nowMs)) {
+      featured.push(active[1]);
+    }
+  }
+  const next = featured[0] ?? null;
+  const rest = active.slice(featured.length);
   const providers = new Set(launches.map((l) => l.provider).filter(Boolean));
   const countries = new Set(launches.map((l) => l.country).filter(Boolean));
   const [shareHint, setShareHint] = useState("");
@@ -528,68 +537,90 @@ function LaunchesPage() {
     launchStream(next.vidURLs, next.net, now.getTime(), next.webcastLive))) && (
   <div className="next-launch-media">
     <LaunchWatch
-      stream={
-        now
-          ? launchStream(next.vidURLs, next.net, now.getTime(), next.webcastLive)
-          : null
-      }
-      image={next.image}
-      className="next-launch-img"
-    />
-  </div>
-)}
+{featured.map((item, idx) => (
+            <article
+              key={item.id || item.name || idx}
+              id={idx === 0 ? "next-launch" : undefined}
+              className="glass glass-card next-launch"
+              aria-label={idx === 0 ? "Next launch" : "Also launching soon"}
+              style={idx > 0 ? { marginTop: 20 } : undefined}
+            >
+              {(item.image ||
+                (now &&
+                  launchStream(item.vidURLs, item.net, now.getTime(), item.webcastLive))) && (
+                <div className="next-launch-media">
+                  <LaunchWatch
+                    stream={
+                      now
+                        ? launchStream(item.vidURLs, item.net, now.getTime(), item.webcastLive)
+                        : null
+                    }
+                    image={item.image}
+                    className="next-launch-img"
+                  />
+                </div>
+              )}
               <div className="next-launch-body">
                 <div className="next-launch-info">
-                  <span className={`badge badge-${statusTone(next.status)}`}>{next.status || "Scheduled"}</span>
-                  <h2>{next.name}</h2>
+                  <span className={`badge badge-${statusTone(item.status)}`}>
+                    {item.status || "Scheduled"}
+                  </span>
+                  <h2>{item.name}</h2>
                   <dl className="fact-list">
-                    {next.provider && <div><dt>Provider</dt><dd>{next.provider}</dd></div>}
-                    {next.rocket && <div><dt>Rocket</dt><dd>{next.rocket}</dd></div>}
-                    {(next.pad || next.location) && (
-                      <div><dt>Pad</dt><dd>{[next.pad, next.location].filter(Boolean).join(", ")}</dd></div>
+                    {item.provider && (
+                      <div>
+                        <dt>Provider</dt>
+                        <dd>{item.provider}</dd>
+                      </div>
                     )}
-                    {next.orbit && <div><dt>Target orbit</dt><dd>{next.orbit}</dd></div>}
-                    {next.missionType && <div><dt>Mission type</dt><dd>{next.missionType}</dd></div>}
+                    {item.rocket && (
+                      <div>
+                        <dt>Rocket</dt>
+                        <dd>{item.rocket}</dd>
+                      </div>
+                    )}
+                    {(item.pad || item.location) && (
+                      <div>
+                        <dt>Pad</dt>
+                        <dd>{[item.pad, item.location].filter(Boolean).join(", ")}</dd>
+                      </div>
+                    )}
+                    {item.orbit && (
+                      <div>
+                        <dt>Target orbit</dt>
+                        <dd>{item.orbit}</dd>
+                      </div>
+                    )}
+                    {item.missionType && (
+                      <div>
+                        <dt>Mission type</dt>
+                        <dd>{item.missionType}</dd>
+                      </div>
+                    )}
                   </dl>
-                  {next.missionDesc && <p className="next-launch-desc">{next.missionDesc}</p>}
-                  {/* Watch control lives on the poster/player above when a stream is available */}
-                </div>
-                <div className="next-launch-count">
-                  <div className="stat-label">Time until launch (NET)</div>
-                  <Countdown net={next.net} status={next.status} />
-                  <div className="freshness-note">{fmtNet(next.net)}</div>
-                  <div className="next-launch-actions">
-                    <button
-                      type="button"
-                      className="btn-share-launch"
-                      onClick={() => void shareNextLaunch()}
-                    >
-                      {next.image ? (
-                        <img
-                          className="btn-share-launch-thumb"
-                          src={next.image}
-                          alt=""
-                          width={40}
-                          height={40}
-                        />
-                      ) : null}
-                      <span className="btn-share-launch-label">
+                  {item.missionDesc && <p className="next-launch-desc">{item.missionDesc}</p>}
+                  <Countdown net={item.net} status={item.status} />
+                  {idx === 0 ? (
+                    <div className="next-launch-share-row" style={{ marginTop: 14 }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={shareNextLaunch}
+                        disabled={!next}
+                      >
                         Share this launch
-                        <span className="btn-share-launch-sub">
-                          Countdown + live watch on STELLUN
+                      </button>
+                      {shareHint ? (
+                        <span className="freshness-note" style={{ marginLeft: 10 }}>
+                          {shareHint}
                         </span>
-                      </span>
-                    </button>
-                    {shareHint ? (
-                      <span className="freshness-note" role="status">
-                        {shareHint}
-                      </span>
-                    ) : null}
-                  </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </article>
-          )}
+          ))}
 
           {rest.length > 0 && (
             <section style={{ marginTop: 32 }}>
