@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { setAskPrefill } from "@/lib/study-workspace";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { satByIdQuery } from "@/lib/sat-queries";
@@ -60,6 +61,16 @@ function SatelliteDetailPage() {
   const now = useNow(1000);
   const favorites = useFavorites();
   const loc = useObserverLocation();
+  const navigate = useNavigate();
+
+  const askAboutThisObject = () => {
+    const text =
+      `Can you help me with the mission profile and orbital background for NORAD catalog ` +
+      `${noradId}? Summarize what is publicly known about its purpose, operator, and history. ` +
+      `If little is published, say so clearly and do not invent details.`;
+    setAskPrefill({ mode: "chat", text, autoSend: true });
+    void navigate({ to: "/ask" });
+  };
 
   const tle = useMemo(() => {
     if (!query.data?.data) return null;
@@ -92,17 +103,31 @@ function SatelliteDetailPage() {
           {validId && query.isPending ? (
             <DetailPageSkeleton label="Loading element set" />
           ) : failed ? (
-            <FeedError
-              title="Object details are not in the STELLUN catalog yet"
-              source="STELLUN's stored orbital catalog"
-              onRetry={() => query.refetch()}
-              retrying={query.isRefetching}
-            />
+            <div>
+              <FeedError
+                title="Object details are not in the STELLUN catalog yet"
+                source="STELLUN's stored orbital catalog (Supabase)"
+                onRetry={() => query.refetch()}
+                retrying={query.isRefetching}
+              />
+              <div style={{ marginTop: 14 }}>
+                <button type="button" className="btn btn-primary" onClick={askAboutThisObject}>
+                  Ask Stellun AI about this object
+                </button>
+              </div>
+            </div>
           ) : !validId || !tle ? (
-            <EmptyState
-              title="Object not found in the current catalog"
-              message="This catalog number has no current element set. The object may have reentered, or the number may be incorrect."
-            />
+            <div>
+              <EmptyState
+                title="Object not found in the current catalog"
+                message="This catalog number has no current element set in STELLUN storage. The object may have reentered, the number may be wrong, or this group has not been refreshed yet."
+              />
+              <div style={{ marginTop: 14 }}>
+                <button type="button" className="btn btn-primary" onClick={askAboutThisObject}>
+                  Ask Stellun AI about this object
+                </button>
+              </div>
+            </div>
           ) : (
             <>
               <div className="sat-detail-grid">
@@ -201,10 +226,11 @@ function SatelliteDetailPage() {
               <ObjectProfile noradId={noradId} displayName={tle.name} tle={tle} />
 
               <p className="scaffold-note" style={{ marginTop: 18 }}>
-                Elements source: CelesTrak. Mission and transmitter records: SatNOGS
-                community catalog. Propagation uses a Kepler solver with J2 secular
-                corrections; short-term accuracy is typically within a few kilometers
-                of the true position while elements are fresh.
+                Orbital elements are served from STELLUN’s stored catalog,
+                refreshed on a schedule, not live from CelesTrak on each visit. Mission
+                notes and transmitters use the stored SatNOGS snapshot when available.
+                Propagation uses a Kepler solver with J2 secular corrections; short-term
+                accuracy is typically within a few kilometers while elements are fresh.
               </p>
             </>
           )}
