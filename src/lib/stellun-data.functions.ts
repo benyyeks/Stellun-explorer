@@ -225,8 +225,64 @@ const SatIdInput = z.object({ noradId: z.string().regex(/^\d{1,6}$/) });
 export const getSatellite = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => SatIdInput.parse(input ?? {}))
   .handler(async ({ data }) => {
-    const url = `https://celestrak.org/NORAD/elements/gp.php?CATNR=${data.noradId}&FORMAT=json`;
-    return cached("satellite", { id: data.noradId }, 3600, () => fetchJson(url, { timeoutMs: 12000 }));
+    const norad = String(data.noradId).replace(/^0+/, "") || data.noradId;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1) Prefer a previously stored single-object row in api_cache (if any).
+    const { data: cacheRow } = await supabaseAdmin
+      .from("api_cache")
+      .select("payload, fetched_at")
+      .eq("cache_key", `satellite:${norad}`)
+      .maybeSingle();
+
+    if (cacheRow?.payload) {
+      return {
+        data: cacheRow.payload,
+        source: "cache" as const,
+        fetchedAt: cacheRow.fetched_at ?? new Date().toISOString(),
+        isStale: false,
+      };
+    }
+
+    // 2) Search catalog blobs already seeded into Supabase (no CelesTrak).
+    const { data: blobs } = await supabaseAdmin
+      .from("satellite_catalog_blob")
+      .select("group_id, payload, fetched_at");
+
+    for (const blob of blobs ?? []) {
+      const rows = Array.isArray(blob.payload) ? blob.payload : [];
+      const hit = rows.find((r: any) => {
+        const id = String(r?.NORAD_CAT_ID ?? r?.OBJECT_ID ?? r?.noradId ?? "").replace(/^0+/, "");
+        return id === norad;
+      });
+      if (hit) {
+        const payload = [hit];
+        // Optional: warm single-object cache for faster next open (still no upstream).
+        void supabaseAdmin.from("api_cache").upsert(
+          {
+            cache_key: `satellite:${norad}`,
+            endpoint: "satellite",
+            payload,
+            fetched_at: blob.fetched_at ?? new Date().toISOString(),
+          } as any,
+          { onConflict: "cache_key" },
+        );
+        return {
+          data: payload,
+          source: "cache" as const,
+          fetchedAt: blob.fetched_at ?? new Date().toISOString(),
+          isStale: false,
+        };
+      }
+    }
+
+    // 3) Not in STELLUN storage — do not call CelesTrak on the user path.
+    return {
+      data: null,
+      source: "none" as const,
+      fetchedAt: new Date().toISOString(),
+      isStale: false,
+    };
   });
 
 // ------------------------- ISS position (live, ~5s) -----------------------
