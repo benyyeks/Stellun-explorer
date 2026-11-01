@@ -93,8 +93,8 @@ function SatelliteDetailPage() {
             <DetailPageSkeleton label="Loading element set" />
           ) : failed ? (
             <FeedError
-              title="Object details are temporarily unavailable"
-              source="the CelesTrak orbital element catalog"
+              title="Object details are not in the STELLUN catalog yet"
+              source="STELLUN's stored orbital catalog"
               onRetry={() => query.refetch()}
               retrying={query.isRefetching}
             />
