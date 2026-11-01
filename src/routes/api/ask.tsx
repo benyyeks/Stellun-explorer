@@ -755,11 +755,24 @@ export const Route = createFileRoute("/api/ask")({
             ?.content ?? "";
 
         let context = await liveContext();
+
+        const noradFromBody =
+          typeof (raw as { noradId?: unknown }).noradId === "string" &&
+          /^\d{1,6}$/.test((raw as { noradId: string }).noradId)
+            ? (raw as { noradId: string }).noradId.replace(/^0+/, "") ||
+              (raw as { noradId: string }).noradId
+            : null;
+        const noradFromText = extractNoradFromText(lastUser);
+        const noradId = noradFromBody || noradFromText;
+        if (noradId) {
+          const objectBlock = await objectContextFromNorad(noradId);
+          if (objectBlock) context = context + "\n\n" + objectBlock;
+        }
+
         if (needsExternalSearch(lastUser)) {
           const extra = await officialDomainSearch(lastUser);
           if (extra) context = context + "\n\n" + extra;
         }
-
         const system = buildSystemPrompt(parsed.mode, context);
 
       // Paid OpenRouter web plugin only when explicitly enabled AND search is needed.
