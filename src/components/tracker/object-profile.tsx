@@ -224,7 +224,7 @@ export function ObjectProfile({
 
   const openAskMissionProfile = () => {
     const text = buildMissionAskPrompt(displayName, noradId, tle);
-    setAskPrefill({ mode: "chat", text, autoSend: true });
+    setAskPrefill({ mode: "chat", text, autoSend: true, noradId });
     void navigate({ to: "/ask" });
   };
 
