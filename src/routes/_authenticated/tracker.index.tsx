@@ -838,7 +838,7 @@ function TrackerPage() {
                           }
                         />
                       ) : null}
-                      {query.data ? <FreshnessBadge res={query.data} /> : null}
+                      {query.data ? <FreshnessBadge res={query.data} label="Elements" /> : null}
                     </span>
                   </div>
                   {selected ? (
