@@ -247,22 +247,27 @@ function SatelliteDetail({ tle }: { tle: TLE }) {
   const f = isIss && rate === 1 ? live.data : undefined;
   return (
     <>
-      <p className="detail-note live-row" style={{ marginTop: 0 }}>
-        <span className="live-dot" aria-hidden />
-        {rate === 1
-          ? f
-            ? "Live ISS telemetry · " +
+      {isIss && rate === 1 ? (
+        <p className="detail-note live-row" style={{ marginTop: 0 }}>
+          <span className="live-dot" aria-hidden />
+          {f
+            ? "Live ISS position · " +
               timeAgo(new Date(live.dataUpdatedAt || Date.now())) +
               " · polls every 5s"
             : live.isError
               ? "Live ISS feed unavailable — showing orbit from elements only"
-              : "Connecting to live ISS feed…"
-          : "Simulated time at " +
+              : "Connecting to live ISS position…"}
+        </p>
+      ) : rate !== 1 ? (
+        <p className="detail-note live-row" style={{ marginTop: 0 }}>
+          <span className="live-dot" aria-hidden />
+          {"Simulated time at " +
             String(rate) +
             "x: " +
             (now ? now.toISOString().slice(11, 19) : "--") +
             " UTC"}
-      </p>
+        </p>
+      ) : null}
       {f && typeof f.latitude === "number" ? (
         <div className="side-item-meta">
           <span>
