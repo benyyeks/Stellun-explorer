@@ -65,55 +65,33 @@ type RegimeDef = {
 
 const REGIMES: RegimeDef[] = [
   {
-    id: "leo",
-    label: "LEO",
+    id: "stations" as RegimeId, // temporarily widen type below
+    label: "Stations",
     altScale: 1,
-    pointSize: 0.075,
+    pointSize: 0.12,
     groups: [
       {
         id: "stations",
         label: "Space stations",
         color: "#ffd489",
-        blurb: "Crewed outposts: the ISS, Tiangong, and company.",
+        blurb: "Crewed outposts: ISS, Tiangong, and related station objects.",
       },
+    ],
+  },
+  {
+    id: "leo",
+    label: "LEO",
+    altScale: 1,
+    pointSize: 0.075,
+    groups: [
+      // do NOT include stations here
       {
         id: "starlink",
         label: "Starlink",
         color: "#9ee8c1",
         blurb: "SpaceX's broadband constellation, the largest fleet ever flown.",
       },
-      {
-        id: "iridium-NEXT",
-        label: "Communications",
-        color: "#e3b5f5",
-        blurb: "Iridium's low-orbit voice and data relay network, 66 satellites strong.",
-      },
-      {
-        id: "resource",
-        label: "Earth observation",
-        color: "#a8e6e1",
-        blurb: "Landsat-class imagers mapping crops, coastlines, ice, and cities.",
-      },
-      {
-        id: "weather",
-        label: "Weather",
-        color: "#f5c9a8",
-        blurb: "Meteorological satellites watching clouds, storms, and climate.",
-      },
-      {
-        id: "science",
-        label: "Science",
-        color: "#b8b5ff",
-        blurb: "Research craft in Earth orbit: telescopes, experiments, and pathfinders.",
-      },
-      {
-        id: "active",
-        label: "Active satellites",
-        color: "#9fc2f2",
-        blurb: "A cross-section of the active catalog: imaging, science, and communications craft.",
-      },
-    ],
-  },
+      // ... keep Communications, Earth observation, Weather, Science, Active satellites as they are
   {
     id: "meo",
     label: "MEO",
