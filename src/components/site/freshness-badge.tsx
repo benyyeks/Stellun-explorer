@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
 import { timeAgo } from "@/lib/format";
 
-// Freshness indicator for a server response. The age string is
-// clock-dependent, so it renders only after hydration to avoid a
-// server/client text mismatch.
-export function FreshnessBadge({ res }: { res: { isStale: boolean; fetchedAt: string } }) {
+/** Catalog / feed age. Does not claim "Live" for multi-hour TLE caches. */
+export function FreshnessBadge({
+  res,
+  label = "Elements",
+}: {
+  res: { isStale: boolean; fetchedAt: string };
+  /** e.g. "Elements" for orbit groups, "Feed" for news */
+  label?: string;
+}) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const ageMs = mounted ? Date.now() - new Date(res.fetchedAt).getTime() : 0;
+  const old = res.isStale || ageMs > 30 * 60_000;
   return (
-    <span className={`badge ${res.isStale ? "badge-warning" : "badge-success"}`}>
-      {res.isStale ? "Last updated" : "Live"}
+    <span className={`badge ${old ? "badge-warning" : "badge-success"}`}>
+      {old ? "Last updated" : label}
       {mounted ? ` · ${timeAgo(new Date(res.fetchedAt))}` : ""}
     </span>
   );
