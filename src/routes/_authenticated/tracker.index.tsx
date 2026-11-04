@@ -51,7 +51,7 @@ export const Route = createFileRoute("/_authenticated/tracker/")({
 
 
 
-type RegimeId = "leo" | "meo" | "geo" | "sso" | "debris";
+type RegimeId = "stations" | "leo" | "meo" | "geo" | "sso" | "debris";
 
 type GroupDef = { id: SatGroup; label: string; color: string; blurb: string };
 
