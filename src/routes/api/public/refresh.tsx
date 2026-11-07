@@ -1,5 +1,6 @@
-// Scheduled feed refresh. Call with Authorization: Bearer <LOVABLE_CRON_SECRET>
-// Optional: ?heavy=1 to refresh Starlink + active + GEO only (run less often).
+// Staggered feed refresh. Authorization: Bearer <LOVABLE_CRON_SECRET>
+// ?slot=iss|space-weather|stations|launches|starlink|active|geo|weather|science|resource|gps|news
+// ?only=<exact-feed-name> still supported for admin single refresh
 import { createFileRoute } from "@tanstack/react-router";
 
 function verifyCaller(request: Request): boolean {
@@ -18,38 +19,56 @@ function verifyCaller(request: Request): boolean {
   return diff === 0;
 }
 
+const SLOTS: Record<string, string[]> = {
+  iss: ["iss-position", "kp-index"],
+  "space-weather": ["solar-wind", "xray-flux"],
+  stations: ["satellites-stations"],
+  launches: ["launches", "past-launches"],
+  starlink: ["satellites-starlink"],
+  active: ["satellites-active"],
+  geo: ["satellites-geo"],
+  weather: ["satellites-weather"],
+  science: ["satellites-science"],
+  resource: ["satellites-resource"],
+  gps: ["satellites-gps-ops"],
+  news: ["space-news", "picture-of-the-day", "asteroids", "space-weather-alerts"],
+};
+
 async function handle(request: Request) {
   if (!verifyCaller(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 
   const url = new URL(request.url);
-  const heavy = url.searchParams.get("heavy") === "1";
   const { runRefreshCycle } = await import("@/lib/feed-registry.server");
 
-  if (heavy) {
-    // One at a time — stays under Worker subrequest limits
-    const names = ["satellites-starlink", "satellites-active", "satellites-geo"] as const;
-    const results = [];
-    for (const name of names) {
-      const part = await runRefreshCycle({ only: name });
-      results.push(...part);
-    }
+  const only = url.searchParams.get("only");
+  if (only) {
+    const results = await runRefreshCycle({ only, force: true });
     return Response.json({
       ok: true,
-      mode: "heavy",
-      feeds: results.length,
+      mode: "only",
+      only,
       failed: results.filter((r) => !r.ok).length,
       results,
     });
   }
 
-  const results = await runRefreshCycle();
+  const slot = (url.searchParams.get("slot") || "iss").toLowerCase();
+  const names = SLOTS[slot] ?? SLOTS.iss;
+  const results = [];
+  for (const name of names) {
+    const part = await runRefreshCycle({ only: name, force: true });
+    results.push(...part);
+  }
+
   return Response.json({
     ok: true,
-    mode: "full",
+    mode: "slot",
+    slot,
     feeds: results.length,
     failed: results.filter((r) => !r.ok).length,
+    results,
   });
 }
 
