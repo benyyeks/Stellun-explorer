@@ -295,6 +295,21 @@ function feeds(): Feed[] {
       },
     },
     {
+      name: "satellites-iridium",
+      run: () =>
+        cached(
+          "satellites",
+          { group: "iridium-NEXT" },
+          14400,
+          () =>
+            fetchJson(
+              "https://celestrak.org/NORAD/elements/gp.php?GROUP=iridium-NEXT&FORMAT=json",
+              { timeoutMs: 25000 },
+            ),
+          { force: allowForce("satellites-iridium") },
+        ),
+    },
+    {
       name: "satellites-starlink",
       run: async () => {
         const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
