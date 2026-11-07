@@ -1,4 +1,4 @@
-# STELLUN staggered feed refresh
+# STELLUN staggered feed refresh — one slot per run (no Refresh-all)
 # Secrets: STELLUN_CRON_SECRET (= Cloudflare LOVABLE_CRON_SECRET)
 #          STELLUN_SITE_URL = https://stellun.space
 
@@ -6,12 +6,11 @@ name: Stellun feed refresh
 
 on:
   schedule:
-    # Every 10 minutes: rotate one "slot" (see step below)
     - cron: "*/10 * * * *"
   workflow_dispatch:
     inputs:
       slot:
-        description: "Slot name (iss | space-weather | stations | starlink | ...)"
+        description: "iss | stations | starlink | iridium | resource | weather | science | gps | geo | space-weather | mars | launches | news"
         required: false
         default: ""
 
@@ -34,10 +33,10 @@ jobs:
           BASE="${BASE:-https://stellun.space}"
           BASE="${BASE%/}"
 
-          # 10-minute slots across the day (UTC minute/10 + hour)
-          # 0 iss+kp  1 solar+xray  2 stations  3 launches
-          # 4 starlink  5 active  6 geo  7 weather
-          # 8 science  9 resource  10 gps  11 news+apod
+          # Orbital-first rotation (12 slots × 10 min ≈ 2 h full cycle)
+          # 0 iss  1 stations  2 starlink  3 space-weather
+          # 4 iridium  5 resource  6 geo  7 weather
+          # 8 science  9 gps  10 launches  11 news|mars alternate
           if [ -n "${MANUAL_SLOT:-}" ]; then
             SLOT="$MANUAL_SLOT"
           else
@@ -46,17 +45,20 @@ jobs:
             IDX=$(( (10#$H * 6 + 10#$M / 10) % 12 ))
             case "$IDX" in
               0) SLOT=iss ;;
-              1) SLOT=space-weather ;;
-              2) SLOT=stations ;;
-              3) SLOT=launches ;;
-              4) SLOT=starlink ;;
-              5) SLOT=active ;;
+              1) SLOT=stations ;;
+              2) SLOT=starlink ;;
+              3) SLOT=space-weather ;;
+              4) SLOT=iridium ;;
+              5) SLOT=resource ;;
               6) SLOT=geo ;;
               7) SLOT=weather ;;
               8) SLOT=science ;;
-              9) SLOT=resource ;;
-              10) SLOT=gps ;;
-              *) SLOT=news ;;
+              9) SLOT=gps ;;
+              10) SLOT=launches ;;
+              *)
+                # Even hours → news; odd hours → mars (deep space)
+                if [ $((10#$H % 2)) -eq 0 ]; then SLOT=news; else SLOT=mars; fi
+                ;;
             esac
           fi
 
