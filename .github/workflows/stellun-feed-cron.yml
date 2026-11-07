@@ -62,9 +62,10 @@ jobs:
             esac
           fi
 
-          echo "Slot=$SLOT Base=$BASE"
+                   echo "Slot=$SLOT Base=$BASE"
           curl -fsS -X POST \
             -H "Authorization: Bearer ${SECRET}" \
-            "\( {BASE}/api/public/refresh?slot= \){SLOT}"
+            -H "Content-Type: application/json" \
+            "${BASE}/api/public/refresh?slot=${SLOT}"
           echo
           echo OK
