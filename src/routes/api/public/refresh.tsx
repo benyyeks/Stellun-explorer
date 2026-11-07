@@ -1,6 +1,6 @@
 // Staggered feed refresh. Authorization: Bearer <LOVABLE_CRON_SECRET>
-// ?slot=iss|space-weather|stations|launches|starlink|active|geo|weather|science|resource|gps|news
-// ?only=<exact-feed-name> still supported for admin single refresh
+// Scheduled: ?slot=…  (respects cache TTL — no hammering)
+// Manual:    ?only=<feed-name>&force=1
 import { createFileRoute } from "@tanstack/react-router";
 
 function verifyCaller(request: Request): boolean {
@@ -19,19 +19,21 @@ function verifyCaller(request: Request): boolean {
   return diff === 0;
 }
 
+/** Orbital tracker + deep space first; one slot = few upstream calls. */
 const SLOTS: Record<string, string[]> = {
   iss: ["iss-position", "kp-index"],
-  "space-weather": ["solar-wind", "xray-flux"],
   stations: ["satellites-stations"],
-  launches: ["launches", "past-launches"],
   starlink: ["satellites-starlink"],
-  active: ["satellites-active"],
-  geo: ["satellites-geo"],
+  iridium: ["satellites-iridium"],
+  resource: ["satellites-resource"],
   weather: ["satellites-weather"],
   science: ["satellites-science"],
-  resource: ["satellites-resource"],
   gps: ["satellites-gps-ops"],
-  news: ["space-news", "picture-of-the-day", "asteroids", "space-weather-alerts"],
+  geo: ["satellites-geo"],
+  "space-weather": ["solar-wind", "xray-flux"],
+  mars: ["mars-perseverance"],
+  launches: ["launches"], // past-launches on separate manual/rare runs to save LL2
+  news: ["space-news", "picture-of-the-day", "space-weather-alerts"],
 };
 
 async function handle(request: Request) {
@@ -43,12 +45,15 @@ async function handle(request: Request) {
   const { runRefreshCycle } = await import("@/lib/feed-registry.server");
 
   const only = url.searchParams.get("only");
+  const force = url.searchParams.get("force") === "1";
+
   if (only) {
-    const results = await runRefreshCycle({ only, force: true });
+    const results = await runRefreshCycle({ only, force });
     return Response.json({
       ok: true,
       mode: "only",
       only,
+      force,
       failed: results.filter((r) => !r.ok).length,
       results,
     });
@@ -56,9 +61,10 @@ async function handle(request: Request) {
 
   const slot = (url.searchParams.get("slot") || "iss").toLowerCase();
   const names = SLOTS[slot] ?? SLOTS.iss;
+  // Scheduled path: force=false → only hit upstream when TTL expired
   const results = [];
   for (const name of names) {
-    const part = await runRefreshCycle({ only: name, force: true });
+    const part = await runRefreshCycle({ only: name, force: false });
     results.push(...part);
   }
 
