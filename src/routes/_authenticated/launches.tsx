@@ -375,15 +375,18 @@ function LaunchesPage() {
  const launches = parseLaunches(res?.data);
   const nowMs = now ?? Date.now();
   const active = launches.filter((l) => !isRetiredFromFeature(l, nowMs));
-  const featured: Launch[] = [];
-  if (active[0]) {
-    featured.push(active[0]);
-    if (active[1] && shouldFeaturePair(active[0], active[1], nowMs)) {
-      featured.push(active[1]);
-    }
-  }
+const featured: Launch[] = active.filter((l) => {
+    const net = Date.parse(l.net);
+    if (!Number.isFinite(net)) return false;
+    // Already featured post-liftoff rules handled by isRetiredFromFeature via `active`
+    // Upcoming: large panel if NET is within the next 48 hours
+    if (net >= nowMs) return net - nowMs <= FEATURE_UPCOMING_MS;
+    // Just after liftoff: still in active until isRetiredFromFeature removes it
+    return true;
+  });
+  const featuredIds = new Set(featured.map((l) => l.id));
+  const rest = active.filter((l) => !featuredIds.has(l.id));
   const next = featured[0] ?? null;
-  const rest = active.slice(featured.length);
   const providers = new Set(launches.map((l) => l.provider).filter(Boolean));
   const countries = new Set(launches.map((l) => l.country).filter(Boolean));
   const [shareHint, setShareHint] = useState("");
