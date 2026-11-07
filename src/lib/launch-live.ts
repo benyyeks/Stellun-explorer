@@ -29,8 +29,9 @@ function youtubeEmbed(href: string): string | null {
 }
 
 /**
- * Show webcast from 24 hours before NET through 2 hours after,
+ * Show webcast from 48 hours before NET through 6 hours after,
  * or anytime webcast_live is true.
+ * Same-day / two-day clusters all open if they have video URLs.
  */
 export function launchStream(
   videos: unknown,
@@ -43,8 +44,8 @@ export function launchStream(
 
   const msToNet = time - nowMs;
   const HOUR = 60 * 60 * 1000;
-  const openEarly = 24 * HOUR;
-  const openLate = 2 * HOUR;
+  const openEarly = 24 * HOUR; // was 24h — opens multi-launch days together
+  const openLate = 6 * HOUR;  // was 2h
 
   if (!webcastLive && (msToNet > openEarly || msToNet < -openLate)) {
     return null;
