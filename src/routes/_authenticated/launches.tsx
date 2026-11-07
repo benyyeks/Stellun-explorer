@@ -290,7 +290,9 @@ function elapsedLabel(ms: number): string {
   const hrs = Math.floor(total / 3600);
   const mins = Math.floor((total % 3600) / 60);
   const secs = total % 60;
-  return hrs > 0 ? `T+ \( {hrs}: \){pad2(mins)}:${pad2(secs)}` : `T+ \( {pad2(mins)}: \){pad2(secs)}`;
+  return hrs > 0
+    ? `T+ \( {hrs}: \){pad2(mins)}:${pad2(secs)}`
+    : `T+ \( {pad2(mins)}: \){pad2(secs)}`;
 }
 // Ticking countdown; clock-dependent, so it renders only after hydration.
 function Countdown({ net, status = "" }: { net: string; status?: string }) {
