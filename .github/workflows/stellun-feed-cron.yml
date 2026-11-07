@@ -1,35 +1,30 @@
-# STELLUN automatic feed refresh
-# Requires repo secret: STELLUN_CRON_SECRET (same value as LOVABLE_CRON_SECRET on Cloudflare)
-# Optional secret: STELLUN_SITE_URL (default: production workers URL)
+# STELLUN staggered feed refresh
+# Secrets: STELLUN_CRON_SECRET (= Cloudflare LOVABLE_CRON_SECRET)
+#          STELLUN_SITE_URL = https://stellun.space
 
 name: Stellun feed refresh
 
 on:
   schedule:
-    # Light cycle every 15 minutes (KP, solar wind, xray, ISS, news soft, stations)
-    - cron: "*/15 * * * *"
-    # Morning batch 06:05 UTC — APOD + Neo + DONKI friendly window
-    - cron: "5 6 * * *"
-    # Heavy satellite catalogs 4x/day
-    - cron: "20 0,6,12,18 * * *"
+    # Every 10 minutes: rotate one "slot" (see step below)
+    - cron: "*/10 * * * *"
   workflow_dispatch:
     inputs:
-      mode:
-        description: "full | heavy | morning"
-        required: true
-        default: "full"
+      slot:
+        description: "Slot name (iss | space-weather | stations | starlink | ...)"
+        required: false
+        default: ""
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     steps:
-      - name: Call Stellun refresh endpoint
+      - name: Refresh one slot
         env:
           SECRET: ${{ secrets.STELLUN_CRON_SECRET }}
           BASE: ${{ secrets.STELLUN_SITE_URL }}
-          MODE: ${{ github.event.inputs.mode || '' }}
-          CRON_HOUR: ${{ github.event.schedule }}
+          MANUAL_SLOT: ${{ github.event.inputs.slot }}
         run: |
           set -euo pipefail
           if [ -z "${SECRET:-}" ]; then
@@ -39,25 +34,35 @@ jobs:
           BASE="${BASE:-https://stellun.space}"
           BASE="${BASE%/}"
 
-          # Decide mode from schedule if not manual
-          if [ -z "$MODE" ]; then
-            case "${{ github.event.schedule }}" in
-              "5 6 * * *") MODE=morning ;;
-              "20 0,6,12,18 * * *") MODE=heavy ;;
-              *) MODE=full ;;
+          # 10-minute slots across the day (UTC minute/10 + hour)
+          # 0 iss+kp  1 solar+xray  2 stations  3 launches
+          # 4 starlink  5 active  6 geo  7 weather
+          # 8 science  9 resource  10 gps  11 news+apod
+          if [ -n "${MANUAL_SLOT:-}" ]; then
+            SLOT="$MANUAL_SLOT"
+          else
+            H=$(date -u +%H)
+            M=$(date -u +%M)
+            IDX=$(( (10#$H * 6 + 10#$M / 10) % 12 ))
+            case "$IDX" in
+              0) SLOT=iss ;;
+              1) SLOT=space-weather ;;
+              2) SLOT=stations ;;
+              3) SLOT=launches ;;
+              4) SLOT=starlink ;;
+              5) SLOT=active ;;
+              6) SLOT=geo ;;
+              7) SLOT=weather ;;
+              8) SLOT=science ;;
+              9) SLOT=resource ;;
+              10) SLOT=gps ;;
+              *) SLOT=news ;;
             esac
           fi
 
-          echo "Mode=$MODE Base=$BASE"
-          if [ "$MODE" = "heavy" ]; then
-            curl -fsS -X POST \
-              -H "Authorization: Bearer ${SECRET}" \
-              "${BASE}/api/public/refresh?heavy=1"
-          else
-            # full covers light feeds; morning is same endpoint (APOD keyed by day)
-            curl -fsS -X POST \
-              -H "Authorization: Bearer ${SECRET}" \
-              "${BASE}/api/public/refresh"
-          fi
+          echo "Slot=$SLOT Base=$BASE"
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${SECRET}" \
+            "\( {BASE}/api/public/refresh?slot= \){SLOT}"
           echo
-          echo "OK"
+          echo OK
