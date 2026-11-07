@@ -249,8 +249,9 @@ function postLiftoffState(status: string): PostState {
 }
 
 const HOLD_AFTER_MS = 2 * 60 * 60 * 1000; // 2h after NET
-const MAX_FEATURE_MS = 10 * 60 * 60 * 1000; // absolute max in hero
-const PAIR_WINDOW_MS = 4 * 60 * 60 * 1000; // same-day dual feature
+const MAX_FEATURE_MS = 10 * 60 * 60 * 1000; // max time after liftoff to stay in hero
+/** Upcoming launches within this window all get the large panel (not the compact list). */
+const FEATURE_UPCOMING_MS = 48 * 60 * 60 * 1000;
 
 function isTerminalStatus(status: string): boolean {
   const s = status.toLowerCase();
