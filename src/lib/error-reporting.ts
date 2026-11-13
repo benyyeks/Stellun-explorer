@@ -21,12 +21,17 @@ export function reportError(
 ): void {
   if (typeof window === "undefined") return;
 
-  const message =
-    error instanceof Response
-      ? `Response \( {error.status} \){error.url ? ` at ${error.url}` : ""}`
-      : error instanceof Error
-        ? error.message
-        : String(error);
+  let message: string;
+  if (error instanceof Response) {
+    message = "Response " + error.status;
+    if (error.url) {
+      message += " at " + error.url;
+    }
+  } else if (error instanceof Error) {
+    message = error.message;
+  } else {
+    message = String(error);
+  }
 
   const stack = error instanceof Error ? error.stack : undefined;
 
