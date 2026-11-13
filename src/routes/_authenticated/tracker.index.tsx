@@ -255,16 +255,9 @@ function SatelliteDetail({ tle }: { tle: TLE }) {
   const f = isIss && rate === 1 ? live.data : undefined;
   return (
     <>
-      {isIss && rate === 1 ? (
+      {isIss && rate === 1 && live.isError ? (
         <p className="detail-note live-row" style={{ marginTop: 0 }}>
-          <span className="live-dot" aria-hidden />
-          {f
-            ? "Live ISS position · " +
-              timeAgo(new Date(live.dataUpdatedAt || Date.now())) +
-              " · polls every 5s"
-            : live.isError
-              ? "Live ISS feed unavailable — showing orbit from elements only"
-              : "Connecting to live ISS position…"}
+          Live ISS feed unavailable — showing orbit from elements only
         </p>
       ) : rate !== 1 ? (
         <p className="detail-note live-row" style={{ marginTop: 0 }}>
