@@ -11,7 +11,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportError } from "../lib/error-reporting";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
 import { AskWidget } from "@/components/site/ask-widget";
@@ -40,7 +40,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    reportError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);
 
   return (
@@ -104,12 +104,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "manifest", href: "/site.webmanifest" },
       { property: "og:url", content: "https://stellun.space/" },
-{ property: "og:image", content: "https://stellun.space/og-image.png" },
-{ property: "og:image:width", content: "1200" },
-{ property: "og:image:height", content: "630" },
-{ property: "og:image:alt", content: "STELLUN — Space intelligence dashboard" },
-{ name: "twitter:card", content: "summary_large_image" },
-{ name: "twitter:image", content: "https://stellun.space/og-image.png" },
+      { property: "og:image", content: "https://stellun.space/og-image.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "STELLUN — Space intelligence dashboard" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://stellun.space/og-image.png" },
     ],
   }),
   shellComponent: RootShell,
