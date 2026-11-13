@@ -1,17 +1,12 @@
-// STELLUN Satellite Propagation Engine (TypeScript port)
-// TLE and CelesTrak OMM (JSON) parsing plus a Kepler + J2 secular-
-// perturbation propagator. Verified against known ISS parameters
-// (~400-430km altitude, ~7.66km/s, ~92-93min period). This is a
-// lightweight approximation of full SGP4, tuned for freshly-fetched
-// live elements -- accuracy is best within a few days of the epoch,
-// which matches how this app refetches elements.
+// STELLUN Satellite Propagation Engine
+// TLE + CelesTrak OMM parsing, Kepler + J2 secular propagation for Earth
+// satellites, and deep-space probe anchor helpers used by Deep Space.
+//
+// NOTE: Full SGP4 (satellite.js) is a later upgrade. It requires adding the
+// package to package.json AND updating bun.lock (frozen lockfile builds).
+// Until then this Kepler+J2 model is the production propagator — accuracy is
+// best with elements refreshed within a few hours of epoch.
 
-import * as satellite from "satellite.js";
-/**
- * SGP4/SDP4 propagation from TLE lines (or OMM-derived lines).
- * Prefer this over Kepler+J2 for catalog objects; ISS live fix still
- * overrides position when wheretheiss data is present.
- */
 import { DEG, julianDateUTC, gmstDeg, AU_KM, heliocentricEcliptic } from "./astronomy";
 
 export const MU_EARTH = 398600.4418; // km^3/s^2
@@ -33,6 +28,9 @@ export type TLE = {
   periodMin: number;
   apogeeAlt: number;
   perigeeAlt: number;
+  /** Optional classic TLE lines for a future SGP4 path */
+  line1?: string;
+  line2?: string;
 };
 
 export type SatState = {
@@ -110,15 +108,17 @@ export function parseTLELines(line1: string, line2: string, name: string): TLE |
     periodMin: (2 * Math.PI) / n0 / 60,
     apogeeAlt,
     perigeeAlt,
+    line1,
+    line2,
   };
 }
 
 export function solveKeplerRad(Mrad: number, e: number): number {
   let E = Mrad;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 12; i++) {
     const dE = (E - e * Math.sin(E) - Mrad) / (1 - e * Math.cos(E));
     E -= dE;
-    if (Math.abs(dE) < 1e-9) break;
+    if (Math.abs(dE) < 1e-12) break;
   }
   return E;
 }
@@ -127,57 +127,126 @@ export function gmstRad(jd: number): number {
   return gmstDeg(jd) * DEG;
 }
 
-
-
+/**
+ * Kepler + J2 secular RAAN/argp rates → ECI → geodetic.
+ * ISS live positions should still override this when wheretheiss data exists.
+ */
 export function propagateSat(tle: TLE, date: Date): SatState {
-  // Rebuild classic TLE lines from stored elements when line1/line2
-  // are not kept on the object — if your TLE type already has line1/line2,
-  // pass those through instead (best).
-  const satrec = (tle as TLE & { line1?: string; line2?: string }).line1
-    && (tle as TLE & { line1?: string; line2?: string }).line2
-    ? satellite.twoline2satrec(
-        (tle as TLE & { line1: string; line2: string }).line1,
-        (tle as TLE & { line1: string; line2: string }).line2,
-      )
-    : satellite.twoline2satrec(
-        // Fallback: if lines not stored, you must keep line1/line2 on TLE at parse time
-        // (recommended). Without lines, SGP4 cannot run correctly.
-        buildLine1(tle),
-        buildLine2(tle),
-      );
+  const jd = julianDateUTC(date);
+  const dtSec = (jd - tle.epochJD) * 86400;
 
-  const pv = satellite.propagate(satrec, date);
-  if (!pv.position || !pv.velocity) {
+  const n0 = (tle.meanMotion * 2 * Math.PI) / 86400; // rad/s
+  const i0 = tle.inc * DEG;
+  const e0 = tle.ecc;
+  const p0 = tle.a0 * (1 - e0 * e0);
+  if (!(p0 > 0) || !(n0 > 0)) {
     return { xEci: 0, yEci: 0, zEci: 0, lat: 0, lon: 0, alt: 0, speed: 0 };
   }
 
-  const gmst = satellite.gstime(date);
-  const gd = satellite.eciToGeodetic(pv.position, gmst);
-  const speed = Math.sqrt(
-    pv.velocity.x ** 2 + pv.velocity.y ** 2 + pv.velocity.z ** 2,
-  );
+  // J2 secular rates (rad/s)
+  const factor = -1.5 * n0 * J2_EARTH * (RE_EARTH / p0) * (RE_EARTH / p0);
+  const raanDot = factor * Math.cos(i0);
+  const argpDot = -factor * (2.5 * Math.sin(i0) * Math.sin(i0) - 2);
+
+  const raan = tle.raan * DEG + raanDot * dtSec;
+  const argp = tle.argp * DEG + argpDot * dtSec;
+  const M = tle.ma * DEG + n0 * dtSec;
+
+  // Normalize mean anomaly
+  let Mnorm = M % (2 * Math.PI);
+  if (Mnorm < 0) Mnorm += 2 * Math.PI;
+
+  const E = solveKeplerRad(Mnorm, e0);
+  const cosE = Math.cos(E);
+  const sinE = Math.sin(E);
+  const r = tle.a0 * (1 - e0 * cosE);
+  const trueAnom = Math.atan2(Math.sqrt(1 - e0 * e0) * sinE, cosE - e0);
+
+  const xp = r * Math.cos(trueAnom);
+  const yp = r * Math.sin(trueAnom);
+
+  // Perifocal velocity
+  const rDot = (tle.a0 * n0 * e0 * sinE) / (1 - e0 * cosE);
+  const rfDot = (tle.a0 * n0 * Math.sqrt(1 - e0 * e0)) / (1 - e0 * cosE);
+  const vxp = rDot * Math.cos(trueAnom) - rfDot * Math.sin(trueAnom);
+  const vyp = rDot * Math.sin(trueAnom) + rfDot * Math.cos(trueAnom);
+
+  const cosO = Math.cos(raan);
+  const sinO = Math.sin(raan);
+  const cosw = Math.cos(argp);
+  const sinw = Math.sin(argp);
+  const cosi = Math.cos(i0);
+  const sini = Math.sin(i0);
+
+  const R11 = cosO * cosw - sinO * sinw * cosi;
+  const R12 = -cosO * sinw - sinO * cosw * cosi;
+  const R21 = sinO * cosw + cosO * sinw * cosi;
+  const R22 = -sinO * sinw + cosO * cosw * cosi;
+  const R31 = sinw * sini;
+  const R32 = cosw * sini;
+
+  const xEci = R11 * xp + R12 * yp;
+  const yEci = R21 * xp + R22 * yp;
+  const zEci = R31 * xp + R32 * yp;
+  const vxEci = R11 * vxp + R12 * vyp;
+  const vyEci = R21 * vxp + R22 * vyp;
+  const vzEci = R31 * vxp + R32 * vyp;
+  const speed = Math.sqrt(vxEci * vxEci + vyEci * vyEci + vzEci * vzEci);
+
+  // ECI → ECEF via GMST
+  const g = gmstRad(jd);
+  const cosg = Math.cos(g);
+  const sing = Math.sin(g);
+  const xEcef = cosg * xEci + sing * yEci;
+  const yEcef = -sing * xEci + cosg * yEci;
+  const zEcef = zEci;
+
+  const lon = Math.atan2(yEcef, xEcef) / DEG;
+  const rXY = Math.sqrt(xEcef * xEcef + yEcef * yEcef);
+  let lat = Math.atan2(zEcef, rXY);
+  // WGS84 geodetic iteration
+  for (let i = 0; i < 5; i++) {
+    const sinLat = Math.sin(lat);
+    const C = 1 / Math.sqrt(1 - (2 * FLATTENING - FLATTENING * FLATTENING) * sinLat * sinLat);
+    lat = Math.atan2(
+      zEcef + RE_EARTH * C * (2 * FLATTENING - FLATTENING * FLATTENING) * sinLat,
+      rXY,
+    );
+  }
+  const sinLat = Math.sin(lat);
+  const C = 1 / Math.sqrt(1 - (2 * FLATTENING - FLATTENING * FLATTENING) * sinLat * sinLat);
+  const alt = rXY / Math.cos(lat) - RE_EARTH * C;
+
+  let lonDeg = lon;
+  if (lonDeg > 180) lonDeg -= 360;
+  if (lonDeg < -180) lonDeg += 360;
 
   return {
-    xEci: pv.position.x,
-    yEci: pv.position.y,
-    zEci: pv.position.z,
-    lat: satellite.degreesLat(gd.latitude),
-    lon: satellite.degreesLong(gd.longitude),
-    alt: gd.height,
+    xEci,
+    yEci,
+    zEci,
+    lat: lat / DEG,
+    lon: lonDeg,
+    alt,
     speed,
   };
 }
+
 /* ------------------------------- UNIT HELPERS ------------------------------ */
+// Kept for any legacy imports from this module (prefer @/lib/format).
 export function fmtNum(n: number | null | undefined, digits = 0): string {
   if (n === null || n === undefined || Number.isNaN(n)) return "--";
   return n.toLocaleString("en-US", { maximumFractionDigits: digits, minimumFractionDigits: digits });
 }
+
 export function fmtKm(km: number, digits = 0): string {
   return `${fmtNum(km, digits)} km`;
 }
+
 export function fmtAU(au: number, digits = 3): string {
   return `${fmtNum(au, digits)} AU`;
 }
+
 export function lightTimeFromKm(km: number): string {
   const seconds = (km * 1000) / 299792458;
   if (seconds < 60) return `${seconds.toFixed(1)}s`;
@@ -186,35 +255,41 @@ export function lightTimeFromKm(km: number): string {
   if (hours < 48) return `${hours.toFixed(2)} hr`;
   return `${(hours / 24).toFixed(2)} days`;
 }
+
 export function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
+
 export function utcClock(date: Date): string {
   return `${pad2(date.getUTCHours())}:${pad2(date.getUTCMinutes())}:${pad2(date.getUTCSeconds())}`;
 }
+
 export function utcDateStr(date: Date): string {
-  return date.toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", year: "numeric", month: "short", day: "numeric" });
+  return date.toLocaleDateString("en-US", {
+    timeZone: "UTC",
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
+
 export function timeAgo(date: Date): string {
-  const s = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (s < 60) return `${s}s ago`;
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
+  const s = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  if (s < 60) return s + "s ago";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return Math.floor(s / 86400) + "d ago";
 }
+
 export function todayISO(offsetDays = 0): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + offsetDays);
   return d.toISOString().slice(0, 10);
 }
 
-/* ============================================================================
-   DEEP SPACE PROBES -- live position primary source is JPL Horizons (fetched
-   at render time). Fallback: physics-based extrapolation from a documented
-   anchor epoch + known recession speed, so the number is never a frozen
-   stale value even if the network call fails. Anchor values below are
-   sourced from NASA/JPL mission status reporting.
-   ========================================================================== */
+/* ============================ DEEP SPACE PROBES ============================ */
+
 export type ProbeKey =
   | "voyager1"
   | "voyager2"
@@ -251,45 +326,77 @@ export type ProbeAnchor = RecessionProbe | L2Probe | OrbitSunProbe | JupiterProb
 
 export const PROBE_ANCHORS: Record<ProbeKey, ProbeAnchor> = {
   voyager1: {
-    name: "Voyager 1", horizonsId: "-31", launched: "1977-09-05",
-    kind: "recession", anchorDate: "2026-01-01T00:00:00Z", anchorAU: 170.0,
-    speedKmS: 17.0, eclLonDeg: 257, eclLatDeg: 34.7,
+    name: "Voyager 1",
+    horizonsId: "-31",
+    launched: "1977-09-05",
+    kind: "recession",
+    anchorDate: "2026-01-01T00:00:00Z",
+    anchorAU: 170.0,
+    speedKmS: 17.0,
+    eclLonDeg: 257,
+    eclLatDeg: 34.7,
     note: "Farthest human-made object. In interstellar space since 2012.",
   },
   voyager2: {
-    name: "Voyager 2", horizonsId: "-32", launched: "1977-08-20",
-    kind: "recession", anchorDate: "2026-01-01T00:00:00Z", anchorAU: 142.5,
-    speedKmS: 15.4, eclLonDeg: 313, eclLatDeg: -48,
+    name: "Voyager 2",
+    horizonsId: "-32",
+    launched: "1977-08-20",
+    kind: "recession",
+    anchorDate: "2026-01-01T00:00:00Z",
+    anchorAU: 142.5,
+    speedKmS: 15.4,
+    eclLonDeg: 313,
+    eclLatDeg: -48,
     note: "In interstellar space since 2018. Heading toward constellation Pavo.",
   },
   newhorizons: {
-    name: "New Horizons", horizonsId: "-98", launched: "2006-01-19",
-    kind: "recession", anchorDate: "2024-10-01T00:00:00Z", anchorAU: 60.0,
-    speedKmS: 15.3, eclLonDeg: 297, eclLatDeg: -3,
+    name: "New Horizons",
+    horizonsId: "-98",
+    launched: "2006-01-19",
+    kind: "recession",
+    anchorDate: "2024-10-01T00:00:00Z",
+    anchorAU: 60.0,
+    speedKmS: 15.3,
+    eclLonDeg: 297,
+    eclLatDeg: -3,
     note: "Cruising through the Kuiper Belt toward interstellar space.",
   },
   parkersolarprobe: {
-    name: "Parker Solar Probe", horizonsId: "-96", launched: "2018-08-12",
-    kind: "orbit-sun", perihelionAU: 0.046, aphelionAU: 0.73, periodDays: 88,
+    name: "Parker Solar Probe",
+    horizonsId: "-96",
+    launched: "2018-08-12",
+    kind: "orbit-sun",
+    perihelionAU: 0.046,
+    aphelionAU: 0.73,
+    periodDays: 88,
     note: "Fastest human-made object. Repeatedly dives closer to the Sun than any spacecraft in history.",
   },
   jwst: {
-    name: "James Webb Space Telescope", horizonsId: "-170", launched: "2021-12-25",
-    kind: "l2", distanceKm: 1500000,
+    name: "James Webb Space Telescope",
+    horizonsId: "-170",
+    launched: "2021-12-25",
+    kind: "l2",
+    distanceKm: 1_500_000,
     note: "Halo orbit around the Sun-Earth L2 point, roughly 4x farther than the Moon.",
   },
   roman: {
-    name: "Nancy Grace Roman Space Telescope", horizonsId: "-211", launched: "2026-08-30",
-    kind: "l2", distanceKm: 1500000,
-    note: "Cruising to a quasi-halo orbit about the Sun-Earth L2 point while commissioning continues.",
+    name: "Nancy Grace Roman Space Telescope",
+    horizonsId: "-200",
+    launched: "2026-10-01",
+    kind: "l2",
+    distanceKm: 1_500_000,
+    note: "Sun-Earth L2 observatory (illustrative placement until regular Horizons fixes).",
   },
   juno: {
-    name: "Juno", horizonsId: "-61", launched: "2011-08-05",
+    name: "Juno",
+    horizonsId: "-61",
+    launched: "2011-08-05",
     kind: "jupiter-orbit",
-    note: "Orbiting Jupiter, studying its interior, magnetic field and polar cyclones.",
+    note: "Polar orbiter at Jupiter studying the planet's interior and magnetosphere.",
   },
 };
 
+/** Fallback distance (AU) when Horizons is unavailable. */
 export function probeFallbackDistanceAU(key: ProbeKey, now: Date): number | null {
   const p = PROBE_ANCHORS[key];
   if (!p) return null;
@@ -306,18 +413,25 @@ export function probeFallbackDistanceAU(key: ProbeKey, now: Date): number | null
     const jd = julianDateUTC(now);
     const earth = heliocentricEcliptic("earth", jd);
     const jup = heliocentricEcliptic("jupiter", jd);
-    const dx = jup.x - earth.x, dy = jup.y - earth.y, dz = jup.z - earth.z;
+    const dx = jup.x - earth.x;
+    const dy = jup.y - earth.y;
+    const dz = jup.z - earth.z;
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+  if (p.kind === "orbit-sun") {
+    return (p.perihelionAU + p.aphelionAU) / 2;
   }
   return null;
 }
 
+/** Illustrative ecliptic position for recession probes (Deep Space scene). */
 export function probeIllustrativePositionAU(key: ProbeKey, now: Date) {
   const p = PROBE_ANCHORS[key];
   if (!p || p.kind !== "recession") return null;
   const distAU = probeFallbackDistanceAU(key, now);
   if (distAU === null) return null;
-  const lon = p.eclLonDeg * DEG, lat = p.eclLatDeg * DEG;
+  const lon = p.eclLonDeg * DEG;
+  const lat = p.eclLatDeg * DEG;
   return {
     x: distAU * Math.cos(lat) * Math.cos(lon),
     y: distAU * Math.cos(lat) * Math.sin(lon),
@@ -325,11 +439,8 @@ export function probeIllustrativePositionAU(key: ProbeKey, now: Date) {
   };
 }
 
-/* ----------------------------------------------------------------------
-   OMM JSON parser (CelesTrak FORMAT=json). Preferred over legacy fixed-
-   width TLE text: NORAD_CAT_ID arrives as a real number/string with no
-   5-digit truncation risk for newer high-numbered catalog entries.
-   -------------------------------------------------------------------- */
+/* ----------------------------------- OMM ---------------------------------- */
+
 type OMMRecord = Record<string, unknown>;
 
 export function parseOMMRecord(rec: OMMRecord | null | undefined): TLE | null {
@@ -363,7 +474,7 @@ export function parseOMMRecord(rec: OMMRecord | null | undefined): TLE | null {
     ma,
     meanMotion,
     a0,
-    periodMin: (2 * Math.PI / n0) / 60,
+    periodMin: (2 * Math.PI) / n0 / 60,
     apogeeAlt,
     perigeeAlt,
   };
@@ -383,9 +494,6 @@ export function parseOMMArray(json: unknown): TLE[] {
   return out;
 }
 
-// Human-readable orbital regime from the mean orbital altitude, shape, and
-// inclination. Detects sun-synchronous orbits (near-polar, ~98 deg) and
-// cataloged debris by name pattern.
 export function orbitRegime(tle: TLE): string {
   const meanAlt = (tle.apogeeAlt + tle.perigeeAlt) / 2;
   const isDebris = /\bDEB(RIS)?\b/i.test(tle.name);
@@ -398,16 +506,20 @@ export function orbitRegime(tle: TLE): string {
   return "High Earth orbit";
 }
 
-// Debris fragmentation event reference. Matched by testing the object name
-// against known debris-cloud prefixes from CelesTrak catalog entries.
-export const DEBRIS_EVENTS: { pattern: RegExp; event: string; date: string; altKm: string; detail: string }[] = [
+export const DEBRIS_EVENTS: {
+  pattern: RegExp;
+  event: string;
+  date: string;
+  altKm: string;
+  detail: string;
+}[] = [
   {
     pattern: /COSMOS\s*2251/i,
     event: "Iridium 33 / Cosmos 2251 collision",
     date: "10 February 2009",
     altKm: "~789 km",
     detail:
-      "The first major accidental debris event in orbit. The operational Iridium 33 communications satellite and the defunct Russian Cosmos 2251 collided at 11.7 km/s over Siberia, generating hundreds of trackable fragments that will persist for decades.",
+      "Accidental collision of Iridium 33 and Cosmos 2251 over Siberia, generating long-lived debris.",
   },
   {
     pattern: /IRIDIUM\s*33/i,
@@ -415,7 +527,7 @@ export const DEBRIS_EVENTS: { pattern: RegExp; event: string; date: string; altK
     date: "10 February 2009",
     altKm: "~789 km",
     detail:
-      "The first major accidental debris event in orbit. The operational Iridium 33 communications satellite and the defunct Russian Cosmos 2251 collided at 11.7 km/s over Siberia, generating hundreds of trackable fragments that will persist for decades.",
+      "Accidental collision of Iridium 33 and Cosmos 2251 over Siberia, generating long-lived debris.",
   },
   {
     pattern: /(COSMOS\s*1408|19820)/i,
@@ -423,7 +535,7 @@ export const DEBRIS_EVENTS: { pattern: RegExp; event: string; date: string; altK
     date: "15 November 2021",
     altKm: "~470 km",
     detail:
-      "A Russian direct-ascent anti-satellite missile destroyed the defunct Cosmos 1408 surveillance satellite, creating a large debris cloud at an altitude intersecting the ISS orbital path. Fragments forced the station crew to shelter in their reentry vehicles.",
+      "Debris from the Cosmos 1408 ASAT test intersected altitudes used by the ISS.",
   },
 ];
 
