@@ -861,7 +861,11 @@ function TrackerPage() {
                           }
                         />
                       ) : null}
-                      {query.data ? <FreshnessBadge res={query.data} label="Elements" /> : null}
+                      {selected?.noradId === ISS_NORAD ? (
+                        <IssHeaderBadge />
+                      ) : query.data ? (
+                        <FreshnessBadge res={query.data} label="Elements" />
+                      ) : null}
                     </span>
                   </div>
                   {selected ? (
