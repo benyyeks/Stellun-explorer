@@ -6,6 +6,7 @@
 // live elements -- accuracy is best within a few days of the epoch,
 // which matches how this app refetches elements.
 
+import * as satellite from "satellite.js";
 import { DEG, julianDateUTC, gmstDeg, AU_KM, heliocentricEcliptic } from "./astronomy";
 
 export const MU_EARTH = 398600.4418; // km^3/s^2
@@ -121,74 +122,51 @@ export function gmstRad(jd: number): number {
   return gmstDeg(jd) * DEG;
 }
 
-// Returns ECI position (km), ECEF-derived geodetic lat/lon/alt, and speed.
+
+
+/**
+ * SGP4/SDP4 propagation from TLE lines (or OMM-derived lines).
+ * Prefer this over Kepler+J2 for catalog objects; ISS live fix still
+ * overrides position when wheretheiss data is present.
+ */
 export function propagateSat(tle: TLE, date: Date): SatState {
-  const jd = julianDateUTC(date);
-  const dtSec = (jd - tle.epochJD) * 86400;
+  // Rebuild classic TLE lines from stored elements when line1/line2
+  // are not kept on the object — if your TLE type already has line1/line2,
+  // pass those through instead (best).
+  const satrec = (tle as TLE & { line1?: string; line2?: string }).line1
+    && (tle as TLE & { line1?: string; line2?: string }).line2
+    ? satellite.twoline2satrec(
+        (tle as TLE & { line1: string; line2: string }).line1,
+        (tle as TLE & { line1: string; line2: string }).line2,
+      )
+    : satellite.twoline2satrec(
+        // Fallback: if lines not stored, you must keep line1/line2 on TLE at parse time
+        // (recommended). Without lines, SGP4 cannot run correctly.
+        buildLine1(tle),
+        buildLine2(tle),
+      );
 
-  const n0 = (tle.meanMotion * 2 * Math.PI) / 86400;
-  const i0 = tle.inc * DEG;
-  const e0 = tle.ecc;
-  const p0 = tle.a0 * (1 - e0 * e0);
-
-  const factor = -1.5 * n0 * J2_EARTH * (RE_EARTH / p0) * (RE_EARTH / p0);
-  const raanDot = factor * Math.cos(i0);
-  const argpDot = -0.5 * factor * (5 * Math.cos(i0) * Math.cos(i0) - 1);
-
-  const raan = tle.raan * DEG + raanDot * dtSec;
-  const argp = tle.argp * DEG + argpDot * dtSec;
-  const M = tle.ma * DEG + n0 * dtSec;
-  const Mn = ((M % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-  const E = solveKeplerRad(Mn, e0);
-
-  const xp = tle.a0 * (Math.cos(E) - e0);
-  const yp = tle.a0 * Math.sqrt(1 - e0 * e0) * Math.sin(E);
-  const rDot = (tle.a0 * n0 * e0 * Math.sin(E)) / (1 - e0 * Math.cos(E));
-  const rfDot = (tle.a0 * n0 * Math.sqrt(1 - e0 * e0)) / (1 - e0 * Math.cos(E));
-  const trueAnom = Math.atan2(Math.sqrt(1 - e0 * e0) * Math.sin(E), Math.cos(E) - e0);
-  const vxp = rDot * Math.cos(trueAnom) - rfDot * Math.sin(trueAnom);
-  const vyp = rDot * Math.sin(trueAnom) + rfDot * Math.cos(trueAnom);
-
-  const cosO = Math.cos(raan), sinO = Math.sin(raan);
-  const cosw = Math.cos(argp), sinw = Math.sin(argp);
-  const cosi = Math.cos(i0), sini = Math.sin(i0);
-
-  const R11 = cosO * cosw - sinO * sinw * cosi;
-  const R12 = -cosO * sinw - sinO * cosw * cosi;
-  const R21 = sinO * cosw + cosO * sinw * cosi;
-  const R22 = -sinO * sinw + cosO * cosw * cosi;
-  const R31 = sinw * sini;
-  const R32 = cosw * sini;
-
-  const xEci = R11 * xp + R12 * yp;
-  const yEci = R21 * xp + R22 * yp;
-  const zEci = R31 * xp + R32 * yp;
-  const vxEci = R11 * vxp + R12 * vyp;
-  const vyEci = R21 * vxp + R22 * vyp;
-  const vzEci = R31 * vxp + R32 * vyp;
-  const speed = Math.sqrt(vxEci * vxEci + vyEci * vyEci + vzEci * vzEci);
-
-  const g = gmstRad(jd);
-  const cosg = Math.cos(g), sing = Math.sin(g);
-  const xEcef = cosg * xEci + sing * yEci;
-  const yEcef = -sing * xEci + cosg * yEci;
-  const zEcef = zEci;
-
-  const lon = Math.atan2(yEcef, xEcef) / DEG;
-  const rXY = Math.sqrt(xEcef * xEcef + yEcef * yEcef);
-  let lat = Math.atan2(zEcef, rXY);
-  for (let i = 0; i < 4; i++) {
-    const sinLat = Math.sin(lat);
-    const C = 1 / Math.sqrt(1 - (2 * FLATTENING - FLATTENING * FLATTENING) * sinLat * sinLat);
-    lat = Math.atan2(zEcef + RE_EARTH * C * (2 * FLATTENING - FLATTENING * FLATTENING) * sinLat, rXY);
+  const pv = satellite.propagate(satrec, date);
+  if (!pv.position || !pv.velocity) {
+    return { xEci: 0, yEci: 0, zEci: 0, lat: 0, lon: 0, alt: 0, speed: 0 };
   }
-  const sinLat = Math.sin(lat);
-  const C = 1 / Math.sqrt(1 - (2 * FLATTENING - FLATTENING * FLATTENING) * sinLat * sinLat);
-  const alt = rXY / Math.cos(lat) - RE_EARTH * C;
 
-  return { xEci, yEci, zEci, lat: lat / DEG, lon, alt, speed };
+  const gmst = satellite.gstime(date);
+  const gd = satellite.eciToGeodetic(pv.position, gmst);
+  const speed = Math.sqrt(
+    pv.velocity.x ** 2 + pv.velocity.y ** 2 + pv.velocity.z ** 2,
+  );
+
+  return {
+    xEci: pv.position.x,
+    yEci: pv.position.y,
+    zEci: pv.position.z,
+    lat: satellite.degreesLat(gd.latitude),
+    lon: satellite.degreesLong(gd.longitude),
+    alt: gd.height,
+    speed,
+  };
 }
-
 /* ------------------------------- UNIT HELPERS ------------------------------ */
 export function fmtNum(n: number | null | undefined, digits = 0): string {
   if (n === null || n === undefined || Number.isNaN(n)) return "--";
