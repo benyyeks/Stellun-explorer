@@ -158,7 +158,7 @@ export async function readCachedOnly<T>(
   return {
     data: empty,
     source: "cache",
-    fetchedAt: new Date(0).toISOString(),
+    fetchedAt: "", // badge shows "No data yet" — not a fake 1970 date
     isStale: true,
   };
 }
