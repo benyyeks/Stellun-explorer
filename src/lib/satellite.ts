@@ -7,6 +7,11 @@
 // which matches how this app refetches elements.
 
 import * as satellite from "satellite.js";
+/**
+ * SGP4/SDP4 propagation from TLE lines (or OMM-derived lines).
+ * Prefer this over Kepler+J2 for catalog objects; ISS live fix still
+ * overrides position when wheretheiss data is present.
+ */
 import { DEG, julianDateUTC, gmstDeg, AU_KM, heliocentricEcliptic } from "./astronomy";
 
 export const MU_EARTH = 398600.4418; // km^3/s^2
@@ -124,11 +129,6 @@ export function gmstRad(jd: number): number {
 
 
 
-/**
- * SGP4/SDP4 propagation from TLE lines (or OMM-derived lines).
- * Prefer this over Kepler+J2 for catalog objects; ISS live fix still
- * overrides position when wheretheiss data is present.
- */
 export function propagateSat(tle: TLE, date: Date): SatState {
   // Rebuild classic TLE lines from stored elements when line1/line2
   // are not kept on the object — if your TLE type already has line1/line2,
