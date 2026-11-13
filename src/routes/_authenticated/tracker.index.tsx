@@ -4,7 +4,7 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState, type KeyboardEven
 import { parseOMMArray, propagateSat, type TLE } from "@/lib/satellite";
 import { satByIdQuery, satGroupQuery, type SatGroup } from "@/lib/sat-queries";
 import { fmtNum, timeAgo } from "@/lib/format";
-import { FreshnessBadge } from "@/components/site/freshness-badge";
+import { FreshnessBadge, LiveFreshnessBadge } from "@/components/site/freshness-badge";
 import { FeedError, FeedLoading, EmptyState } from "@/components/site/data-state";
 import { useFavorites } from "@/lib/favorites";
 import { useObserverLocation } from "@/lib/location";
