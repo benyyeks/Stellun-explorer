@@ -232,6 +232,24 @@ function formatEpoch(jd: number): string {
 
 type IssFeed = { latitude?: number; longitude?: number; altitude?: number; velocity?: number; timestamp?: number };
 
+
+function IssHeaderBadge() {
+  const live = useQuery({
+    queryKey: ["iss-live"],
+    queryFn: async () => {
+      const r = (await getISSPosition({ data: {} })) as unknown as { data?: IssFeed } & IssFeed;
+      return (r?.data ?? r) as IssFeed;
+    },
+    refetchInterval: 5000,
+  });
+  return (
+    <LiveFreshnessBadge
+      fetchedAt={live.dataUpdatedAt || null}
+      isError={live.isError}
+    />
+  );
+}
+
 function SatelliteDetail({ tle }: { tle: TLE }) {
   const [now, setNow] = useState<Date | null>(null);
   const rate = useSimRate();
