@@ -1,0 +1,38 @@
+# STELLUN — ISS live position only (Where The ISS At / Open Notify fallback)
+# NOT CelesTrak. NOT Launch Library.
+# Secrets: STELLUN_CRON_SECRET, STELLUN_SITE_URL
+#
+# Background warm: every 1 minute (fastest reliable GitHub schedule).
+# On-site "live seconds" still comes from tracker client poll (\~5s) + cache TTL 5s.
+
+name: Stellun ISS refresh
+
+on:
+  schedule:
+    - cron: "* * * * *"
+  workflow_dispatch:
+
+jobs:
+  iss:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Refresh ISS position only
+        env:
+          SECRET: ${{ secrets.STELLUN_CRON_SECRET }}
+          BASE: ${{ secrets.STELLUN_SITE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SECRET:-}" ]; then
+            echo "Missing STELLUN_CRON_SECRET"
+            exit 1
+          fi
+          BASE="${BASE:-https://stellun.space}"
+          BASE="${BASE%/}"
+          echo "ISS only → ${BASE}"
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${SECRET}" \
+            -H "Content-Type: application/json" \
+            "${BASE}/api/public/refresh?only=iss-position&force=1"
+          echo
+          echo OK
