@@ -1,23 +1,30 @@
-# STELLUN staggered feed refresh — one slot per run (no Refresh-all)
-# Secrets: STELLUN_CRON_SECRET (= Cloudflare LOVABLE_CRON_SECRET)
-#          STELLUN_SITE_URL = https://stellun.space
+# STELLUN staggered feeds — one slot per run (no Refresh-all, no ISS)
+# ISS has its own workflow: stellun-iss-refresh.yml
+# Launches seed: stellun-ll2-seed.yml
+#
+# Secrets: STELLUN_CRON_SECRET, STELLUN_SITE_URL (= https://stellun.space)
+#
+# Cadence: every 15 min × 12 slots ≈ full CelesTrak/soft cycle every \~3 h
+# Priority order in rotation:
+#   stations → starlink → space-weather → iridium → resource → geo
+#   → weather → science → gps → launches(cache) → news → mars
 
 name: Stellun feed refresh
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       slot:
-        description: "iss | stations | starlink | iridium | resource | weather | science | gps | geo | space-weather | mars | launches | news"
+        description: "stations | starlink | space-weather | iridium | resource | geo | weather | science | gps | launches | news | mars"
         required: false
         default: ""
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - name: Refresh one slot
         env:
@@ -33,39 +40,33 @@ jobs:
           BASE="${BASE:-https://stellun.space}"
           BASE="${BASE%/}"
 
-          # Orbital-first rotation (12 slots × 10 min ≈ 2 h full cycle)
-          # 0 iss  1 stations  2 starlink  3 space-weather
-          # 4 iridium  5 resource  6 geo  7 weather
-          # 8 science  9 gps  10 launches  11 news|mars alternate
           if [ -n "${MANUAL_SLOT:-}" ]; then
             SLOT="$MANUAL_SLOT"
           else
             H=$(date -u +%H)
             M=$(date -u +%M)
-            IDX=$(( (10#$H * 6 + 10#$M / 10) % 12 ))
+            # 15-minute index across the day
+            IDX=$(( (10#$H * 4 + 10#$M / 15) % 12 ))
             case "$IDX" in
-              0) SLOT=iss ;;
-              1) SLOT=stations ;;
-              2) SLOT=starlink ;;
-              3) SLOT=space-weather ;;
-              4) SLOT=iridium ;;
-              5) SLOT=resource ;;
-              6) SLOT=geo ;;
-              7) SLOT=weather ;;
-              8) SLOT=science ;;
-              9) SLOT=gps ;;
-              10) SLOT=launches ;;
-              *)
-                # Even hours → news; odd hours → mars (deep space)
-                if [ $((10#$H % 2)) -eq 0 ]; then SLOT=news; else SLOT=mars; fi
-                ;;
+              0) SLOT=stations ;;
+              1) SLOT=starlink ;;
+              2) SLOT=space-weather ;;
+              3) SLOT=iridium ;;
+              4) SLOT=resource ;;
+              5) SLOT=geo ;;
+              6) SLOT=weather ;;
+              7) SLOT=science ;;
+              8) SLOT=gps ;;
+              9) SLOT=launches ;;
+              10) SLOT=news ;;
+              *) SLOT=mars ;;
             esac
           fi
 
-                   echo "Slot=$SLOT Base=$BASE"
+          echo "Slot=$SLOT Base=$BASE"
           curl -fsS -X POST \
             -H "Authorization: Bearer ${SECRET}" \
             -H "Content-Type: application/json" \
-            "${BASE}/api/public/refresh?slot=${SLOT}"
+            "\( {BASE}/api/public/refresh?slot= \){SLOT}"
           echo
           echo OK
