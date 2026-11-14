@@ -4,7 +4,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 function verifyCaller(request: Request): boolean {
-  const secret = process.env["LOVABLE_CRON_SECRET"];
+  // Prefer STELLUN_CRON_SECRET; keep LOVABLE_CRON_SECRET as temporary alias
+  const secret =
+    (process.env["STELLUN_CRON_SECRET"] ?? "").trim() ||
+    (process.env["LOVABLE_CRON_SECRET"] ?? "").trim();
   if (!secret) return false;
   const auth = request.headers.get("authorization") ?? "";
   const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : "";
