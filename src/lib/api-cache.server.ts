@@ -52,42 +52,91 @@ export function cacheKey(endpoint: string, params: unknown): string {
 
 async function readCache<T>(key: string, ttlSeconds: number) {
   const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabase
+// Server-only read-through cache for upstream API responses (public.api_cache).
+// Writes MUST succeed before we report source: "fresh". Cron/admin depend on that.
+
+import type { Database } from "@/integrations/supabase/types";
+
+export type CacheResult<T> = {
+  data: T;
+  source: "fresh" | "stale" | "cache";
+  fetchedAt: string;
+  isStale: boolean;
+  writeOk?: boolean;
+};
+
+async function adminClient() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+/** Deterministic cache key from endpoint + params (must match writers and readers). */
+export function cacheKey(endpoint: string, params: unknown): string {
+  const json = JSON.stringify(params ?? {});
+  let h = 5381;
+  for (let i = 0; i < json.length; i++) {
+    h = (h * 33) ^ json.charCodeAt(i);
+  }
+  return `\( {endpoint}: \){(h >>> 0).toString(36)}`;
+}
+
+async function readCache<T>(key: string, ttlSeconds: number) {
+  const { supabaseAdmin: supabase } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabase
     .from("api_cache")
     .select("payload,fetched_at,ttl_seconds")
     .eq("cache_key", key)
     .maybeSingle();
+
+  if (error) {
+    console.error(`api_cache read failed for ${key}:`, error.message);
+    return null;
+  }
   if (!data) return null;
+
   const fetchedAt = new Date(data.fetched_at).getTime();
+  if (!Number.isFinite(fetchedAt)) return null;
+
   const ageSec = (Date.now() - fetchedAt) / 1000;
   return {
     payload: data.payload as T,
-    fetchedAt: data.fetched_at,
+    fetchedAt: data.fetched_at as string,
     isStale: ageSec > (data.ttl_seconds ?? ttlSeconds),
   };
 }
 
-async function writeCache(key: string, endpoint: string, payload: unknown, ttlSeconds: number) {
-  try {
-    const admin = await adminClient();
-    await admin.from("api_cache").upsert(
-      {
-        cache_key: key,
-        endpoint,
-        payload: JSON.parse(JSON.stringify(payload)),
-        fetched_at: new Date().toISOString(),
-        ttl_seconds: ttlSeconds,
-      },
-      { onConflict: "cache_key" },
-    );
-  } catch (err) {
-    console.error(`api_cache write failed for ${endpoint}:`, err);
+/**
+ * Persist payload. Throws if Supabase returns an error so cron goes red.
+ * Returns the exact fetched_at written to the DB.
+ */
+async function writeCache(
+  key: string,
+  endpoint: string,
+  payload: unknown,
+  ttlSeconds: number,
+): Promise<string> {
+  const admin = await adminClient();
+  const fetchedAt = new Date().toISOString();
+  const { error } = await admin.from("api_cache").upsert(
+    {
+      cache_key: key,
+      endpoint,
+      payload: JSON.parse(JSON.stringify(payload)),
+      fetched_at: fetchedAt,
+      ttl_seconds: ttlSeconds,
+    },
+    { onConflict: "cache_key" },
+  );
+
+  if (error) {
+    throw new Error(`api_cache write failed for ${endpoint}: ${error.message}`);
   }
+  return fetchedAt;
 }
 
 /**
- * Read-through cache with stale-on-error fallback.
- * Pass opts.force = true (admin refresh) to ignore TTL and re-hit upstream.
+ * Read-through cache. source "fresh" only after a successful DB write.
+ * force: ignore TTL and re-hit upstream (admin / ISS cron).
  */
 export async function cached<T>(
   endpoint: string,
@@ -99,42 +148,43 @@ export async function cached<T>(
   const key = cacheKey(endpoint, params);
   const cachedRow = await readCache<T>(key, ttlSeconds);
 
-  // Fresh cache hit — skip when admin force-refresh is on
   if (!opts?.force && cachedRow && !cachedRow.isStale) {
     return {
       data: cachedRow.payload,
       source: "cache",
       fetchedAt: cachedRow.fetchedAt,
       isStale: false,
+      writeOk: true,
     };
   }
 
   try {
     const fresh = await fetcher();
-    void writeCache(key, endpoint, fresh, ttlSeconds);
+    const fetchedAt = await writeCache(key, endpoint, fresh, ttlSeconds);
     return {
       data: fresh,
       source: "fresh",
-      fetchedAt: new Date().toISOString(),
+      fetchedAt,
       isStale: false,
+      writeOk: true,
     };
   } catch (err) {
     if (cachedRow) {
-      console.error(`upstream ${endpoint} failed; serving stale cache:`, err);
+      console.error(`upstream or write failed for ${endpoint}; serving stale:`, err);
       return {
         data: cachedRow.payload,
         source: "stale",
         fetchedAt: cachedRow.fetchedAt,
         isStale: true,
+        writeOk: false,
       };
     }
     throw err;
   }
 }
+
 /**
- * READ-ONLY: serve Supabase api_cache only. Never calls upstream.
- * Use for user-facing pages (launches, etc.).
- * Writers: cron + admin via cached() / feed-registry only.
+ * User path: Supabase only. Never calls upstream.
  */
 export async function readCachedOnly<T>(
   endpoint: string,
@@ -151,14 +201,15 @@ export async function readCachedOnly<T>(
       source: cachedRow.isStale ? "stale" : "cache",
       fetchedAt: cachedRow.fetchedAt,
       isStale: cachedRow.isStale,
+      writeOk: true,
     };
   }
 
-  // No row yet — do NOT call LL2/SpaceX/etc. Admin/cron must fill the cache.
   return {
     data: empty,
     source: "cache",
-    fetchedAt: "", // badge shows "No data yet" — not a fake 1970 date
+    fetchedAt: "",
     isStale: true,
+    writeOk: false,
   };
 }
