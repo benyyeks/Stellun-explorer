@@ -543,7 +543,10 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
               ? "No data"
               : null);
         // cache = healthy seed from GitHub; skipped = intentional; none/stale = problem
-        const ok = src === "fresh" || src === "cache" || src === "skipped";
+        const ok =
+          (src === "fresh" || src === "cache" || src === "skipped") &&
+          src !== "stale" &&
+          src !== "none";
         results.push({
           feed: f.name,
           ok,
