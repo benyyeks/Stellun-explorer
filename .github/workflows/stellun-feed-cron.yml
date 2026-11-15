@@ -61,7 +61,7 @@ jobs:
           BODY=$(curl -fsS -X POST \
             -H "Authorization: Bearer ${SECRET}" \
             -H "Content-Type: application/json" \
-            "\( {BASE}/api/public/refresh?slot= \){SLOT}")
+            "${BASE}/api/public/refresh?slot=${SLOT}")
           echo "$BODY"
           echo "$BODY" | grep -q '"ok":true\|"ok": true' || exit 1
           echo OK
