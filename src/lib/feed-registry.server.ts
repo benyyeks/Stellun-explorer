@@ -235,7 +235,6 @@ function feeds(): Feed[] {
         ),
     },
     {
-   {
       name: "satellites-stations",
       run: () =>
         cached(
