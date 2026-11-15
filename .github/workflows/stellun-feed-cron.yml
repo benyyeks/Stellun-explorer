@@ -45,7 +45,6 @@ jobs:
           else
             H=$(date -u +%H)
             M=$(date -u +%M)
-            # 15-minute index across the day
             IDX=$(( (10#$H * 4 + 10#$M / 15) % 12 ))
             case "$IDX" in
               0) SLOT=stations ;;
@@ -64,9 +63,10 @@ jobs:
           fi
 
           echo "Slot=$SLOT Base=$BASE"
-          curl -fsS -X POST \
+          BODY=$(curl -fsS -X POST \
             -H "Authorization: Bearer ${SECRET}" \
             -H "Content-Type: application/json" \
-            "\( {BASE}/api/public/refresh?slot= \){SLOT}"
-          echo
+            "\( {BASE}/api/public/refresh?slot= \){SLOT}")
+          echo "$BODY"
+          echo "$BODY" | grep -q '"ok":true\|"ok": true' || exit 1
           echo OK
