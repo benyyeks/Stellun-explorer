@@ -235,9 +235,10 @@ function feeds(): Feed[] {
         ),
     },
     {
+   {
       name: "satellites-stations",
-      run: async () => {
-        const res = await cached(
+      run: () =>
+        cached(
           "satellites",
           { group: "stations" },
           10800,
@@ -246,53 +247,7 @@ function feeds(): Feed[] {
               timeoutMs: 60000,
             }),
           { force: allowForce("satellites-stations") },
-        );
-        // Warm SatNOGS for station objects (small list: ISS, etc.)
-        if (Array.isArray(res.data) && (res.source === "fresh" || allowForce("satellites-stations"))) {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { cacheKey } = await import("@/lib/api-cache.server");
-          for (const rec of res.data.slice(0, 40)) {
-            const id = String(rec?.NORAD_CAT_ID ?? "").replace(/^0+/, "");
-            if (!/^\d{1,6}$/.test(id)) continue;
-            try {
-              const raw = await fetchJson<any>(
-                `https://db.satnogs.org/api/satellites/?norad_cat_id=${id}&format=json`,
-                { timeoutMs: 10000 },
-              );
-              const rows = Array.isArray(raw) ? raw : (raw?.results ?? []);
-              const sat = rows[0] ?? null;
-              await supabaseAdmin.from("api_cache").upsert(
-                {
-                  cache_key: cacheKey("satnogs-satellite", { id }),
-                  endpoint: "satnogs-satellite",
-                  payload: sat,
-                  fetched_at: new Date().toISOString(),
-                  ttl_seconds: 21600,
-                } as any,
-                { onConflict: "cache_key" },
-              );
-              const txRaw = await fetchJson<any>(
-                `https://db.satnogs.org/api/transmitters/?satellite__norad_cat_id=${id}&format=json`,
-                { timeoutMs: 10000 },
-              );
-              const tx = Array.isArray(txRaw) ? txRaw : (txRaw?.results ?? []);
-              await supabaseAdmin.from("api_cache").upsert(
-                {
-                  cache_key: cacheKey("satnogs-transmitters", { id }),
-                  endpoint: "satnogs-transmitters",
-                  payload: tx,
-                  fetched_at: new Date().toISOString(),
-                  ttl_seconds: 21600,
-                } as any,
-                { onConflict: "cache_key" },
-              );
-            } catch {
-              /* skip one NORAD */
-            }
-          }
-        }
-        return res;
-      },
+        ),
     },
     {
       name: "satellites-iridium",
@@ -313,7 +268,9 @@ function feeds(): Feed[] {
       name: "satellites-starlink",
       run: async () => {
         const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
-        const r = await refreshSatelliteGroup("starlink", { force: forceRefresh });
+        const r = await refreshSatelliteGroup("starlink", {
+          force: allowForce("satellites-starlink"),
+        });
         return { source: r.source };
       },
     },
@@ -321,7 +278,9 @@ function feeds(): Feed[] {
       name: "satellites-active",
       run: async () => {
         const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
-        const r = await refreshSatelliteGroup("active", { force: forceRefresh });
+        const r = await refreshSatelliteGroup("active", {
+          force: allowForce("satellites-active"),
+        });
         return { source: r.source };
       },
     },
@@ -329,7 +288,9 @@ function feeds(): Feed[] {
       name: "satellites-geo",
       run: async () => {
         const { refreshSatelliteGroup } = await import("@/lib/satellite-catalog.server");
-        const r = await refreshSatelliteGroup("geo", { force: forceRefresh });
+        const r = await refreshSatelliteGroup("geo", {
+          force: allowForce("satellites-geo"),
+        });
         return { source: r.source };
       },
     },
