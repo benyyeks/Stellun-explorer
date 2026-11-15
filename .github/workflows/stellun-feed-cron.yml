@@ -3,11 +3,6 @@
 # Launches seed: stellun-ll2-seed.yml
 #
 # Secrets: STELLUN_CRON_SECRET, STELLUN_SITE_URL (= https://stellun.space)
-#
-# Cadence: every 15 min × 12 slots ≈ full CelesTrak/soft cycle every \~3 h
-# Priority order in rotation:
-#   stations → starlink → space-weather → iridium → resource → geo
-#   → weather → science → gps → launches(cache) → news → mars
 
 name: Stellun feed refresh
 
