@@ -697,11 +697,19 @@ export const getPastLaunches = createServerFn({ method: "GET" }).handler(async (
           return typeof name === "string" && name.trim().length > 0 && !!net;
         });
       if (results.length > 0) {
+        let newestMs = 0;
+        for (const row of data) {
+          const t = new Date(String(row.updated_at ?? "")).getTime();
+          if (Number.isFinite(t) && t > newestMs) newestMs = t;
+        }
+        const fetchedAt =
+          newestMs > 0 ? new Date(newestMs).toISOString() : new Date().toISOString();
+        const ageSec = (Date.now() - newestMs) / 1000;
         return {
           data: { count: results.length, next: null, previous: null, results },
           source: "cache" as const,
-          fetchedAt: data[0]?.updated_at ?? new Date().toISOString(),
-          isStale: false,
+          fetchedAt,
+          isStale: newestMs > 0 ? ageSec > 24 * 3600 : true,
         };
       }
     }
