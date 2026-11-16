@@ -374,14 +374,13 @@ async function fetchSpaceXUpcoming() {
   return { count: results.length, next: null, previous: null, results };
 }
 
-/** User-facing: Supabase only. Never calls Launch Library or SpaceX. */
 /** User-facing: prefer public.launches rows; fall back to api_cache. Never calls LL2. */
 export const getLaunches = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("launches")
-      .select("raw, updated_at")
+      .select("raw, updated_at, net")
       .eq("kind", "upcoming")
       .order("net", { ascending: true });
     if (!error && data && data.length > 0) {
@@ -394,11 +393,20 @@ export const getLaunches = createServerFn({ method: "GET" }).handler(async () =>
           return typeof name === "string" && name.trim().length > 0 && !!net;
         });
       if (results.length > 0) {
+        // Badge must use the NEWEST row update (last seed), not data[0] (earliest NET).
+        let newestMs = 0;
+        for (const row of data) {
+          const t = new Date(String(row.updated_at ?? "")).getTime();
+          if (Number.isFinite(t) && t > newestMs) newestMs = t;
+        }
+        const fetchedAt =
+          newestMs > 0 ? new Date(newestMs).toISOString() : new Date().toISOString();
+        const ageSec = (Date.now() - newestMs) / 1000;
         return {
           data: { count: results.length, next: null, previous: null, results },
           source: "cache" as const,
-          fetchedAt: data[0]?.updated_at ?? new Date().toISOString(),
-          isStale: false,
+          fetchedAt,
+          isStale: newestMs > 0 ? ageSec > 6 * 3600 : true,
         };
       }
     }
@@ -412,7 +420,6 @@ export const getLaunches = createServerFn({ method: "GET" }).handler(async () =>
     { count: 0, next: null, previous: null, results: [] },
   );
 });
-
 // ------------------------- Open-Meteo: earth weather ----------------------
 const WeatherInput = z.object({
   lat: z.number().min(-90).max(90),
