@@ -1,5 +1,5 @@
 // Server-only read-through cache for upstream API responses (public.api_cache).
-// Writes MUST succeed before we report source: "fresh". Cron/admin depend on that.
+// Writes MUST succeed before we report source: "fresh".
 
 export type CacheResult<T> = {
   data: T;
@@ -14,14 +14,14 @@ async function adminClient() {
   return supabaseAdmin;
 }
 
-/** Deterministic cache key from endpoint + params (must match writers and readers). */
+/** Deterministic cache key — string concat so paste cannot break ${} templates. */
 export function cacheKey(endpoint: string, params: unknown): string {
   const json = JSON.stringify(params ?? {});
   let h = 5381;
   for (let i = 0; i < json.length; i++) {
     h = (h * 33) ^ json.charCodeAt(i);
   }
-  return `\( {endpoint}: \){(h >>> 0).toString(36)}`;
+  return endpoint + ":" + (h >>> 0).toString(36);
 }
 
 async function readCache<T>(key: string, ttlSeconds: number) {
@@ -33,7 +33,7 @@ async function readCache<T>(key: string, ttlSeconds: number) {
     .maybeSingle();
 
   if (error) {
-    console.error(`api_cache read failed for ${key}:`, error.message);
+    console.error("api_cache read failed for " + key + ":", error.message);
     return null;
   }
   if (!data) return null;
@@ -49,10 +49,6 @@ async function readCache<T>(key: string, ttlSeconds: number) {
   };
 }
 
-/**
- * Persist payload. Throws if Supabase returns an error so cron goes red.
- * Returns the exact fetched_at written to the DB.
- */
 async function writeCache(
   key: string,
   endpoint: string,
@@ -73,15 +69,11 @@ async function writeCache(
   );
 
   if (error) {
-    throw new Error(`api_cache write failed for ${endpoint}: ${error.message}`);
+    throw new Error("api_cache write failed for " + endpoint + ": " + error.message);
   }
   return fetchedAt;
 }
 
-/**
- * Read-through cache. source "fresh" only after a successful DB write.
- * force: ignore TTL and re-hit upstream (admin / ISS cron).
- */
 export async function cached<T>(
   endpoint: string,
   params: unknown,
@@ -114,7 +106,7 @@ export async function cached<T>(
     };
   } catch (err) {
     if (cachedRow) {
-      console.error(`upstream or write failed for ${endpoint}; serving stale:`, err);
+      console.error("upstream or write failed for " + endpoint + "; serving stale:", err);
       return {
         data: cachedRow.payload,
         source: "stale",
@@ -127,9 +119,6 @@ export async function cached<T>(
   }
 }
 
-/**
- * User path: Supabase only. Never calls upstream.
- */
 export async function readCachedOnly<T>(
   endpoint: string,
   params: unknown,
