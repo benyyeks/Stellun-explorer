@@ -30,6 +30,7 @@ const SIDE_LINKS = [
   { to: "/academy", label: "Dashboard", end: true },
   { to: "/academy/desk", label: "Study desk", end: false },
   { to: "/academy/progress", label: "Your Progress", end: false },
+  { to: "/academy/quiz", label: "Quick quiz", end: false },
 ] as const;
 
 const SIDEBAR_KEY = "stellun:academy-sidebar-open";
