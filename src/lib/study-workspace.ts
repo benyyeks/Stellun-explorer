@@ -289,7 +289,6 @@ export function useStudyWorkspaces() {
       learningMode: LearningMode;
       goals: string;
     }) => {
-      // Read latest list from storage so concurrent pages cannot over-count.
       const current = readAll();
       if (current.length >= MAX_WORKSPACES) return null;
 
