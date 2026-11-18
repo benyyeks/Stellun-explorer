@@ -1,10 +1,9 @@
 /**
- * Study desk — workspaces, terminology, libraries, open workspace.
- * Layout follows STELLUN Academy mockup (desk template): top bar,
- * tabs, recommended shelf, search row, dense table, then open panel.
+ * Study desk — workspaces, recommended shelf, open panel.
+ * Create always opens the new workspace on the Open workspace tab.
  * Checklist toggles one row via id + index (legacy-safe).
  */
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { BOOK_TOPICS, BOOKS } from "@/lib/books";
 import {
   LEARNING_MODES,
@@ -36,11 +35,36 @@ const TABS: { id: DeskTab; label: string }[] = [
   { id: "active", label: "Open workspace" },
 ];
 
+/** Recommended shelf cards — prefill the new-workspace form when clicked. */
 const SHELF = [
-  { kind: "Astronomy · 25 min", name: "Orbital mechanics primer", foot: "Open in a new workspace" },
-  { kind: "Aerospace · 40 min", name: "Hohmann transfer examples", foot: "Open in a new workspace" },
-  { kind: "Aviation · 15 min", name: "Cockpit instrument glossary", foot: "Open in a new workspace" },
-  { kind: "Astronomy · 30 min", name: "Reading the night sky", foot: "Open in a new workspace" },
+  {
+    kind: "Astronomy · 25 min",
+    name: "Orbital mechanics primer",
+    foot: "Open in a new workspace",
+    topicId: "orbital-mechanics",
+    mode: "beginner" as LearningMode,
+  },
+  {
+    kind: "Aerospace · 40 min",
+    name: "Hohmann transfer examples",
+    foot: "Open in a new workspace",
+    topicId: "orbital-mechanics",
+    mode: "intermediate" as LearningMode,
+  },
+  {
+    kind: "Aviation · 15 min",
+    name: "Cockpit instrument glossary",
+    foot: "Open in a new workspace",
+    topicId: "aerodynamics",
+    mode: "beginner" as LearningMode,
+  },
+  {
+    kind: "Astronomy · 30 min",
+    name: "Reading the night sky",
+    foot: "Open in a new workspace",
+    topicId: "orbital-mechanics",
+    mode: "beginner" as LearningMode,
+  },
 ] as const;
 
 function formatWhen(ts: number): string {
@@ -82,6 +106,8 @@ export function StudyDeskPage() {
   const [deskTab, setDeskTab] = useState<DeskTab>("workspaces");
   const [query, setQuery] = useState("");
   const [formError, setFormError] = useState("");
+  /** Ensures create → open survives the workspaces state flush. */
+  const pendingOpenId = useRef<string | null>(null);
 
   // New workspace form
   const [title, setTitle] = useState("");
@@ -95,6 +121,20 @@ export function StudyDeskPage() {
 
   useEffect(() => {
     if (!ready) return;
+
+    // Prefer a just-created workspace id until it appears in the list.
+    if (pendingOpenId.current) {
+      const id = pendingOpenId.current;
+      if (workspaces.some((w) => w.id === id)) {
+        setActiveId(id);
+        setDeskTab("active");
+        pendingOpenId.current = null;
+        return;
+      }
+      // List not updated yet — keep waiting; do not clobber activeId.
+      return;
+    }
+
     if (activeId && workspaces.some((w) => w.id === activeId)) return;
     setActiveId(workspaces[0]?.id ?? null);
   }, [ready, workspaces, activeId]);
@@ -119,8 +159,26 @@ export function StudyDeskPage() {
   }, [workspaces, query]);
 
   const openWorkspace = (id: string) => {
+    pendingOpenId.current = null;
     setActiveId(id);
     setDeskTab("active");
+  };
+
+  const openCreateModal = (prefill?: {
+    title?: string;
+    topicId?: string;
+    mode?: LearningMode;
+  }) => {
+    setFormError("");
+    if (prefill?.title) setTitle(prefill.title);
+    if (prefill?.topicId) {
+      setTopicId(prefill.topicId);
+      setBookId("");
+      setBookTitle("");
+      setBookAuthor("");
+    }
+    if (prefill?.mode) setMode(prefill.mode);
+    setModalOpen(true);
   };
 
   const onCreate = (e: FormEvent) => {
@@ -145,13 +203,17 @@ export function StudyDeskPage() {
       );
       return;
     }
+    // Pin open target before clearing form / closing modal.
+    pendingOpenId.current = ws.id;
+    setActiveId(ws.id);
+    setDeskTab("active");
     setTitle("");
     setGoals("");
     setBookId("");
     setBookTitle("");
     setBookAuthor("");
+    setCustomTopic("");
     setModalOpen(false);
-    openWorkspace(ws.id);
   };
 
   if (!ready) {
@@ -164,25 +226,22 @@ export function StudyDeskPage() {
 
   return (
     <div className="study-desk-root">
-      {/* Top — matches mockup */}
       <div className="study-desk-top">
         <div>
           <h1 className="study-desk-title">Study desk</h1>
-          <p className="study-desk-sub muted">
-            Your workspaces, courses and reference library, in one place.
+          <p className="muted small">
+            Create a workspace, accept a plan, work the checklist. Recommended shelf pre-fills the form.
           </p>
         </div>
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => { setFormError(""); setModalOpen(true); }}
-          disabled={workspaces.length >= max}
+          onClick={() => openCreateModal()}
         >
           New workspace
         </button>
       </div>
 
-      {/* Tabs */}
       <nav className="study-desk-tabs" aria-label="Study desk sections">
         {TABS.map((t) => (
           <button
@@ -194,11 +253,11 @@ export function StudyDeskPage() {
             onClick={() => setDeskTab(t.id)}
           >
             {t.label}
+            {t.id === "active" && active ? ` · ${active.title.slice(0, 18)}` : ""}
           </button>
         ))}
       </nav>
 
-      {/* Workspaces tab */}
       {deskTab === "workspaces" && (
         <div className="study-desk-stack">
           <section aria-labelledby="shelf-heading">
@@ -213,7 +272,13 @@ export function StudyDeskPage() {
                   key={b.name}
                   type="button"
                   className="study-shelf-card"
-                  onClick={() => setModalOpen(true)}
+                  onClick={() =>
+                    openCreateModal({
+                      title: b.name,
+                      topicId: b.topicId,
+                      mode: b.mode,
+                    })
+                  }
                 >
                   <span className="study-shelf-kind muted small">{b.kind}</span>
                   <span className="study-shelf-name">{b.name}</span>
@@ -240,7 +305,7 @@ export function StudyDeskPage() {
 
           {filtered.length === 0 ? (
             <p className="muted study-desk-empty">
-              No workspaces yet. Create one to generate a plan and checklist.
+              No workspaces yet. Create one — after Create you land on Open workspace with the plan.
             </p>
           ) : (
             <div className="study-desk-table-wrap glass glass-card">
@@ -249,20 +314,20 @@ export function StudyDeskPage() {
                   <tr>
                     <th>Workspace</th>
                     <th>Subject</th>
-                    <th>Last opened</th>
+                    <th>Last open</th>
                     <th>Progress</th>
                     <th>
-                      <span className="muted">Actions</span>
+                      <span className="sr-only">Actions</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((w) => {
                     const done = w.checklist.filter((c) => c.done).length;
-                    const total = w.checklist.length || 1;
-                    const pct = Math.round((100 * done) / total);
+                    const total = w.checklist.length;
+                    const pct = total ? Math.round((100 * done) / total) : 0;
                     return (
-                      <tr key={w.id}>
+                      <tr key={w.id} data-active={w.id === activeId ? "true" : undefined}>
                         <td>
                           <button
                             type="button"
@@ -272,12 +337,10 @@ export function StudyDeskPage() {
                             {w.title}
                           </button>
                         </td>
-                        <td className="muted">{w.topicId}</td>
-                        <td className="muted">{formatWhen(w.updatedAt)}</td>
-                        <td style={{ minWidth: 120 }}>
-                          <div className="study-desk-bar" aria-hidden>
-                            <i style={{ width: `${pct}%` }} />
-                          </div>
+                        <td className="muted small">{w.topicId.replace(/^custom:/, "")}</td>
+                        <td className="muted small">{formatWhen(w.updatedAt)}</td>
+                        <td className="muted small">
+                          {done}/{total} · {pct}%
                         </td>
                         <td>
                           <div className="study-desk-row-actions">
@@ -310,7 +373,7 @@ export function StudyDeskPage() {
             </div>
           )}
           <p className="muted small">
-            New workspace opens as a panel so the list stays visible.
+            After Create, the Open workspace tab shows the plan and checklist for that workspace.
           </p>
         </div>
       )}
@@ -320,9 +383,14 @@ export function StudyDeskPage() {
       {deskTab === "resources" && <LearningResourcesTab />}
       {deskTab === "roman" && <RomanHub />}
 
-      {/* Open workspace */}
       {deskTab === "active" && !active && (
-        <p className="muted">Select a workspace from the Workspaces tab.</p>
+        <p className="muted">
+          No workspace selected.{" "}
+          <button type="button" className="study-desk-linkish" onClick={() => setDeskTab("workspaces")}>
+            Back to Workspaces
+          </button>{" "}
+          or create one.
+        </p>
       )}
 
       {deskTab === "active" && active && (
@@ -369,7 +437,11 @@ export function StudyDeskPage() {
                     {active.plan.map((p) => (
                       <li key={p.id}>
                         <strong>{p.title}</strong>
-                        <p>{p.detail}</p>
+                        <span className="muted small">
+                          {" "}
+                          · ~{p.estimatedSessions} session{p.estimatedSessions === 1 ? "" : "s"}
+                        </span>
+                        <p className="muted small">{p.detail}</p>
                       </li>
                     ))}
                   </ol>
@@ -377,56 +449,57 @@ export function StudyDeskPage() {
               )}
 
               <section className="glass glass-card study-desk-panel-block">
-                <h3 className="academy-sec">Notes</h3>
-                <textarea
-                  className="study-notes"
-                  value={active.notes}
-                  placeholder="Write notes for this workspace"
-                  onChange={(e) => update(active.id, { notes: e.target.value })}
-                />
-                <label className="study-field">
-                  <span>Focus</span>
-                  <input
-                    value={active.focus}
-                    placeholder="What are you working on right now?"
-                    onChange={(e) => update(active.id, { focus: e.target.value })}
-                  />
-                </label>
+                <h3 className="academy-sec">Checklist</h3>
+                {active.checklist.length === 0 ? (
+                  <p className="muted small">No checklist items yet.</p>
+                ) : (
+                  <ul className="study-check-list">
+                    {active.checklist.map((item, index) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          className="study-check-row"
+                          data-done={item.done ? "true" : undefined}
+                          onClick={() => toggleChecklistItem(active.id, item.id, index)}
+                        >
+                          <span className="study-check-box" aria-hidden>
+                            {item.done ? "✓" : ""}
+                          </span>
+                          <span className={item.done ? "study-check-label is-done" : "study-check-label"}>
+                            {item.label}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </section>
-
-              <StudyUploadPanel workspace={active} />
             </div>
 
             <div className="study-desk-active-col">
               <section className="glass glass-card study-desk-panel-block">
-                <h3 className="academy-sec">Checklist · {progress}%</h3>
-                <ul className="study-check-list interactive">
-                  {active.checklist.map((c, idx) => (
-                    <li key={`${active.id}-${c.id}-${idx}`} className="study-check-item">
-                      {/*
-                        Use a button, not <label>+checkbox, so a single click
-                        cannot fire label default + change in ways that cascade.
-                      */}
-                      <button
-                        type="button"
-                        className="study-check-btn"
-                        data-done={c.done ? "true" : "false"}
-                        aria-pressed={c.done}
-                        onClick={() => toggleChecklistItem(active.id, c.id, idx)}
-                      >
-                        <span className="study-check-box" aria-hidden>
-                          {c.done ? "✓" : ""}
-                        </span>
-                        <span className={c.done ? "study-check-done" : undefined}>{c.label}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                <p className="muted small" style={{ marginTop: 12 }}>
-                  If every row used to flip together, open this workspace once more — ids are
-                  repaired automatically on load.
-                </p>
+                <h3 className="academy-sec">Focus</h3>
+                <textarea
+                  className="study-desk-notes"
+                  rows={3}
+                  maxLength={500}
+                  placeholder="What are you working on in this session?"
+                  value={active.focus}
+                  onChange={(e) => update(active.id, { focus: e.target.value })}
+                />
               </section>
+              <section className="glass glass-card study-desk-panel-block">
+                <h3 className="academy-sec">Notes</h3>
+                <textarea
+                  className="study-desk-notes"
+                  rows={8}
+                  maxLength={8000}
+                  placeholder="Session notes…"
+                  value={active.notes}
+                  onChange={(e) => update(active.id, { notes: e.target.value })}
+                />
+              </section>
+              <StudyUploadPanel workspace={active} />
             </div>
           </div>
         </div>
@@ -449,79 +522,93 @@ export function StudyDeskPage() {
                 {formError}
               </p>
             ) : null}
-            <label className="study-field">
+
+            <label className="field">
               <span>Name</span>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Orbital Mechanics · Week 1"
+                autoFocus
               />
             </label>
-            <label className="study-field">
+
+            <label className="field">
               <span>Topic</span>
-              <select
-                value={topicId}
-                onChange={(e) => {
-                  setTopicId(e.target.value);
-                  setBookId("");
-                }}
-              >
+              <select value={topicId} onChange={(e) => setTopicId(e.target.value)}>
                 {BOOK_TOPICS.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.label}
                   </option>
                 ))}
-                <option value="other">Other…</option>
+                <option value="other">Other (write your own)</option>
               </select>
             </label>
+
             {topicId === "other" && (
-              <label className="study-field">
-                <span>Your topic</span>
+              <label className="field">
+                <span>Custom topic</span>
                 <input
                   value={customTopic}
                   onChange={(e) => setCustomTopic(e.target.value)}
-                  placeholder="Write the topic name"
+                  placeholder="Your topic"
                 />
               </label>
             )}
-            {topicBooks.length > 0 && (
-              <label className="study-field">
-                <span>Book (catalog)</span>
-                <select
-                  value={bookId}
-                  onChange={(e) => {
-                    setBookId(e.target.value);
-                    const b = topicBooks.find((x) => x.id === e.target.value);
-                    if (b) {
-                      setBookTitle(b.title);
-                      setBookAuthor(b.author);
-                    }
-                  }}
-                >
-                  <option value="">Choose or type below</option>
-                  {topicBooks.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label className="study-field">
+
+            <label className="field">
+              <span>Book (catalog)</span>
+              <select
+                value={bookId}
+                onChange={(e) => {
+                  setBookId(e.target.value);
+                  const b = topicBooks.find((x) => x.id === e.target.value);
+                  if (b) {
+                    setBookTitle(b.title);
+                    setBookAuthor(b.authors);
+                  } else {
+                    setBookTitle("");
+                    setBookAuthor("");
+                  }
+                }}
+              >
+                <option value="">Choose or type below</option>
+                {topicBooks.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
               <span>Book title</span>
-              <input value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} />
+              <input
+                value={bookTitle}
+                onChange={(e) => {
+                  setBookTitle(e.target.value);
+                  setBookId("");
+                }}
+                placeholder="Optional"
+              />
             </label>
-            <label className="study-field">
+
+            <label className="field">
               <span>Author</span>
-              <input value={bookAuthor} onChange={(e) => setBookAuthor(e.target.value)} />
+              <input
+                value={bookAuthor}
+                onChange={(e) => setBookAuthor(e.target.value)}
+                placeholder="Optional"
+              />
             </label>
-            <fieldset className="study-field">
+
+            <fieldset className="field">
               <legend>Learning mode</legend>
               {LEARNING_MODES.map((m) => (
-                <label key={m.id} className="study-radio">
+                <label key={m.id} className="study-mode-option">
                   <input
                     type="radio"
-                    name="mode"
+                    name="learning-mode"
                     checked={mode === m.id}
                     onChange={() => setMode(m.id)}
                   />
@@ -532,22 +619,24 @@ export function StudyDeskPage() {
                 </label>
               ))}
             </fieldset>
-            <label className="study-field">
+
+            <label className="field">
               <span>Goals (optional)</span>
               <textarea
+                rows={2}
                 value={goals}
                 onChange={(e) => setGoals(e.target.value)}
-                rows={3}
                 placeholder="What should this workspace help you finish?"
               />
             </label>
+
             <div className="study-modal-actions">
               <button type="button" className="btn btn-ghost" onClick={() => setModalOpen(false)}>
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary">
                 Create
-                </button>
+              </button>
             </div>
           </form>
         </div>
