@@ -5,7 +5,6 @@
  * Checklist toggles one row via id + index (legacy-safe).
  */
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link } from "@tanstack/react-router";
 import { BOOK_TOPICS, BOOKS } from "@/lib/books";
 import {
   LEARNING_MODES,
@@ -82,6 +81,7 @@ export function StudyDeskPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [deskTab, setDeskTab] = useState<DeskTab>("workspaces");
   const [query, setQuery] = useState("");
+  const [formError, setFormError] = useState("");
 
   // New workspace form
   const [title, setTitle] = useState("");
@@ -125,6 +125,7 @@ export function StudyDeskPage() {
 
   const onCreate = (e: FormEvent) => {
     e.preventDefault();
+    setFormError("");
     const resolvedTopic =
       topicId === "other" ? `custom:${customTopic.trim().slice(0, 80) || "topic"}` : topicId;
     const fromCatalog = topicBooks.find((b) => b.id === bookId);
@@ -136,7 +137,14 @@ export function StudyDeskPage() {
       learningMode: mode,
       goals: goals.trim(),
     });
-    if (!ws) return;
+    if (!ws) {
+      setFormError(
+        workspaces.length >= max
+          ? `You already have ${max} workspaces. Delete one to create another.`
+          : "Could not create the workspace. Try again.",
+      );
+      return;
+    }
     setTitle("");
     setGoals("");
     setBookId("");
@@ -167,7 +175,7 @@ export function StudyDeskPage() {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => setModalOpen(true)}
+          onClick={() => { setFormError(""); setModalOpen(true); }}
           disabled={workspaces.length >= max}
         >
           New workspace
@@ -436,13 +444,17 @@ export function StudyDeskPage() {
         >
           <form className="study-modal glass glass-card" onSubmit={onCreate}>
             <h2 className="academy-sec">New workspace</h2>
+            {formError ? (
+              <p className="muted small" role="alert" style={{ color: "var(--color-danger, #e0806e)" }}>
+                {formError}
+              </p>
+            ) : null}
             <label className="study-field">
               <span>Name</span>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Orbital Mechanics · Week 1"
-                required
               />
             </label>
             <label className="study-field">
@@ -535,7 +547,7 @@ export function StudyDeskPage() {
               </button>
               <button type="submit" className="btn btn-primary">
                 Create
-              </button>
+                </button>
             </div>
           </form>
         </div>
