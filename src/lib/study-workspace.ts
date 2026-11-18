@@ -289,7 +289,10 @@ export function useStudyWorkspaces() {
       learningMode: LearningMode;
       goals: string;
     }) => {
-      if (workspaces.length >= MAX_WORKSPACES) return null;
+      // Read latest list from storage so concurrent pages cannot over-count.
+      const current = readAll();
+      if (current.length >= MAX_WORKSPACES) return null;
+
       const { plan, checklist } = generateStudyPlan({
         topicId: input.topicId,
         learningMode: input.learningMode,
@@ -299,12 +302,12 @@ export function useStudyWorkspaces() {
       const now = Date.now();
       const ws: StudyWorkspace = {
         id: newId(),
-        title: input.title.trim() || "Untitled workspace",
+        title: (input.title || "").trim() || "Untitled workspace",
         topicId: input.topicId,
-        bookTitle: input.bookTitle,
-        bookAuthor: input.bookAuthor,
+        bookTitle: input.bookTitle || "",
+        bookAuthor: input.bookAuthor || "",
         learningMode: input.learningMode,
-        goals: input.goals,
+        goals: input.goals || "",
         plan,
         checklist,
         planAccepted: false,
@@ -313,14 +316,12 @@ export function useStudyWorkspaces() {
         createdAt: now,
         updatedAt: now,
       };
-      setWorkspaces((prev) => {
-        const next = [ws, ...prev].slice(0, MAX_WORKSPACES);
-        writeAll(next);
-        return next;
-      });
+      const next = [ws, ...current].slice(0, MAX_WORKSPACES);
+      writeAll(next);
+      setWorkspaces(next);
       return ws;
     },
-    [workspaces.length],
+    [],
   );
 
   const acceptPlan = useCallback((id: string) => {
