@@ -6325,3 +6325,102 @@ main > section:nth-of-type(even) .section-lead {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+
+/* ==========================================================================
+   Stage 3 — Today tasks + quiz shell
+   ========================================================================== */
+
+.academy-today-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.academy-today-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px 14px;
+  align-items: center;
+  padding: 12px 14px;
+}
+
+.academy-today-label {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  .academy-today-item {
+    grid-template-columns: 1fr;
+  }
+}
+
+.academy-quiz {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 16px 48px;
+}
+
+.academy-quiz-panel {
+  padding: 20px 22px;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.academy-quiz-prompt {
+  font-family: var(--font-display, Lora, Georgia, serif);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.academy-quiz-choices {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.academy-quiz-choice {
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: rgba(var(--surface-rgb), var(--surface-alpha));
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.academy-quiz-choice:hover:not(:disabled) {
+  border-color: var(--color-accent, #6b9fff);
+}
+
+.academy-quiz-choice.is-correct {
+  border-color: #3d9a6a;
+  background: rgba(61, 154, 106, 0.12);
+}
+
+.academy-quiz-choice.is-wrong {
+  border-color: #c45c4a;
+  background: rgba(196, 92, 74, 0.12);
+}
+
+.academy-quiz-explain {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.academy-quiz-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
