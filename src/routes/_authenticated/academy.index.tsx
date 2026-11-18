@@ -16,6 +16,7 @@ import {
   useStudyWorkspaces,
   type StudyWorkspace,
 } from "@/lib/study-workspace";
+import { buildDailyTasks } from "@/lib/academy-daily";
 
 /**
  * Academy dashboard
@@ -85,7 +86,7 @@ function workspaceProgress(ws: StudyWorkspace | undefined): number {
 
 function AcademyDashboard() {
   const navigate = useNavigate();
-  const { workspaces, ready, createDraft, acceptPlan } = useStudyWorkspaces();
+  const { workspaces, ready, create, acceptPlan } = useStudyWorkspaces();
   const [profile, setProfile] = useState<AcademyProfile | null>(null);
   const [heroPhase, setHeroPhase] = useState(0);
   const [cascade, setCascade] = useState(false);
@@ -155,7 +156,7 @@ function AcademyDashboard() {
       navigate({ to: "/academy/desk", search: {} });
       return;
     }
-    const ws = createDraft({
+    const ws = create({
       title: defaultTitle,
       topicId,
       bookTitle: defaultTitle,
@@ -212,6 +213,39 @@ function AcademyDashboard() {
             <span className="academy-motion-wing" />
           </div>
         </div>
+      </section>
+
+      {/* Stage 3 — Today's tasks */}
+      <section className="academy-block" aria-labelledby="today-h">
+        <div className="academy-block-head">
+          <h2 className="academy-sec" id="today-h">
+            Today
+          </h2>
+          <Link to="/academy/quiz" className="btn btn-ghost btn-sm">
+            Quick quiz
+          </Link>
+        </div>
+        <ul className="academy-today-list">
+          {buildDailyTasks(workspaces, 5).map((t) => (
+            <li key={t.id} className="academy-today-item glass glass-card">
+              <span className="academy-today-label">{t.label}</span>
+              <span className="muted small">
+                {t.source === "checklist"
+                  ? t.workspaceTitle || "Checklist"
+                  : "Flashcard"}
+              </span>
+              {t.workspaceId ? (
+                <Link to="/academy/desk" className="btn btn-ghost btn-sm">
+                  Open desk
+                </Link>
+              ) : (
+                <Link to="/academy/quiz" className="btn btn-ghost btn-sm">
+                  Quiz
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* Active modules */}
