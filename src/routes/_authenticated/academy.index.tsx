@@ -658,4 +658,4 @@ function OnboardingModal({
       </div>
     </div>
   );
-                      }
+}
