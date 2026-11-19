@@ -1,12 +1,17 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import "@/styles/academy.css";
+import { useAcademyPrefs } from "@/lib/academy-prefs";
 
 /**
  * Academy layout
  * --------------
- * Parent for /academy, /academy/desk, /academy/progress.
- * Sidebar collapses on desktop; a floating control restores it.
- * Site Settings stays at /settings (global header).
+ * Parent for /academy, /academy/desk, /academy/progress, /academy/quiz,
+ * /academy/settings, and /academy/workspace/:id.
+ *
+ * Navigation is one list, shown three ways:
+ *   phone (<640px)   fixed bottom tab bar
+ *   tablet (640-899) sticky top bar
+ *   desktop (900+)   left sidebar
  */
 
 export const Route = createFileRoute("/_authenticated/academy")({
@@ -15,8 +20,7 @@ export const Route = createFileRoute("/_authenticated/academy")({
       { title: "The Academy · STELLUN" },
       {
         name: "description",
-        content:
-          "Study dashboard, workspaces, and aerospace reference tools in one place.",
+        content: "Study dashboard, workspaces, and aerospace reference tools in one place.",
       },
       { property: "og:title", content: "The Academy · STELLUN" },
       { property: "og:type", content: "website" },
@@ -26,92 +30,71 @@ export const Route = createFileRoute("/_authenticated/academy")({
   component: AcademyLayout,
 });
 
-const SIDE_LINKS = [
-  { to: "/academy", label: "Dashboard", end: true },
-  { to: "/academy/desk", label: "Study desk", end: false },
-  { to: "/academy/progress", label: "Your Progress", end: false },
-  { to: "/academy/quiz", label: "Quick quiz", end: false },
+const NAV = [
+  { to: "/academy", label: "Dashboard", short: "Home", end: true },
+  { to: "/academy/desk", label: "Study desk", short: "Desk", end: false },
+  { to: "/academy/progress", label: "Your progress", short: "Progress", end: false },
+  { to: "/academy/quiz", label: "Quick quiz", short: "Quiz", end: false },
+  { to: "/academy/settings", label: "Settings", short: "Settings", end: false },
 ] as const;
-
-const SIDEBAR_KEY = "stellun:academy-sidebar-open";
 
 function AcademyLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [open, setOpen] = useState(true);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SIDEBAR_KEY);
-      if (raw === "0") setOpen(false);
-      if (raw === "1") setOpen(true);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const setSidebar = (next: boolean) => {
-    setOpen(next);
-    try {
-      localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
-  };
+  const [prefs] = useAcademyPrefs();
 
   const isActive = (to: string, end: boolean) => {
     if (end) return pathname === "/academy" || pathname === "/academy/";
-    return pathname === to || pathname.startsWith(to + "/");
+    return pathname === to || pathname.startsWith(`${to}/`);
   };
 
   return (
-    <div className={`academy-shell${open ? "" : " is-side-collapsed"}`}>
-      <aside className="academy-side" aria-label="Academy" data-open={open ? "true" : "false"}>
-        <div className="academy-side-top">
-          <div className="academy-side-brand">
-            <span className="academy-side-kicker">Academy</span>
-            <span className="academy-side-title">Study section</span>
-          </div>
-          <button
-            type="button"
-            className="academy-side-toggle"
-            aria-label="Collapse Academy menu"
-            onClick={() => setSidebar(false)}
-          >
-            ‹
-          </button>
+    <div
+      className="ac-shell"
+      data-academy-theme={prefs.appearance}
+      data-text-size={prefs.textSize}
+    >
+      <aside className="ac-side" aria-label="Academy">
+        <div className="ac-side-brand">
+          <span className="ac-side-kicker">Academy</span>
+          <span className="ac-side-title">Study section</span>
         </div>
-        <nav className="academy-side-nav">
-          {SIDE_LINKS.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              className="academy-side-link"
-              data-active={isActive(l.to, l.end) ? "true" : undefined}
-              aria-current={isActive(l.to, l.end) ? "page" : undefined}
-            >
-              {l.label}
-            </Link>
-          ))}
+        <nav aria-label="Academy sections">
+          <ul className="ac-nav">
+            {NAV.map((item) => (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  className="ac-nav-link"
+                  aria-current={isActive(item.to, item.end) ? "page" : undefined}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </nav>
-        <p className="academy-side-foot">
-          Path setup runs once on first visit. Quizzes and the full library expand in later stages.
+        <p className="ac-side-foot">
+          Your workspaces and settings are saved in this browser. Sign in on the same device to keep
+          using them.
         </p>
       </aside>
 
-      {!open && (
-        <button
-          type="button"
-          className="academy-side-reopen"
-          aria-label="Open Academy menu"
-          onClick={() => setSidebar(true)}
-        >
-          Menu
-        </button>
-      )}
-
-      <div className="academy-main">
+      <div className="ac-main">
         <Outlet />
       </div>
+
+      <nav className="ac-bottom-nav" aria-label="Academy sections">
+        {NAV.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            aria-label={item.label}
+            aria-current={isActive(item.to, item.end) ? "page" : undefined}
+          >
+            {item.short}
+          </Link>
+        ))}
+      </nav>
     </div>
   );
-            }
+}
