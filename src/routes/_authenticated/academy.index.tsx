@@ -219,7 +219,7 @@ function AcademyDashboard() {
       <section className="academy-block" aria-labelledby="today-h">
         <div className="academy-block-head">
           <h2 className="academy-sec" id="today-h">
-            Today
+            Focus today
           </h2>
           <Link to="/academy/quiz" className="btn btn-ghost btn-sm">
             Quick quiz
@@ -303,7 +303,7 @@ function AcademyDashboard() {
         <section aria-labelledby="today-h">
           <div className="academy-row-head">
             <h2 className="academy-sec" id="today-h">
-              Today
+              Recent workspaces
             </h2>
           </div>
           <div className="card glass glass-card academy-table-card">
@@ -658,4 +658,4 @@ function OnboardingModal({
       </div>
     </div>
   );
-}
+                      }
