@@ -1,159 +1,117 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import {
-  readAcademyProfile,
-  TRACKS,
-  type AcademyProfile,
-  type JobChoice,
-} from "@/lib/academy-profile";
-import { useStudyWorkspaces } from "@/lib/study-workspace";
 
 /**
- * Your Progress
- * Lives inside the Academy shell — do not use page-main here.
- * JobChoice uses `label` (not title).
+ * Academy layout
+ * --------------
+ * Parent for /academy, /academy/desk, /academy/progress.
+ * Sidebar collapses on desktop; a floating control restores it.
+ * Site Settings stays at /settings (global header).
  */
 
-export const Route = createFileRoute("/_authenticated/academy/progress")({
+export const Route = createFileRoute("/_authenticated/academy")({
   head: () => ({
     meta: [
-      { title: "Your Progress · STELLUN Academy" },
+      { title: "The Academy · STELLUN" },
       {
         name: "description",
-        content: "Track study activity, checklist completion, and path preferences.",
+        content:
+          "Study dashboard, workspaces, and aerospace reference tools in one place.",
       },
+      { property: "og:title", content: "The Academy · STELLUN" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: ProgressPage,
+  component: AcademyLayout,
 });
 
-function trackLabel(id: string): string {
-  return TRACKS.find((t) => t.id === id)?.label ?? id;
-}
+const SIDE_LINKS = [
+  { to: "/academy", label: "Dashboard", end: true },
+  { to: "/academy/desk", label: "Study desk", end: false },
+  { to: "/academy/progress", label: "Your Progress", end: false },
+  { to: "/academy/quiz", label: "Quick quiz", end: false },
+] as const;
 
-function formatJob(j: JobChoice | string): string {
-  if (typeof j === "string") return j;
-  const name = (j.label || j.jobId || "Role").trim();
-  return j.rank ? `${name} (${j.rank})` : name;
-}
+const SIDEBAR_KEY = "stellun:academy-sidebar-open";
 
-function ProgressPage() {
-  const { workspaces, ready } = useStudyWorkspaces();
-  const [profile, setProfile] = useState<AcademyProfile | null>(null);
+function AcademyLayout() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [open, setOpen] = useState(true);
 
   useEffect(() => {
-    setProfile(readAcademyProfile());
+    try {
+      const raw = localStorage.getItem(SIDEBAR_KEY);
+      if (raw === "0") setOpen(false);
+      if (raw === "1") setOpen(true);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
-  const itemsDone = workspaces.reduce(
-    (n, w) => n + w.checklist.filter((c) => c.done).length,
-    0,
-  );
-  const itemsTotal = workspaces.reduce((n, w) => n + w.checklist.length, 0);
+  const setSidebar = (next: boolean) => {
+    setOpen(next);
+    try {
+      localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const isActive = (to: string, end: boolean) => {
+    if (end) return pathname === "/academy" || pathname === "/academy/";
+    return pathname === to || pathname.startsWith(to + "/");
+  };
 
   return (
-    <div className="academy-progress">
-      <header className="academy-progress-hero glass glass-card">
-        <span className="eyebrow">Academy</span>
-        <h1 className="academy-progress-title">Your Progress</h1>
-        <p className="academy-lede muted">
-          Checklist activity from your workspaces and the path you chose at setup.
-          Quiz mastery charts appear here once assessments save scores.
-        </p>
-        <p className="academy-progress-actions">
-          <Link to="/academy" className="btn btn-ghost btn-sm">
-            Back to dashboard
-          </Link>
-          <Link to="/academy/desk" className="btn btn-ghost btn-sm">
-            Study desk
-          </Link>
-        </p>
-      </header>
-
-      <section className="academy-metric-grid" aria-label="Summary">
-        <div className="card glass glass-card academy-metric-card">
-          <div className="academy-metric">{ready ? workspaces.length : "—"}</div>
-          <div className="academy-metric-label muted">Workspaces</div>
-        </div>
-        <div className="card glass glass-card academy-metric-card">
-          <div className="academy-metric">
-            {ready ? `${itemsDone}/${itemsTotal || 0}` : "—"}
+    <div className={`academy-shell${open ? "" : " is-side-collapsed"}`}>
+      <aside className="academy-side" aria-label="Academy" data-open={open ? "true" : "false"}>
+        <div className="academy-side-top">
+          <div className="academy-side-brand">
+            <span className="academy-side-kicker">Academy</span>
+            <span className="academy-side-title">Study section</span>
           </div>
-          <div className="academy-metric-label muted">Checklist done</div>
+          <button
+            type="button"
+            className="academy-side-toggle"
+            aria-label="Collapse Academy menu"
+            onClick={() => setSidebar(false)}
+          >
+            ‹
+          </button>
         </div>
-        <div className="card glass glass-card academy-metric-card">
-          <div className="academy-metric">{profile?.tracks.length ?? 0}</div>
-          <div className="academy-metric-label muted">Tracks</div>
-        </div>
-        <div className="card glass glass-card academy-metric-card">
-          <div className="academy-metric">{profile?.jobs.length ?? 0}</div>
-          <div className="academy-metric-label muted">Roles</div>
-        </div>
-      </section>
-
-      <section className="academy-progress-path">
-        <h2 className="academy-sec">Path</h2>
-        {!profile?.onboardingComplete ? (
-          <p className="muted">
-            Complete Academy onboarding from the dashboard to lock in tracks and roles.
-          </p>
-        ) : (
-          <ul className="academy-progress-list">
-            <li>
-              <span className="academy-k">Tracks</span>
-              <span>
-                {(profile.tracks || []).map(trackLabel).join(", ") || "—"}
-              </span>
-            </li>
-            <li>
-              <span className="academy-k">Primary</span>
-              <span>
-                {profile.primaryTrack ? trackLabel(profile.primaryTrack) : "—"}
-              </span>
-            </li>
-            <li>
-              <span className="academy-k">Topics</span>
-              <span>{(profile.topics || []).join(", ") || "—"}</span>
-            </li>
-            <li>
-              <span className="academy-k">Roles</span>
-              <span>
-                {(profile.jobs || []).map(formatJob).join(", ") || "—"}
-              </span>
-            </li>
-          </ul>
-        )}
-      </section>
-
-      <section className="academy-progress-path">
-        <h2 className="academy-sec">Workspaces</h2>
-        {!ready ? (
-          <p className="muted">Loading…</p>
-        ) : workspaces.length === 0 ? (
-          <p className="muted">
-            No workspaces yet.{" "}
-            <Link to="/academy/desk" className="study-desk-linkish">
-              Open Study desk
+        <nav className="academy-side-nav">
+          {SIDE_LINKS.map((l) => (
+            <Link
+              key={l.to}
+              to={l.to}
+              className="academy-side-link"
+              data-active={isActive(l.to, l.end) ? "true" : undefined}
+              aria-current={isActive(l.to, l.end) ? "page" : undefined}
+            >
+              {l.label}
             </Link>
-          </p>
-        ) : (
-          <ul className="academy-progress-list">
-            {workspaces.map((w) => {
-              const done = w.checklist.filter((c) => c.done).length;
-              const total = w.checklist.length;
-              const pct = total ? Math.round((100 * done) / total) : 0;
-              return (
-                <li key={w.id}>
-                  <span className="academy-k">{w.title}</span>
-                  <span>
-                    {pct}% checklist ({done}/{total})
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+          ))}
+        </nav>
+        <p className="academy-side-foot">
+          Path setup runs once on first visit. Quizzes and the full library expand in later stages.
+        </p>
+      </aside>
+
+      {!open && (
+        <button
+          type="button"
+          className="academy-side-reopen"
+          aria-label="Open Academy menu"
+          onClick={() => setSidebar(true)}
+        >
+          Menu
+        </button>
+      )}
+
+      <div className="academy-main">
+        <Outlet />
+      </div>
     </div>
   );
-}
+            }
