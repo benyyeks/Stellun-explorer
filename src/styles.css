@@ -6424,3 +6424,226 @@ main > section:nth-of-type(even) .section-lead {
   flex-wrap: wrap;
   gap: 10px;
 }
+
+
+/* ==========================================================================
+   Stage 4 — Academy responsive + text hierarchy
+   ========================================================================== */
+
+/* Clear type scale inside Academy */
+.academy-shell h1,
+.academy-progress-title,
+.study-desk-title {
+  font-family: var(--font-display, Lora, Georgia, serif);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.academy-sec {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #8a8690);
+  margin: 0 0 10px;
+}
+
+.academy-lede {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  max-width: 42rem;
+}
+
+.academy-metric {
+  font-family: var(--font-display, Lora, Georgia, serif);
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.academy-metric-label {
+  font-size: 0.78rem;
+  margin-top: 4px;
+}
+
+.academy-k {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted, #8a8690);
+  margin-bottom: 4px;
+}
+
+.academy-progress-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.academy-progress-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.academy-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 720px) {
+  .academy-metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Study desk tabs — scroll on narrow screens, no overflow title */
+.study-desk-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
+  margin-bottom: 16px;
+}
+
+.study-desk-tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.study-shelf {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (min-width: 900px) {
+  .study-shelf {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.study-desk-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.study-desk-table {
+  min-width: 520px;
+  width: 100%;
+}
+
+.study-desk-active-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 900px) {
+  .study-desk-active-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.study-desk-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.study-desk-title {
+  font-size: clamp(1.35rem, 3vw, 1.75rem);
+  margin: 0 0 4px;
+}
+
+/* Academy shell — mobile sidebar as horizontal chips */
+@media (max-width: 860px) {
+  .academy-shell {
+    grid-template-columns: 1fr !important;
+    padding-top: var(--header-h, 68px);
+  }
+
+  .academy-side {
+    position: relative !important;
+    top: 0 !important;
+    max-height: none !important;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    padding: 12px 12px 10px;
+    overflow: visible;
+  }
+
+  .academy-side-nav {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .academy-side-link {
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.82rem;
+  }
+
+  .academy-side-foot {
+    display: none;
+  }
+
+  .academy-side-brand .academy-side-title {
+    font-size: 0.85rem;
+  }
+
+  .academy-main {
+    padding: 12px 12px 32px;
+    min-width: 0;
+  }
+
+  .academy-today-item {
+    grid-template-columns: 1fr !important;
+  }
+
+  .academy-progress {
+    padding: 4px 4px 40px;
+  }
+
+  .academy-quiz {
+    padding: 4px 4px 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .study-shelf {
+    grid-template-columns: 1fr;
+  }
+
+  .academy-metric-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .study-modal {
+    width: 100% !important;
+    max-height: 85vh;
+  }
+}
+
+/* Modal always centered (guard against older rules) */
+.study-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 200 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 16px !important;
+  background: rgba(20, 18, 14, 0.55) !important;
+}
