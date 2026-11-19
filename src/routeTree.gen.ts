@@ -29,18 +29,25 @@ import { Route as AuthenticatedNeoRouteImport } from './routes/_authenticated/ne
 import { Route as AuthenticatedResearchRouteImport } from './routes/_authenticated/research'
 import { Route as AuthenticatedResourcesRouteImport } from './routes/_authenticated/resources'
 import { Route as AuthenticatedRomanRouteImport } from './routes/_authenticated/roman'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSkyRouteImport } from './routes/_authenticated/sky'
 import { Route as AuthenticatedStudyDeskRouteImport } from './routes/_authenticated/study-desk'
 import { Route as AuthenticatedTrackerRouteImport } from './routes/_authenticated/tracker'
 import { Route as AuthenticatedWeatherRouteImport } from './routes/_authenticated/weather'
 import { Route as ApiAskRouteImport } from './routes/api/ask'
 import { Route as ListShareIdRouteImport } from './routes/list.$shareId'
+import { Route as AuthenticatedAcademyIndexRouteImport } from './routes/_authenticated/academy.index'
+import { Route as AuthenticatedAcademyDeskRouteImport } from './routes/_authenticated/academy.desk'
+import { Route as AuthenticatedAcademyProgressRouteImport } from './routes/_authenticated/academy.progress'
+import { Route as AuthenticatedAcademyQuizRouteImport } from './routes/_authenticated/academy.quiz'
+import { Route as AuthenticatedAcademySettingsRouteImport } from './routes/_authenticated/academy.settings'
 import { Route as AuthenticatedDeepspaceIndexRouteImport } from './routes/_authenticated/deepspace.index'
 import { Route as AuthenticatedDeepspaceObjectIdRouteImport } from './routes/_authenticated/deepspace.$objectId'
 import { Route as AuthenticatedTrackerIndexRouteImport } from './routes/_authenticated/tracker.index'
 import { Route as AuthenticatedTrackerNoradIdRouteImport } from './routes/_authenticated/tracker.$noradId'
 import { Route as ApiPublicRefreshRouteImport } from './routes/api/public/refresh'
 import { Route as ApiPublicRefreshNewsRouteImport } from './routes/api/public/refresh-news'
+import { Route as AuthenticatedAcademyWorkspaceWorkspaceIdRouteImport } from './routes/_authenticated/academy.workspace.$workspaceId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -142,6 +149,11 @@ const AuthenticatedRomanRoute = AuthenticatedRomanRouteImport.update({
   path: '/roman',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSkyRoute = AuthenticatedSkyRouteImport.update({
   id: '/sky',
   path: '/sky',
@@ -172,6 +184,36 @@ const ListShareIdRoute = ListShareIdRouteImport.update({
   path: '/list/$shareId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAcademyIndexRoute =
+  AuthenticatedAcademyIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
+const AuthenticatedAcademyDeskRoute =
+  AuthenticatedAcademyDeskRouteImport.update({
+    id: '/desk',
+    path: '/desk',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
+const AuthenticatedAcademyProgressRoute =
+  AuthenticatedAcademyProgressRouteImport.update({
+    id: '/progress',
+    path: '/progress',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
+const AuthenticatedAcademyQuizRoute =
+  AuthenticatedAcademyQuizRouteImport.update({
+    id: '/quiz',
+    path: '/quiz',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
+const AuthenticatedAcademySettingsRoute =
+  AuthenticatedAcademySettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
 const AuthenticatedDeepspaceIndexRoute =
   AuthenticatedDeepspaceIndexRouteImport.update({
     id: '/',
@@ -206,6 +248,12 @@ const ApiPublicRefreshNewsRoute = ApiPublicRefreshNewsRouteImport.update({
   path: '/api/public/refresh-news',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAcademyWorkspaceWorkspaceIdRoute =
+  AuthenticatedAcademyWorkspaceWorkspaceIdRouteImport.update({
+    id: '/workspace/$workspaceId',
+    path: '/workspace/$workspaceId',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -215,7 +263,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/about': typeof AuthenticatedAboutRoute
-  '/academy': typeof AuthenticatedAcademyRoute
+  '/academy': typeof AuthenticatedAcademyRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
   '/ask': typeof AuthenticatedAskRoute
   '/conditions': typeof AuthenticatedConditionsRoute
@@ -227,18 +275,25 @@ export interface FileRoutesByFullPath {
   '/research': typeof AuthenticatedResearchRoute
   '/resources': typeof AuthenticatedResourcesRoute
   '/roman': typeof AuthenticatedRomanRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/sky': typeof AuthenticatedSkyRoute
   '/study-desk': typeof AuthenticatedStudyDeskRoute
   '/tracker': typeof AuthenticatedTrackerRouteWithChildren
   '/weather': typeof AuthenticatedWeatherRoute
   '/api/ask': typeof ApiAskRoute
   '/list/$shareId': typeof ListShareIdRoute
+  '/academy/desk': typeof AuthenticatedAcademyDeskRoute
+  '/academy/progress': typeof AuthenticatedAcademyProgressRoute
+  '/academy/quiz': typeof AuthenticatedAcademyQuizRoute
+  '/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
   '/api/public/refresh-news': typeof ApiPublicRefreshNewsRoute
+  '/academy/': typeof AuthenticatedAcademyIndexRoute
   '/deepspace/': typeof AuthenticatedDeepspaceIndexRoute
   '/tracker/': typeof AuthenticatedTrackerIndexRoute
+  '/academy/workspace/$workspaceId': typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -248,7 +303,6 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/about': typeof AuthenticatedAboutRoute
-  '/academy': typeof AuthenticatedAcademyRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/ask': typeof AuthenticatedAskRoute
   '/conditions': typeof AuthenticatedConditionsRoute
@@ -259,17 +313,24 @@ export interface FileRoutesByTo {
   '/research': typeof AuthenticatedResearchRoute
   '/resources': typeof AuthenticatedResourcesRoute
   '/roman': typeof AuthenticatedRomanRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/sky': typeof AuthenticatedSkyRoute
   '/study-desk': typeof AuthenticatedStudyDeskRoute
   '/weather': typeof AuthenticatedWeatherRoute
   '/api/ask': typeof ApiAskRoute
   '/list/$shareId': typeof ListShareIdRoute
+  '/academy/desk': typeof AuthenticatedAcademyDeskRoute
+  '/academy/progress': typeof AuthenticatedAcademyProgressRoute
+  '/academy/quiz': typeof AuthenticatedAcademyQuizRoute
+  '/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
   '/api/public/refresh-news': typeof ApiPublicRefreshNewsRoute
+  '/academy': typeof AuthenticatedAcademyIndexRoute
   '/deepspace': typeof AuthenticatedDeepspaceIndexRoute
   '/tracker': typeof AuthenticatedTrackerIndexRoute
+  '/academy/workspace/$workspaceId': typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -281,7 +342,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/terms': typeof TermsRoute
   '/_authenticated/about': typeof AuthenticatedAboutRoute
-  '/_authenticated/academy': typeof AuthenticatedAcademyRoute
+  '/_authenticated/academy': typeof AuthenticatedAcademyRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/ask': typeof AuthenticatedAskRoute
   '/_authenticated/conditions': typeof AuthenticatedConditionsRoute
@@ -293,18 +354,25 @@ export interface FileRoutesById {
   '/_authenticated/research': typeof AuthenticatedResearchRoute
   '/_authenticated/resources': typeof AuthenticatedResourcesRoute
   '/_authenticated/roman': typeof AuthenticatedRomanRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/sky': typeof AuthenticatedSkyRoute
   '/_authenticated/study-desk': typeof AuthenticatedStudyDeskRoute
   '/_authenticated/tracker': typeof AuthenticatedTrackerRouteWithChildren
   '/_authenticated/weather': typeof AuthenticatedWeatherRoute
   '/api/ask': typeof ApiAskRoute
   '/list/$shareId': typeof ListShareIdRoute
+  '/_authenticated/academy/desk': typeof AuthenticatedAcademyDeskRoute
+  '/_authenticated/academy/progress': typeof AuthenticatedAcademyProgressRoute
+  '/_authenticated/academy/quiz': typeof AuthenticatedAcademyQuizRoute
+  '/_authenticated/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/_authenticated/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/_authenticated/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
   '/api/public/refresh-news': typeof ApiPublicRefreshNewsRoute
+  '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
   '/_authenticated/deepspace/': typeof AuthenticatedDeepspaceIndexRoute
   '/_authenticated/tracker/': typeof AuthenticatedTrackerIndexRoute
+  '/_authenticated/academy/workspace/$workspaceId': typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -328,18 +396,25 @@ export interface FileRouteTypes {
     | '/research'
     | '/resources'
     | '/roman'
+    | '/settings'
     | '/sky'
     | '/study-desk'
     | '/tracker'
     | '/weather'
     | '/api/ask'
     | '/list/$shareId'
+    | '/academy/desk'
+    | '/academy/progress'
+    | '/academy/quiz'
+    | '/academy/settings'
     | '/deepspace/$objectId'
     | '/tracker/$noradId'
     | '/api/public/refresh'
     | '/api/public/refresh-news'
+    | '/academy/'
     | '/deepspace/'
     | '/tracker/'
+    | '/academy/workspace/$workspaceId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -349,7 +424,6 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/terms'
     | '/about'
-    | '/academy'
     | '/admin'
     | '/ask'
     | '/conditions'
@@ -360,17 +434,24 @@ export interface FileRouteTypes {
     | '/research'
     | '/resources'
     | '/roman'
+    | '/settings'
     | '/sky'
     | '/study-desk'
     | '/weather'
     | '/api/ask'
     | '/list/$shareId'
+    | '/academy/desk'
+    | '/academy/progress'
+    | '/academy/quiz'
+    | '/academy/settings'
     | '/deepspace/$objectId'
     | '/tracker/$noradId'
     | '/api/public/refresh'
     | '/api/public/refresh-news'
+    | '/academy'
     | '/deepspace'
     | '/tracker'
+    | '/academy/workspace/$workspaceId'
   id:
     | '__root__'
     | '/'
@@ -393,18 +474,25 @@ export interface FileRouteTypes {
     | '/_authenticated/research'
     | '/_authenticated/resources'
     | '/_authenticated/roman'
+    | '/_authenticated/settings'
     | '/_authenticated/sky'
     | '/_authenticated/study-desk'
     | '/_authenticated/tracker'
     | '/_authenticated/weather'
     | '/api/ask'
     | '/list/$shareId'
+    | '/_authenticated/academy/desk'
+    | '/_authenticated/academy/progress'
+    | '/_authenticated/academy/quiz'
+    | '/_authenticated/academy/settings'
     | '/_authenticated/deepspace/$objectId'
     | '/_authenticated/tracker/$noradId'
     | '/api/public/refresh'
     | '/api/public/refresh-news'
+    | '/_authenticated/academy/'
     | '/_authenticated/deepspace/'
     | '/_authenticated/tracker/'
+    | '/_authenticated/academy/workspace/$workspaceId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -563,6 +651,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRomanRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/sky': {
       id: '/_authenticated/sky'
       path: '/sky'
@@ -604,6 +699,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/list/$shareId'
       preLoaderRoute: typeof ListShareIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/academy/': {
+      id: '/_authenticated/academy/'
+      path: '/'
+      fullPath: '/academy/'
+      preLoaderRoute: typeof AuthenticatedAcademyIndexRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
+    '/_authenticated/academy/desk': {
+      id: '/_authenticated/academy/desk'
+      path: '/desk'
+      fullPath: '/academy/desk'
+      preLoaderRoute: typeof AuthenticatedAcademyDeskRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
+    '/_authenticated/academy/progress': {
+      id: '/_authenticated/academy/progress'
+      path: '/progress'
+      fullPath: '/academy/progress'
+      preLoaderRoute: typeof AuthenticatedAcademyProgressRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
+    '/_authenticated/academy/quiz': {
+      id: '/_authenticated/academy/quiz'
+      path: '/quiz'
+      fullPath: '/academy/quiz'
+      preLoaderRoute: typeof AuthenticatedAcademyQuizRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
+    '/_authenticated/academy/settings': {
+      id: '/_authenticated/academy/settings'
+      path: '/settings'
+      fullPath: '/academy/settings'
+      preLoaderRoute: typeof AuthenticatedAcademySettingsRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
     }
     '/_authenticated/deepspace/': {
       id: '/_authenticated/deepspace/'
@@ -647,8 +777,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRefreshNewsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/academy/workspace/$workspaceId': {
+      id: '/_authenticated/academy/workspace/$workspaceId'
+      path: '/workspace/$workspaceId'
+      fullPath: '/academy/workspace/$workspaceId'
+      preLoaderRoute: typeof AuthenticatedAcademyWorkspaceWorkspaceIdRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
   }
 }
+
+interface AuthenticatedAcademyRouteChildren {
+  AuthenticatedAcademyDeskRoute: typeof AuthenticatedAcademyDeskRoute
+  AuthenticatedAcademyProgressRoute: typeof AuthenticatedAcademyProgressRoute
+  AuthenticatedAcademyQuizRoute: typeof AuthenticatedAcademyQuizRoute
+  AuthenticatedAcademySettingsRoute: typeof AuthenticatedAcademySettingsRoute
+  AuthenticatedAcademyIndexRoute: typeof AuthenticatedAcademyIndexRoute
+  AuthenticatedAcademyWorkspaceWorkspaceIdRoute: typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
+}
+
+const AuthenticatedAcademyRouteChildren: AuthenticatedAcademyRouteChildren = {
+  AuthenticatedAcademyDeskRoute: AuthenticatedAcademyDeskRoute,
+  AuthenticatedAcademyProgressRoute: AuthenticatedAcademyProgressRoute,
+  AuthenticatedAcademyQuizRoute: AuthenticatedAcademyQuizRoute,
+  AuthenticatedAcademySettingsRoute: AuthenticatedAcademySettingsRoute,
+  AuthenticatedAcademyIndexRoute: AuthenticatedAcademyIndexRoute,
+  AuthenticatedAcademyWorkspaceWorkspaceIdRoute:
+    AuthenticatedAcademyWorkspaceWorkspaceIdRoute,
+}
+
+const AuthenticatedAcademyRouteWithChildren =
+  AuthenticatedAcademyRoute._addFileChildren(AuthenticatedAcademyRouteChildren)
 
 interface AuthenticatedDeepspaceRouteChildren {
   AuthenticatedDeepspaceObjectIdRoute: typeof AuthenticatedDeepspaceObjectIdRoute
@@ -681,7 +840,7 @@ const AuthenticatedTrackerRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAboutRoute: typeof AuthenticatedAboutRoute
-  AuthenticatedAcademyRoute: typeof AuthenticatedAcademyRoute
+  AuthenticatedAcademyRoute: typeof AuthenticatedAcademyRouteWithChildren
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedAskRoute: typeof AuthenticatedAskRoute
   AuthenticatedConditionsRoute: typeof AuthenticatedConditionsRoute
@@ -693,6 +852,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedResearchRoute: typeof AuthenticatedResearchRoute
   AuthenticatedResourcesRoute: typeof AuthenticatedResourcesRoute
   AuthenticatedRomanRoute: typeof AuthenticatedRomanRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedSkyRoute: typeof AuthenticatedSkyRoute
   AuthenticatedStudyDeskRoute: typeof AuthenticatedStudyDeskRoute
   AuthenticatedTrackerRoute: typeof AuthenticatedTrackerRouteWithChildren
@@ -701,7 +861,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAboutRoute: AuthenticatedAboutRoute,
-  AuthenticatedAcademyRoute: AuthenticatedAcademyRoute,
+  AuthenticatedAcademyRoute: AuthenticatedAcademyRouteWithChildren,
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedAskRoute: AuthenticatedAskRoute,
   AuthenticatedConditionsRoute: AuthenticatedConditionsRoute,
@@ -713,6 +873,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedResearchRoute: AuthenticatedResearchRoute,
   AuthenticatedResourcesRoute: AuthenticatedResourcesRoute,
   AuthenticatedRomanRoute: AuthenticatedRomanRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedSkyRoute: AuthenticatedSkyRoute,
   AuthenticatedStudyDeskRoute: AuthenticatedStudyDeskRoute,
   AuthenticatedTrackerRoute: AuthenticatedTrackerRouteWithChildren,
