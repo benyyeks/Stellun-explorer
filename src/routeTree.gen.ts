@@ -41,6 +41,7 @@ import { Route as AuthenticatedAcademyDeskRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAcademyProgressRouteImport } from './routes/_authenticated/academy.progress'
 import { Route as AuthenticatedAcademyQuizRouteImport } from './routes/_authenticated/academy.quiz'
 import { Route as AuthenticatedAcademySettingsRouteImport } from './routes/_authenticated/academy.settings'
+import { Route as AuthenticatedAcademyShelfRouteImport } from './routes/_authenticated/academy.shelf'
 import { Route as AuthenticatedDeepspaceIndexRouteImport } from './routes/_authenticated/deepspace.index'
 import { Route as AuthenticatedDeepspaceObjectIdRouteImport } from './routes/_authenticated/deepspace.$objectId'
 import { Route as AuthenticatedTrackerIndexRouteImport } from './routes/_authenticated/tracker.index'
@@ -215,6 +216,12 @@ const AuthenticatedAcademySettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedAcademyRoute,
   } as any)
+const AuthenticatedAcademyShelfRoute =
+  AuthenticatedAcademyShelfRouteImport.update({
+    id: '/shelf',
+    path: '/shelf',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
 const AuthenticatedDeepspaceIndexRoute =
   AuthenticatedDeepspaceIndexRouteImport.update({
     id: '/',
@@ -293,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/academy/progress': typeof AuthenticatedAcademyProgressRoute
   '/academy/quiz': typeof AuthenticatedAcademyQuizRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
+  '/academy/shelf': typeof AuthenticatedAcademyShelfRoute
   '/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
@@ -331,6 +339,7 @@ export interface FileRoutesByTo {
   '/academy/progress': typeof AuthenticatedAcademyProgressRoute
   '/academy/quiz': typeof AuthenticatedAcademyQuizRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
+  '/academy/shelf': typeof AuthenticatedAcademyShelfRoute
   '/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
@@ -374,6 +383,7 @@ export interface FileRoutesById {
   '/_authenticated/academy/progress': typeof AuthenticatedAcademyProgressRoute
   '/_authenticated/academy/quiz': typeof AuthenticatedAcademyQuizRoute
   '/_authenticated/academy/settings': typeof AuthenticatedAcademySettingsRoute
+  '/_authenticated/academy/shelf': typeof AuthenticatedAcademyShelfRoute
   '/_authenticated/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/_authenticated/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
@@ -417,6 +427,7 @@ export interface FileRouteTypes {
     | '/academy/progress'
     | '/academy/quiz'
     | '/academy/settings'
+    | '/academy/shelf'
     | '/deepspace/$objectId'
     | '/tracker/$noradId'
     | '/api/public/refresh'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/academy/progress'
     | '/academy/quiz'
     | '/academy/settings'
+    | '/academy/shelf'
     | '/deepspace/$objectId'
     | '/tracker/$noradId'
     | '/api/public/refresh'
@@ -497,6 +509,7 @@ export interface FileRouteTypes {
     | '/_authenticated/academy/progress'
     | '/_authenticated/academy/quiz'
     | '/_authenticated/academy/settings'
+    | '/_authenticated/academy/shelf'
     | '/_authenticated/deepspace/$objectId'
     | '/_authenticated/tracker/$noradId'
     | '/api/public/refresh'
@@ -748,6 +761,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAcademySettingsRouteImport
       parentRoute: typeof AuthenticatedAcademyRoute
     }
+    '/_authenticated/academy/shelf': {
+      id: '/_authenticated/academy/shelf'
+      path: '/shelf'
+      fullPath: '/academy/shelf'
+      preLoaderRoute: typeof AuthenticatedAcademyShelfRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
     '/_authenticated/deepspace/': {
       id: '/_authenticated/deepspace/'
       path: '/'
@@ -812,6 +832,7 @@ interface AuthenticatedAcademyRouteChildren {
   AuthenticatedAcademyProgressRoute: typeof AuthenticatedAcademyProgressRoute
   AuthenticatedAcademyQuizRoute: typeof AuthenticatedAcademyQuizRoute
   AuthenticatedAcademySettingsRoute: typeof AuthenticatedAcademySettingsRoute
+  AuthenticatedAcademyShelfRoute: typeof AuthenticatedAcademyShelfRoute
   AuthenticatedAcademyIndexRoute: typeof AuthenticatedAcademyIndexRoute
   AuthenticatedAcademyFlashcardsWorkspaceIdRoute: typeof AuthenticatedAcademyFlashcardsWorkspaceIdRoute
   AuthenticatedAcademyWorkspaceWorkspaceIdRoute: typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
@@ -822,6 +843,7 @@ const AuthenticatedAcademyRouteChildren: AuthenticatedAcademyRouteChildren = {
   AuthenticatedAcademyProgressRoute: AuthenticatedAcademyProgressRoute,
   AuthenticatedAcademyQuizRoute: AuthenticatedAcademyQuizRoute,
   AuthenticatedAcademySettingsRoute: AuthenticatedAcademySettingsRoute,
+  AuthenticatedAcademyShelfRoute: AuthenticatedAcademyShelfRoute,
   AuthenticatedAcademyIndexRoute: AuthenticatedAcademyIndexRoute,
   AuthenticatedAcademyFlashcardsWorkspaceIdRoute:
     AuthenticatedAcademyFlashcardsWorkspaceIdRoute,
