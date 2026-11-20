@@ -1,43 +1,60 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { MAX_FOCUS, MAX_NOTES, useStudyWorkspaces } from "@/lib/study-workspace";
 import { askStellun } from "@/lib/reader-ask";
 import {
+  clearHighlightsFor,
+  migrateLegacyHighlights,
   useReaderHighlights,
   type HighlightColor,
   type HighlightRect,
   type ReaderHighlight,
 } from "@/lib/reader-highlights";
-import type { PdfDoc, PdfLine } from "@/lib/pdf-text";
+import { useBookLibrary, type LibraryBook } from "@/lib/book-library";
+import type { PdfDoc } from "@/lib/pdf-text";
 
 /**
  * Workspace reader
  * ----------------
- * PDF: each page is drawn as it is printed. Tap a line on the page to select
- *      it, tap another line to select everything between. Choose a colour to
- *      highlight it on the page. No text-selection menu appears.
- * TXT and Markdown: tap a sentence the same way.
- * Study panel: docked on the right on tablets and laptops (900px and up).
- *      On phones it is a drawer. Use the tab on its edge to open or close it.
+ * Books are stored on this device, so they reopen after a refresh. A workspace
+ * can hold several books, and reading resumes at the last page.
+ *
+ * Highlighting: tap the first word of a passage, then the last word. The
+ * passage is highlighted and can be named. Works on PDF pages and text files.
+ * No phone copy menu appears, because nothing is selected natively.
+ *
+ * Study panel: docked on the right on tablets and laptops (900px and up). On
+ * phones it slides in from the right. "Hide" closes it; the Study tab brings it back.
  */
 
 export const Route = createFileRoute("/_authenticated/academy/workspace/$workspaceId")({
   head: () => ({
     meta: [
       { title: "Workspace · STELLUN Academy" },
-      { name: "description", content: "Read, highlight, and ask Stellun about any passage." },
+      { name: "description", content: "Read, highlight, name, and ask Stellun about any passage." },
     ],
   }),
-  component: WorkspaceReader,
+  component: WorkspaceReaderRoute,
 });
 
-type Item = { text: string; left?: number; top?: number; width?: number; height?: number };
-type Sentence = { text: string; para: number };
+function WorkspaceReaderRoute() {
+  const { workspaceId } = Route.useParams();
+  return <WorkspaceReader key={workspaceId} workspaceId={workspaceId} />;
+}
 
-type LoadedDoc =
-  | { kind: "pdf"; name: string; pdf: PdfDoc }
-  | { kind: "text"; name: string; sentences: Sentence[] };
-
+/** One selectable unit: a PDF word or a text word. */
+type Item = { text: string; left?: number; top?: number; width?: number; height?: number; line?: number };
+type Token = { text: string; para: number };
+type LoadedDoc = { kind: "pdf"; pdf: PdfDoc } | { kind: "text"; tokens: Token[] };
 type Sel = { anchor: number; focus: number } | null;
 type Panel = "ask" | "highlights" | "notes" | "plan" | "checklist" | "focus";
 
@@ -64,48 +81,56 @@ const COLORS: { id: HighlightColor; label: string }[] = [
   { id: "green", label: "Green" },
 ];
 
-const MAX_TEXT_BYTES = 3_000_000;
+const MAX_TEXT_BYTES = 600_000;
 const MAX_PDF_BYTES = 40_000_000;
 const EMPTY_ASK: AskState = { status: "idle", question: "", passage: "", answer: "", error: "" };
 const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
+const isDesktop = () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches;
 
-function readAsText(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
-    reader.onerror = () => reject(reader.error ?? new Error("Could not read the file."));
-    reader.readAsText(file);
-  });
+/** Splits text into paragraphs (blank lines) and words. */
+function tokenize(text: string): Token[] {
+  const out: Token[] = [];
+  text
+    .split(/\r?\n\s*\r?\n/)
+    .forEach((para, p) => {
+      for (const word of para.split(/\s+/)) {
+        if (word) out.push({ text: word, para: p });
+      }
+    });
+  return out;
 }
 
-/** Splits a paragraph into sentences without regex lookbehind (older iOS Safari). */
-function splitSentences(paragraph: string): string[] {
-  const out: string[] = [];
-  let buf = "";
-  for (const tok of paragraph.split(/\s+/)) {
-    buf = buf ? `${buf} ${tok}` : tok;
-    if (/[.!?]["”')\]]?$/.test(tok) && buf.length > 24) {
-      out.push(buf);
-      buf = "";
+/** Groups selected words by printed line, so a passage highlights as clean bands. */
+function mergeRects(words: Item[]): HighlightRect[] {
+  type Span = { line: number; left: number; top: number; right: number; bottom: number };
+  const rects: HighlightRect[] = [];
+  const toRect = (s: Span): HighlightRect => ({
+    left: s.left,
+    top: s.top,
+    width: s.right - s.left,
+    height: s.bottom - s.top,
+  });
+  let cur: Span | null = null;
+  for (const w of words) {
+    if (w.left === undefined || w.top === undefined || w.width === undefined || w.height === undefined) continue;
+    const right = w.left + w.width;
+    const bottom = w.top + w.height;
+    const line = w.line ?? -1;
+    if (cur && cur.line === line) {
+      cur.left = Math.min(cur.left, w.left);
+      cur.top = Math.min(cur.top, w.top);
+      cur.right = Math.max(cur.right, right);
+      cur.bottom = Math.max(cur.bottom, bottom);
+    } else {
+      if (cur) rects.push(toRect(cur));
+      cur = { line, left: w.left, top: w.top, right, bottom };
     }
   }
-  if (buf) out.push(buf);
-  return out;
+  if (cur) rects.push(toRect(cur));
+  return rects;
 }
 
-function toSentences(text: string): Sentence[] {
-  const paragraphs = text
-    .split(/\r?\n\s*\r?\n/)
-    .map((p) => p.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
-  const out: Sentence[] = [];
-  paragraphs.forEach((p, para) => {
-    for (const s of splitSentences(p)) out.push({ text: s, para });
-  });
-  return out;
-}
-
-/** The sentence or line index under a pointer event target, if any. */
+/** The word index under a pointer event target, if any. */
 function indexFrom(target: EventTarget | null): number | null {
   const el = (target as HTMLElement | null)?.closest?.("[data-idx]") as HTMLElement | null;
   if (!el) return null;
@@ -113,22 +138,23 @@ function indexFrom(target: EventTarget | null): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
-function WorkspaceReader() {
-  const { workspaceId } = Route.useParams();
-  const navigate = useNavigate();
+function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   const { ready, workspaces, update, acceptPlan, toggleChecklistItem } = useStudyWorkspaces();
   const ws = workspaces.find((w) => w.id === workspaceId) ?? null;
-  const { highlights, addHighlight, removeHighlight } = useReaderHighlights(workspaceId);
+  const library = useBookLibrary(workspaceId);
 
+  const [bookId, setBookId] = useState<string | null>(null);
+  const { highlights, addHighlight, renameHighlight, removeHighlight } = useReaderHighlights(bookId);
   const [doc, setDoc] = useState<LoadedDoc | null>(null);
-  const [docError, setDocError] = useState("");
-  const [loadingDoc, setLoadingDoc] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const [notice, setNotice] = useState("");
   const [pageNo, setPageNo] = useState(1);
   const [pageInput, setPageInput] = useState("1");
   const [zoom, setZoom] = useState(1);
   const [drawing, setDrawing] = useState(false);
   const [canvasSize, setCanvasSize] = useState<{ w: number; h: number } | null>(null);
   const [sel, setSel] = useState<Sel>(null);
+  const [nameDraft, setNameDraft] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [panel, setPanel] = useState<Panel>("ask");
   const [ask, setAsk] = useState<AskState>(EMPTY_ASK);
@@ -139,10 +165,13 @@ function WorkspaceReader() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const dragRef = useRef<{ idx: number; x: number; y: number; type: string } | null>(null);
+  const booted = useRef(false);
+  const saveTimer = useRef<number | null>(null);
 
-  // The panel is docked on desktop and closed on phones.
+  const current: LibraryBook | null = bookId ? (library.books.find((b) => b.id === bookId) ?? null) : null;
+
   useEffect(() => {
-    setPanelOpen(window.matchMedia("(min-width: 900px)").matches);
+    setPanelOpen(isDesktop());
   }, []);
 
   // Release the PDF when the book changes or the page closes.
@@ -152,21 +181,51 @@ function WorkspaceReader() {
     };
   }, [doc]);
 
-  const items: Item[] =
-    doc?.kind === "pdf" ? (doc.pdf.pageLines[pageNo - 1] ?? []) : doc?.kind === "text" ? doc.sentences : [];
+  const pageCount = doc?.kind === "pdf" ? doc.pdf.pageCount : 1;
 
-  const range: [number, number] | null = sel
-    ? [Math.min(sel.anchor, sel.focus), Math.max(sel.anchor, sel.focus)]
-    : null;
-  const selItems = range ? items.slice(range[0], range[1] + 1) : [];
-  const selText = selItems.map((i) => i.text).join(" ");
-  const selRects: HighlightRect[] = selItems
-    .filter((i) => i.left !== undefined)
-    .map((i) => ({ left: i.left!, top: i.top!, width: i.width!, height: i.height! }));
-  const inSel = (i: number) => (range ? i >= range[0] && i <= range[1] : false);
+  const goToPage = (n: number) => {
+    const next = Math.min(Math.max(1, Math.round(n)), pageCount);
+    setPageNo(next);
+    setSel(null);
+  };
 
-  const pageHighlights = doc?.kind === "pdf" ? highlights.filter((h) => h.page === pageNo) : [];
-  const textHighlighted = new Set(doc?.kind === "text" ? highlights.filter((h) => h.page === 0).map((h) => h.text) : []);
+  /** Opens a stored book at its last page and zoom. */
+  const openRecord = useCallback(
+    async (rec: LibraryBook) => {
+      setNotice("");
+      setOpening(true);
+      setSel(null);
+      setNameDraft("");
+      try {
+        migrateLegacyHighlights(workspaceId, rec.id);
+        if (rec.kind === "pdf") {
+          const { openPdf } = await import("@/lib/pdf-text");
+          const pdf = await openPdf(rec.blob);
+          setDoc({ kind: "pdf", pdf });
+          setPageNo(Math.min(Math.max(1, rec.lastPage || 1), pdf.pageCount));
+        } else {
+          const text = await rec.blob.text();
+          setDoc({ kind: "text", tokens: tokenize(text) });
+          setPageNo(1);
+        }
+        setZoom(rec.zoom || 1);
+        setBookId(rec.id);
+      } catch (err) {
+        setNotice(err instanceof Error ? err.message : "Could not open that book.");
+      } finally {
+        setOpening(false);
+      }
+    },
+    [workspaceId],
+  );
+
+  // On arrival, reopen the last book read in this workspace.
+  useEffect(() => {
+    if (!library.ready || booted.current) return;
+    booted.current = true;
+    const last = library.books[0];
+    if (last) void openRecord(last);
+  }, [library.ready, library.books, openRecord]);
 
   // Draw the current PDF page.
   useEffect(() => {
@@ -180,7 +239,7 @@ function WorkspaceReader() {
         if (alive) setCanvasSize({ w: cssWidth, h: cssHeight });
       })
       .catch(() => {
-        if (alive) setDocError("This page could not be drawn. Try again or reload the file.");
+        if (alive) setNotice("This page could not be drawn. Try again, or add the file again.");
       })
       .finally(() => {
         if (alive) setDrawing(false);
@@ -190,8 +249,21 @@ function WorkspaceReader() {
     };
   }, [doc, pageNo, zoom]);
 
-  // Keep the page box in sync with the input, and move with arrow keys.
+  // Save the reading position, so a refresh resumes here.
+  useEffect(() => {
+    if (!bookId || !doc) return;
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      void library.savePosition(bookId, pageNo, zoom);
+    }, 400);
+    return () => {
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    };
+  }, [bookId, doc, pageNo, zoom, library.savePosition]);
+
   useEffect(() => setPageInput(String(pageNo)), [pageNo]);
+
+  // Arrow keys move between pages.
   useEffect(() => {
     if (!doc || doc.kind !== "pdf") return;
     const onKey = (e: KeyboardEvent) => {
@@ -204,43 +276,67 @@ function WorkspaceReader() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const pageCount = doc?.kind === "pdf" ? doc.pdf.pageCount : 1;
-
-  const goToPage = (n: number) => {
-    const next = Math.min(Math.max(1, Math.round(n)), pageCount);
-    setPageNo(next);
-    setSel(null);
-  };
-
-  const openFile = async (file: File) => {
-    setDocError("");
-    setLoadingDoc(true);
+  const addFile = async (file: File) => {
+    const kind =
+      /\.pdf$/i.test(file.name) || file.type === "application/pdf"
+        ? "pdf"
+        : /\.(txt|md|markdown)$/i.test(file.name) || file.type.startsWith("text/")
+          ? "text"
+          : null;
+    if (!kind) {
+      setNotice("Open a PDF, TXT, or Markdown file. Word and EPUB files come next.");
+      return;
+    }
+    if (file.size > (kind === "pdf" ? MAX_PDF_BYTES : MAX_TEXT_BYTES)) {
+      setNotice(
+        kind === "pdf"
+          ? "That PDF is larger than 40 MB. Try a smaller part of the book."
+          : "That text file is larger than 600 KB. Split it into shorter parts.",
+      );
+      return;
+    }
     try {
-      const name = file.name;
-      if (/\.pdf$/i.test(name) || file.type === "application/pdf") {
-        if (file.size > MAX_PDF_BYTES) throw new Error("That PDF is larger than 40 MB. Try a smaller part of the book.");
-        const { openPdf } = await import("@/lib/pdf-text");
-        const pdf = await openPdf(file);
-        setDoc({ kind: "pdf", name, pdf });
-        setPageNo(1);
-        setZoom(1);
-      } else if (/\.(txt|md|markdown)$/i.test(name) || file.type.startsWith("text/")) {
-        if (file.size > MAX_TEXT_BYTES) throw new Error("That text file is larger than 3 MB. Try a shorter section.");
-        const text = await readAsText(file);
-        setDoc({ kind: "text", name, sentences: toSentences(text) });
-      } else {
-        throw new Error("Open a PDF, TXT, or Markdown file. Word and EPUB files come next.");
-      }
-      setSel(null);
-      setPanelOpen((open) => open || window.matchMedia("(min-width: 900px)").matches);
+      const rec = await library.add(file, kind);
+      await openRecord(rec);
     } catch (err) {
-      setDocError(err instanceof Error ? err.message : "Could not open that file.");
-    } finally {
-      setLoadingDoc(false);
+      setNotice(err instanceof Error ? err.message : "Could not add that book.");
     }
   };
 
-  // Tap and drag handling. Touch selects only on a tap, so scrolling never selects.
+  const removeBook = async (rec: LibraryBook) => {
+    if (!window.confirm(`Remove “${rec.name}” and its highlights from this device?`)) return;
+    await library.remove(rec.id);
+    clearHighlightsFor(rec.id);
+    if (bookId === rec.id) {
+      setDoc(null);
+      setBookId(null);
+      setSel(null);
+    }
+  };
+
+  const items: Item[] =
+    doc?.kind === "pdf" ? (doc.pdf.pageWords[pageNo - 1] ?? []) : doc?.kind === "text" ? doc.tokens : [];
+
+  const range: [number, number] | null = sel
+    ? [Math.min(sel.anchor, sel.focus), Math.max(sel.anchor, sel.focus)]
+    : null;
+  const selItems = range ? items.slice(range[0], range[1] + 1) : [];
+  const selText = selItems.map((i) => i.text).join(" ");
+  const selRects = doc?.kind === "pdf" ? mergeRects(selItems) : [];
+  const inSel = (i: number) => (range ? i >= range[0] && i <= range[1] : false);
+
+  const pageHighlights = doc?.kind === "pdf" ? highlights.filter((h) => h.page === pageNo) : [];
+  const textHighlighted = useMemo(() => {
+    const set = new Set<number>();
+    if (doc?.kind !== "text") return set;
+    for (const h of highlights) {
+      if (h.page !== 0 || !h.range) continue;
+      for (let i = h.range[0]; i <= h.range[1]; i++) set.add(i);
+    }
+    return set;
+  }, [doc, highlights]);
+
+  // Pointer handling. Touch selects only on a tap, so scrolling never selects.
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     const idx = indexFrom(e.target);
     if (idx === null) return;
@@ -274,11 +370,19 @@ function WorkspaceReader() {
     });
   };
 
-  const highlightSelection = (color: HighlightColor) => {
-    if (!selText) return;
+  const applyHighlight = (color: HighlightColor) => {
+    if (!selText || !bookId) return;
     const page = doc?.kind === "pdf" ? pageNo : 0;
-    addHighlight({ text: selText, color, page, rects: selRects });
+    addHighlight({
+      name: nameDraft,
+      text: selText,
+      color,
+      page,
+      rects: selRects,
+      range: doc?.kind === "text" && range ? [range[0], range[1]] : undefined,
+    });
     setSel(null);
+    setNameDraft("");
   };
 
   const runAsk = async (question: string, passageText: string) => {
@@ -293,7 +397,7 @@ function WorkspaceReader() {
       const answer = await askStellun({
         question,
         passage: passageText || undefined,
-        bookTitle: ws?.bookTitle || doc?.name,
+        bookTitle: current?.name,
         workspaceTitle: ws?.title,
         signal: controller.signal,
         onChunk: (text) => setAsk((s) => ({ ...s, answer: text })),
@@ -320,7 +424,9 @@ function WorkspaceReader() {
 
   const noteSelection = () => {
     if (!selText || !ws) return;
-    update(ws.id, { notes: [ws.notes.trimEnd(), `“${selText}”`].filter(Boolean).join("\n\n").slice(0, MAX_NOTES) });
+    update(ws.id, {
+      notes: [ws.notes.trimEnd(), `“${selText}”`].filter(Boolean).join("\n\n").slice(0, MAX_NOTES),
+    });
     setSel(null);
     setPanel("notes");
     setPanelOpen(true);
@@ -378,32 +484,21 @@ function WorkspaceReader() {
   const done = ws.checklist.filter((c) => c.done).length;
   const total = ws.checklist.length;
   const pctDone = total ? Math.round((100 * done) / total) : 0;
-  const bookLine = [ws.bookTitle || doc?.name || "No book named yet", ws.bookAuthor].filter(Boolean).join(" · ");
-
+  const bookLine = [ws.bookTitle || current?.name || "No book named yet", ws.bookAuthor].filter(Boolean).join(" · ");
   const hint =
-    doc?.kind === "pdf"
-      ? "Tap a line to select it. Tap another line to select everything between. Then choose a colour."
-      : "Tap a sentence to select it. Tap another to select everything between.";
-
-  const pageLines: PdfLine[] = doc?.kind === "pdf" ? (doc.pdf.pageLines[pageNo - 1] ?? []) : [];
+    "Tap the first word of a passage, then the last word. Choose a colour, or name it first.";
 
   return (
     <div className="ac-page">
       <header className="ac-top">
         <div>
           <p className="ac-small ac-muted" style={{ margin: 0 }}>
-            <Link to="/academy/desk" className="ac-link">
-              Study desk
-            </Link>
+            <Link to="/academy/desk" className="ac-link">Study desk</Link>
             {" / "}
             {ws.title || "Untitled workspace"}
           </p>
-          <h1 className="ac-title" style={{ marginTop: 4 }}>
-            {ws.title || "Untitled workspace"}
-          </h1>
-          <p className="ac-sub">
-            {bookLine} · checklist {pctDone}%
-          </p>
+          <h1 className="ac-title" style={{ marginTop: 4 }}>{ws.title || "Untitled workspace"}</h1>
+          <p className="ac-sub">{bookLine} · checklist {pctDone}%</p>
         </div>
         <div className="ac-hero-actions">
           {!ws.planAccepted && (
@@ -417,56 +512,90 @@ function WorkspaceReader() {
         </div>
       </header>
 
-      <div className="ac-split">
+      <div className="ac-split" data-panel={doc && panelOpen ? "open" : "closed"}>
         <section className="ac-reader" aria-label="Reading area">
-          <div className="ac-reader-bar">
-            <span className="ac-small ac-muted ac-reader-name">{doc ? doc.name : "No file open"}</span>
-            <div className="ac-reader-tools">
-              {doc?.kind === "pdf" && (
-                <div className="ac-seg" role="group" aria-label="Zoom">
-                  <button type="button" onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.2).toFixed(2)))} aria-label="Zoom out">−</button>
-                  <button type="button" onClick={() => setZoom(1)} aria-label="Fit to width">{Math.round(zoom * 100)}%</button>
-                  <button type="button" onClick={() => setZoom((z) => Math.min(2, +(z + 0.2).toFixed(2)))} aria-label="Zoom in">+</button>
-                </div>
-              )}
-              <label className="ac-btn ac-btn--primary ac-btn--sm ac-file-btn">
-                {loadingDoc ? "Opening…" : doc ? "Open another file" : "Open a file"}
-                <input
-                  type="file"
-                  accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
-                  className="ac-sr-only"
-                  disabled={loadingDoc}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = "";
-                    if (file) void openFile(file);
-                  }}
-                />
-              </label>
-            </div>
+          <div className="ac-shelfbar" role="list" aria-label="Books in this workspace">
+            {library.books.map((b) => (
+              <div key={b.id} role="listitem" className={`ac-bookchip${b.id === bookId ? " is-open" : ""}`}>
+                <button
+                  type="button"
+                  className="ac-bookchip-open"
+                  onClick={() => void openRecord(b)}
+                  aria-current={b.id === bookId ? "true" : undefined}
+                >
+                  <span className="ac-bookchip-name">{b.name}</span>
+                  <span className="ac-small ac-muted">{b.kind === "pdf" ? `Page ${b.lastPage}` : "Text file"}</span>
+                </button>
+                <button
+                  type="button"
+                  className="ac-bookchip-x"
+                  onClick={() => void removeBook(b)}
+                  aria-label={`Remove ${b.name}`}
+                  title="Remove this book"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <label className="ac-btn ac-btn--primary ac-btn--sm ac-file-btn">
+              {opening ? "Opening…" : "Add a book"}
+              <input
+                type="file"
+                accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
+                className="ac-sr-only"
+                disabled={opening}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void addFile(file);
+                }}
+              />
+            </label>
           </div>
 
-          {docError && (
+          {current && doc && (
+            <div className="ac-reader-bar">
+              <span className="ac-small ac-muted ac-reader-name">{current.name}</span>
+              {doc.kind === "pdf" && (
+                <div className="ac-reader-tools">
+                  <div className="ac-seg" role="group" aria-label="Zoom">
+                    <button type="button" onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.2).toFixed(2)))} aria-label="Zoom out">−</button>
+                    <button type="button" onClick={() => setZoom(1)} aria-label="Fit to width">{Math.round(zoom * 100)}%</button>
+                    <button type="button" onClick={() => setZoom((z) => Math.min(2, +(z + 0.2).toFixed(2)))} aria-label="Zoom in">+</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {notice && (
             <p className="ac-error" role="alert" style={{ padding: "12px 16px 0", margin: 0 }}>
-              {docError}
+              {notice}
             </p>
           )}
 
-          {!doc && !loadingDoc && (
+          {!doc && !opening && library.books.length === 0 && (
             <div className="ac-reader-empty">
               <p>
-                <strong>Open a PDF, TXT, or Markdown file to start reading.</strong>
+                <strong>Add a PDF, TXT, or Markdown book to start reading.</strong>
               </p>
               <p className="ac-small">
-                Tap lines or sentences to highlight them, ask Stellun about them, or save them to your notes.
-                The file stays on this device for this visit.
+                The book stays on this device, so it is still here after a refresh. Highlight passages, name them, and ask Stellun about them.
               </p>
             </div>
           )}
 
-          {loadingDoc && (
+          {!doc && !opening && library.books.length > 0 && (
             <div className="ac-reader-empty">
-              <p>Opening your file…</p>
+              <p>
+                <strong>Choose a book above to continue reading.</strong>
+              </p>
+            </div>
+          )}
+
+          {opening && (
+            <div className="ac-reader-empty">
+              <p>Opening your book…</p>
             </div>
           )}
 
@@ -503,53 +632,51 @@ function WorkspaceReader() {
                 onChange={(e) => goToPage(Number(e.target.value))}
                 aria-label={`Page ${pageNo} of ${pageCount}`}
               />
-            </>
-          )}
-
-          {doc?.kind === "pdf" && (
-            <p className="ac-hint ac-reader-hint">
-              {doc.pdf.hasText
-                ? hint
-                : "This PDF has no selectable text, so it may be a scan. You can read every page, but highlights need text."}
-            </p>
-          )}
-
-          {doc?.kind === "pdf" && (
-            <div className="ac-pages" ref={stageRef}>
-              {drawing && <p className="ac-small ac-muted">Drawing page {pageNo}…</p>}
-              <div
-                className="ac-stage"
-                style={canvasSize ? { width: canvasSize.w, height: canvasSize.h } : undefined}
-              >
-                <canvas ref={canvasRef} className="ac-page-canvas" aria-label={`Page ${pageNo}`} />
-                <div className="ac-hl-layer" aria-hidden="true">
-                  {pageHighlights.flatMap((h: ReaderHighlight) =>
-                    h.rects.map((r, i) => (
-                      <span
-                        key={`${h.id}-${i}`}
-                        className={`ac-hl-rect ac-hl-rect--${h.color}`}
-                        style={{ left: pct(r.left), top: pct(r.top), width: pct(r.width), height: pct(r.height) }}
+              {!doc.pdf.hasText ? (
+                <p className="ac-hint ac-reader-hint">
+                  This PDF has no selectable text, so it may be a scan. You can read every page, but highlights need text.
+                </p>
+              ) : (
+                <p className="ac-hint ac-reader-hint">{hint}</p>
+              )}
+              <div className="ac-pages" ref={stageRef}>
+                {drawing && <p className="ac-small ac-muted">Drawing page {pageNo}…</p>}
+                <div className="ac-stage" style={canvasSize ? { width: canvasSize.w, height: canvasSize.h } : undefined}>
+                  <canvas ref={canvasRef} className="ac-page-canvas" aria-label={`Page ${pageNo}`} />
+                  <div className="ac-hl-layer" aria-hidden="true">
+                    {pageHighlights.flatMap((h: ReaderHighlight) =>
+                      h.rects.map((r, i) => (
+                        <span
+                          key={`${h.id}-${i}`}
+                          className={`ac-hl-rect ac-hl-rect--${h.color}`}
+                          style={{ left: pct(r.left), top: pct(r.top), width: pct(r.width), height: pct(r.height) }}
+                        />
+                      )),
+                    )}
+                  </div>
+                  <div
+                    className="ac-hit-layer"
+                    onPointerDown={onPointerDown}
+                    onPointerOver={onPointerOver}
+                    onPointerUp={onPointerUp}
+                  >
+                    {items.map((w, i) => (
+                      <div
+                        key={i}
+                        data-idx={i}
+                        className={`ac-hit${inSel(i) ? " is-sel" : ""}`}
+                        style={{
+                          left: pct(w.left ?? 0),
+                          top: pct(w.top ?? 0),
+                          width: pct(w.width ?? 0),
+                          height: pct(w.height ?? 0),
+                        }}
                       />
-                    )),
-                  )}
-                </div>
-                <div
-                  className="ac-hit-layer"
-                  onPointerDown={onPointerDown}
-                  onPointerOver={onPointerOver}
-                  onPointerUp={onPointerUp}
-                >
-                  {pageLines.map((l, i) => (
-                    <div
-                      key={i}
-                      data-idx={i}
-                      className={`ac-hit${inSel(i) ? " is-sel" : ""}`}
-                      style={{ left: pct(l.left), top: pct(l.top), width: pct(l.width), height: pct(l.height) }}
-                    />
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
           {doc?.kind === "text" && (
@@ -561,22 +688,18 @@ function WorkspaceReader() {
                 onPointerOver={onPointerOver}
                 onPointerUp={onPointerUp}
               >
-                {doc.sentences.length === 0 ? (
+                {doc.tokens.length === 0 ? (
                   <p>This file is empty.</p>
                 ) : (
-                  groupByPara(doc.sentences).map((para, pi) => (
+                  groupByPara(doc.tokens).map((para, pi) => (
                     <p key={pi}>
-                      {para.map((s) => {
-                        const cls = [
-                          "ac-sent",
-                          inSel(s.i) ? "is-sel" : "",
-                          textHighlighted.has(s.text) ? "is-hl" : "",
-                        ]
+                      {para.map((t) => {
+                        const cls = ["ac-sent", inSel(t.i) ? "is-sel" : "", textHighlighted.has(t.i) ? "is-hl" : ""]
                           .filter(Boolean)
                           .join(" ");
                         return (
-                          <span key={s.i} data-idx={s.i} className={cls}>
-                            {s.text}{" "}
+                          <span key={t.i} data-idx={t.i} className={cls}>
+                            {t.text}{" "}
                           </span>
                         );
                       })}
@@ -590,10 +713,12 @@ function WorkspaceReader() {
           {sel && selText && (
             <SelectionBar
               count={selItems.length}
-              unit={doc?.kind === "pdf" ? "line" : "sentence"}
+              unit="word"
               preview={selText}
+              name={nameDraft}
+              onName={setNameDraft}
               onAsk={askSelection}
-              onHighlight={highlightSelection}
+              onHighlight={applyHighlight}
               onNote={noteSelection}
               onCopy={copySelection}
               onClear={() => setSel(null)}
@@ -603,16 +728,12 @@ function WorkspaceReader() {
 
         {doc && (
           <aside className="ac-tools" data-open={panelOpen ? "true" : "false"} aria-label="Study panel">
-            <button
-              type="button"
-              className="ac-drawer-tab"
-              aria-expanded={panelOpen}
-              aria-label={panelOpen ? "Close the study panel" : "Open the study panel"}
-              onClick={() => setPanelOpen((o) => !o)}
-            >
-              <span aria-hidden="true">{panelOpen ? "›" : "‹"}</span>
-              <span className="ac-drawer-label">Study</span>
-            </button>
+            <div className="ac-tools-head">
+              <strong>Study panel</strong>
+              <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => setPanelOpen(false)}>
+                Hide ›
+              </button>
+            </div>
 
             <nav className="ac-tabs ac-tools-tabs" aria-label="Study panel sections">
               {PANELS.map((p) => (
@@ -634,7 +755,7 @@ function WorkspaceReader() {
                 <div className="ac-stack">
                   <div className="ac-ask-context">
                     <span className="ac-small ac-muted">Asking about</span>
-                    <strong>{ws.bookTitle || doc.name}</strong>
+                    <strong>{current?.name ?? "this book"}</strong>
                   </div>
 
                   {passage && (
@@ -671,9 +792,7 @@ function WorkspaceReader() {
                     </div>
                   </form>
 
-                  {ask.status === "error" && (
-                    <p className="ac-error" role="alert">{ask.error}</p>
-                  )}
+                  {ask.status === "error" && <p className="ac-error" role="alert">{ask.error}</p>}
 
                   {ask.answer ? (
                     <>
@@ -687,7 +806,7 @@ function WorkspaceReader() {
                     </>
                   ) : (
                     ask.status === "idle" && (
-                      <p className="ac-small ac-muted">Select a line or sentence and choose Ask Stellun, or type a question above.</p>
+                      <p className="ac-small ac-muted">Select words and choose Ask Stellun, or type a question above.</p>
                     )
                   )}
                 </div>
@@ -696,19 +815,35 @@ function WorkspaceReader() {
               {panel === "highlights" && (
                 <div className="ac-stack">
                   {highlights.length === 0 ? (
-                    <p className="ac-muted">Select a line or sentence and choose a colour. Highlights appear here.</p>
+                    <p className="ac-muted">Tap a start word and a finish word, then choose a colour. Highlights appear here.</p>
                   ) : (
                     highlights.map((h) => (
                       <div key={h.id} className="ac-hl-row">
                         <span className={`ac-hl-dot ac-hl-dot--${h.color}`} aria-hidden="true" />
-                        <div className="ac-stack" style={{ gap: 8 }}>
-                          <span className="ac-small ac-muted">
-                            {h.page > 0 ? `Page ${h.page}` : "Text"}
-                          </span>
-                          <p style={{ margin: 0, fontSize: "0.92rem" }}>{h.text}</p>
+                        <div className="ac-stack" style={{ gap: 8, minWidth: 0 }}>
+                          <input
+                            key={h.id}
+                            className="ac-input ac-hl-name"
+                            defaultValue={h.name}
+                            maxLength={60}
+                            aria-label="Highlight name"
+                            onBlur={(e) => renameHighlight(h.id, e.currentTarget.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") e.currentTarget.blur();
+                            }}
+                          />
+                          <span className="ac-small ac-muted">{h.page > 0 ? `Page ${h.page}` : "Text"}</span>
+                          <p style={{ margin: 0, fontSize: "0.92rem" }}>{h.text.length > 240 ? `${h.text.slice(0, 240)}…` : h.text}</p>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             {h.page > 0 && (
-                              <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => { goToPage(h.page); setPanelOpen(window.matchMedia("(min-width: 900px)").matches); }}>
+                              <button
+                                type="button"
+                                className="ac-btn ac-btn--ghost ac-btn--sm"
+                                onClick={() => {
+                                  goToPage(h.page);
+                                  if (!isDesktop()) setPanelOpen(false);
+                                }}
+                              >
                                 Go to page
                               </button>
                             )}
@@ -807,22 +942,29 @@ function WorkspaceReader() {
             </div>
           </aside>
         )}
+
+        {doc && !panelOpen && (
+          <button type="button" className="ac-pulltab" onClick={() => setPanelOpen(true)} aria-label="Open the study panel">
+            <span aria-hidden="true">‹</span>
+            <span>Study</span>
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-/** Groups sentences by paragraph, keeping each sentence's index for selection. */
-function groupByPara(sentences: Sentence[]): { i: number; text: string }[][] {
+/** Groups words by paragraph, keeping each word's index for selection. */
+function groupByPara(tokens: Token[]): { i: number; text: string }[][] {
   const groups: { i: number; text: string }[][] = [];
   let current = -1;
-  sentences.forEach((s, i) => {
-    if (s.para !== current) {
+  tokens.forEach((t, i) => {
+    if (t.para !== current) {
       groups.push([]);
-      current = s.para;
+      current = t.para;
     }
     const last = groups[groups.length - 1];
-    if (last) last.push({ i, text: s.text });
+    if (last) last.push({ i, text: t.text });
   });
   return groups;
 }
@@ -831,6 +973,8 @@ function SelectionBar({
   count,
   unit,
   preview,
+  name,
+  onName,
   onAsk,
   onHighlight,
   onNote,
@@ -840,6 +984,8 @@ function SelectionBar({
   count: number;
   unit: string;
   preview: string;
+  name: string;
+  onName: (value: string) => void;
   onAsk: () => void;
   onHighlight: (c: HighlightColor) => void;
   onNote: () => void;
@@ -849,24 +995,36 @@ function SelectionBar({
   return (
     <div className="ac-selbar" role="toolbar" aria-label="Selected text actions">
       <div className="ac-selbar-text">
-        <strong>{count} {unit}{count === 1 ? "" : "s"} selected</strong>
+        <strong>
+          {count} {unit}{count === 1 ? "" : "s"} selected
+        </strong>
         <span className="ac-small ac-muted">“{preview.length > 90 ? `${preview.slice(0, 90)}…` : preview}”</span>
       </div>
-      <div className="ac-selbar-actions">
-        <button type="button" className="ac-selbar-primary" onClick={onAsk}>Ask Stellun</button>
-        {COLORS.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            className={`ac-swatch ac-swatch--${c.id}`}
-            aria-label={`Highlight in ${c.label.toLowerCase()}`}
-            title={`Highlight in ${c.label.toLowerCase()}`}
-            onClick={() => onHighlight(c.id)}
-          />
-        ))}
-        <button type="button" onClick={onNote}>Note</button>
-        <button type="button" onClick={onCopy}>Copy</button>
-        <button type="button" aria-label="Clear selection" onClick={onClear}>×</button>
+      <div className="ac-selbar-side">
+        <input
+          className="ac-input ac-selbar-name"
+          value={name}
+          maxLength={60}
+          placeholder="Name this highlight (optional)"
+          aria-label="Name this highlight"
+          onChange={(e) => onName(e.target.value)}
+        />
+        <div className="ac-selbar-actions">
+          <button type="button" className="ac-selbar-primary" onClick={onAsk}>Ask Stellun</button>
+          {COLORS.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={`ac-swatch ac-swatch--${c.id}`}
+              aria-label={`Highlight in ${c.label.toLowerCase()}`}
+              title={`Highlight in ${c.label.toLowerCase()}`}
+              onClick={() => onHighlight(c.id)}
+            />
+          ))}
+          <button type="button" onClick={onNote}>Note</button>
+          <button type="button" onClick={onCopy}>Copy</button>
+          <button type="button" aria-label="Clear selection" onClick={onClear}>×</button>
+        </div>
       </div>
     </div>
   );

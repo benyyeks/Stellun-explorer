@@ -1,16 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useStudyWorkspaces } from "@/lib/study-workspace";
-import { useReaderHighlights } from "@/lib/reader-highlights";
+import { readHighlightsForBooks } from "@/lib/reader-highlights";
+import { useBookLibrary } from "@/lib/book-library";
 import { askStellun } from "@/lib/reader-ask";
+import { artUrl } from "@/lib/academy-art";
 import { buildDeck, readKnownCards, writeKnownCards, type FlashCard } from "@/lib/workspace-cards";
 
 /**
  * Flashcards
  * ----------
  * Cards come from this workspace: its study plan, checklist, and highlights.
- * Reveal the answer, then mark the card as learned or still learning.
- * Stuck on a card? Ask Stellun to explain it in plain language.
+ * Each card shows a picture that fits its content. Show the answer to turn the
+ * card over, then mark it learned or still learning. Stuck? Ask Stellun.
  */
 
 export const Route = createFileRoute("/_authenticated/academy/flashcards/$workspaceId")({
@@ -20,8 +22,13 @@ export const Route = createFileRoute("/_authenticated/academy/flashcards/$worksp
       { name: "description", content: "Review cards built from your study plan and highlights." },
     ],
   }),
-  component: FlashcardsPage,
+  component: FlashcardsRoute,
 });
+
+function FlashcardsRoute() {
+  const { workspaceId } = Route.useParams();
+  return <FlashcardsPage key={workspaceId} workspaceId={workspaceId} />;
+}
 
 const KIND_LABEL: Record<FlashCard["kind"], string> = {
   concept: "Concept",
@@ -31,18 +38,17 @@ const KIND_LABEL: Record<FlashCard["kind"], string> = {
 
 type Explain = { status: "idle" | "loading" | "done" | "error"; text: string };
 
-function FlashcardsPage() {
-  const { workspaceId } = Route.useParams();
+function FlashcardsPage({ workspaceId }: { workspaceId: string }) {
   const { ready, workspaces } = useStudyWorkspaces();
   const ws = workspaces.find((w) => w.id === workspaceId) ?? null;
-  const { highlights } = useReaderHighlights(workspaceId);
-
+  const library = useBookLibrary(workspaceId);
+  const highlights = useMemo(() => readHighlightsForBooks(library.books.map((b) => b.id)), [library.books]);
   const deck = useMemo(() => (ws ? buildDeck(ws, highlights) : []), [ws, highlights]);
 
   const [known, setKnown] = useState<string[]>([]);
   const [mode, setMode] = useState<"all" | "unknown">("all");
   const [index, setIndex] = useState(0);
-  const [revealed, setRevealed] = useState(false);
+  const [flipped, setFlipped] = useState(false);
   const [explain, setExplain] = useState<Explain>({ status: "idle", text: "" });
 
   useEffect(() => {
@@ -58,7 +64,7 @@ function FlashcardsPage() {
   const pct = deck.length ? Math.round((100 * learned) / deck.length) : 0;
 
   const resetCard = () => {
-    setRevealed(false);
+    setFlipped(false);
     setExplain({ status: "idle", text: "" });
   };
 
@@ -181,26 +187,39 @@ function FlashcardsPage() {
           </div>
         </div>
       ) : (
-        <article className={`ac-flashcard ac-flashcard--${card.kind}`} aria-live="polite">
-          <div className="ac-flashcard-meta">
-            <span className="ac-type ac-type--flashcards">{KIND_LABEL[card.kind]}</span>
-            <span className="ac-small ac-muted">{card.topic} · card {index + 1} of {queue.length}</span>
-          </div>
-          <h2 className="ac-flashcard-front">{card.front}</h2>
+        <div className="ac-flip-scene">
+          <article
+            className={`ac-flip ac-flip--${card.kind}${flipped ? " is-flipped" : ""}`}
+            aria-live="polite"
+          >
+            <div className="ac-flip-face ac-flip-front">
+              <div className="ac-flip-art">
+                <img src={artUrl(card.art)} alt="" />
+              </div>
+              <div className="ac-flip-body">
+                <div className="ac-flashcard-meta">
+                  <span className="ac-type ac-type--flashcards">{KIND_LABEL[card.kind]}</span>
+                  <span className="ac-small ac-muted">{card.topic} · {index + 1} of {queue.length}</span>
+                </div>
+                <h2 className="ac-flashcard-front">{card.front}</h2>
+                <button type="button" className="ac-btn ac-btn--primary" onClick={() => setFlipped(true)}>
+                  Show answer
+                </button>
+              </div>
+            </div>
 
-          {revealed ? (
-            <>
+            <div className="ac-flip-face ac-flip-back" aria-hidden={!flipped}>
+              <div className="ac-flashcard-meta">
+                <span className="ac-type ac-type--flashcards">Answer</span>
+                <span className="ac-small ac-muted">{card.front}</span>
+              </div>
               <div className="ac-flashcard-back">{card.back}</div>
               <div className="ac-flashcard-actions">
                 <button type="button" className="ac-btn ac-btn--danger" onClick={() => mark(false)}>Still learning</button>
                 <button type="button" className="ac-btn ac-btn--primary" onClick={() => mark(true)}>Got it</button>
               </div>
-            </>
-          ) : (
-            <div className="ac-flashcard-actions">
-              <button type="button" className="ac-btn ac-btn--primary" onClick={() => setRevealed(true)}>Show answer</button>
             </div>
-          )}
+          </article>
 
           <div className="ac-explain">
             <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={explainCard} disabled={explain.status === "loading"}>
@@ -209,7 +228,7 @@ function FlashcardsPage() {
             {explain.status === "error" && <p className="ac-error" role="alert">{explain.text}</p>}
             {explain.text && <div className="ac-answer">{explain.text}</div>}
           </div>
-        </article>
+        </div>
       )}
 
       <section aria-labelledby="all-cards-h">
@@ -224,6 +243,7 @@ function FlashcardsPage() {
                   className={`ac-deck-item ac-deck-item--${c.kind}${isKnown ? " is-known" : ""}${card?.id === c.id ? " is-current" : ""}`}
                   onClick={() => jumpTo(c.id)}
                 >
+                  <img className="ac-deck-thumb" src={artUrl(c.art)} alt="" loading="lazy" />
                   <span className="ac-small ac-muted">{KIND_LABEL[c.kind]} · {isKnown ? "Learned" : "Learning"}</span>
                   <span className="ac-deck-item-front">{c.front}</span>
                 </button>
