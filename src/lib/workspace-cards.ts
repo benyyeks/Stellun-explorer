@@ -5,10 +5,11 @@
  *   - each study-plan section becomes a concept card
  *   - each checklist item becomes a card to explain in your own words
  *   - each highlight becomes a passage card
- * Nothing is invented: every card is taken from what the student is studying.
+ * Every card is matched to the picture whose tags fit its text best.
  */
 
 import type { StudyWorkspace } from "@/lib/study-workspace";
+import { matchArt } from "@/lib/academy-art";
 
 export type FlashCard = {
   id: string;
@@ -16,6 +17,8 @@ export type FlashCard = {
   front: string;
   back: string;
   kind: "concept" | "checklist" | "passage";
+  /** Slug of the picture shown on the card (see academy-art.ts). */
+  art: string;
 };
 
 export type FocusTask = {
@@ -26,9 +29,15 @@ export type FocusTask = {
   workspaceId?: string;
 };
 
+const FALLBACK_ART: Record<FlashCard["kind"], string> = {
+  concept: "book",
+  checklist: "checklist",
+  passage: "lightbulb",
+};
+
 export function buildDeck(
   ws: StudyWorkspace,
-  highlights: { id: string; text: string }[],
+  highlights: { id: string; text: string; name?: string }[],
 ): FlashCard[] {
   const cards: FlashCard[] = [];
   for (const p of ws.plan) {
@@ -38,6 +47,7 @@ export function buildDeck(
       front: p.title,
       back: p.detail || "Read this section, then explain it in your own words.",
       kind: "concept",
+      art: matchArt(`${p.title} ${p.detail}`, FALLBACK_ART.concept),
     });
   }
   for (const c of ws.checklist) {
@@ -47,15 +57,17 @@ export function buildDeck(
       front: c.label,
       back: "Explain this in your own words, then tick it off in the checklist.",
       kind: "checklist",
+      art: matchArt(c.label, FALLBACK_ART.checklist),
     });
   }
   for (const h of highlights.slice(0, 40)) {
     cards.push({
       id: `hl-${h.id}`,
       topic: "Highlight",
-      front: "What does this passage say?",
+      front: h.name?.trim() || "What does this passage say?",
       back: h.text,
       kind: "passage",
+      art: matchArt(h.text, FALLBACK_ART.passage),
     });
   }
   return cards;

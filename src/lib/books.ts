@@ -181,3 +181,47 @@ export const bookById = (id: string): Book | undefined =>
 // instead of showing a blank pixel.
 export const bookCoverUrl = (isbn13: string): string =>
   `https://covers.openlibrary.org/b/isbn/${isbn13}-M.jpg?default=false`;
+
+const STOP_WORDS = new Set([
+  "the", "and", "for", "with", "from", "into", "this", "that", "your", "our", "my",
+  "introduction", "intro", "basics", "study", "notes", "course", "guide", "work", "analysis",
+]);
+/** Words that point to a related shelf topic, so "rocket" also finds propulsion books. */
+const RELATED: Record<string, string[]> = {
+  rocket: ["propulsion"], rocketry: ["propulsion"], engine: ["propulsion"],
+  satellite: ["orbital"], orbit: ["orbital"], orbital: ["orbital"], spacecraft: ["orbital", "systems"],
+  space: ["orbital", "propulsion"], astronomy: ["astrophysics"], star: ["astrophysics"],
+  aircraft: ["aerodynamics", "flight"], aviation: ["aerodynamics", "flight"], flight: ["aerodynamics"],
+  navigation: ["gnc"], guidance: ["gnc"], control: ["gnc"], avionics: ["systems"],
+};
+
+function keywordsOf(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
+}
+
+/** Shelf books that fit a workspace title and, optionally, its topic. */
+export function recommendBooks(input: { title: string; topicId?: string; limit?: number }): Book[] {
+  const wanted = new Set<string>();
+  for (const w of keywordsOf(input.title)) {
+    wanted.add(w);
+    for (const r of RELATED[w] ?? []) wanted.add(r);
+  }
+  const scored = BOOKS.map((book) => {
+    const label = BOOK_TOPICS.find((t) => t.id === book.topic)?.label ?? "";
+    const haystack = new Set(keywordsOf(`${book.title} ${book.authors} ${book.note} ${label} ${book.topic}`));
+    let score = 0;
+    wanted.forEach((w) => {
+      if (haystack.has(w)) score += 2;
+    });
+    if (input.topicId && book.topic === input.topicId) score += 3;
+    return { book, score };
+  });
+  return scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, input.limit ?? 4)
+    .map((s) => s.book);
+}
