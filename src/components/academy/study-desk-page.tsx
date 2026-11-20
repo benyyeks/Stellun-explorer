@@ -18,6 +18,7 @@ import { TRACKS, TRACK_TO_TOPIC, type AcademyTrackId } from "@/lib/academy-profi
 import { TerminologiesTab } from "@/components/academy/terminologies";
 import { ResearchLibraryTab } from "@/components/academy/research-library";
 import { LearningResourcesTab } from "@/components/academy/learning-resources";
+import { BookRecommendations } from "@/components/academy/book-recommendations";
 import { RomanHub } from "@/components/academy/roman-hub";
 
 type DeskTab =
@@ -567,6 +568,18 @@ export function StudyDeskPage() {
                 ))}
               </select>
             </label>
+
+            <BookRecommendations
+              title={title}
+              topicId={topicId}
+              selectedId={bookId}
+              onPick={(b) => {
+                setTopicId(b.topic);
+                setBookId(b.id);
+                setBookTitle(b.title);
+                setBookAuthor(b.authors);
+              }}
+            />
 
             <label className="ac-field">
               <span>Book title</span>

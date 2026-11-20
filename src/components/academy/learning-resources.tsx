@@ -26,7 +26,6 @@ const SECTIONS: { id: string; label: string }[] = [
   { id: "orbital-mechanics", label: "Orbital mechanics" },
   { id: "orbital-regimes", label: "Orbital regimes" },
   { id: "spacecraft-engineering", label: "Spacecraft engineering" },
-  { id: "shelf", label: "Textbook shelf" },
   { id: "reading-list", label: "My reading list" },
   { id: "stem", label: "STEM programs" },
   { id: "citizen-science", label: "Citizen science" },
@@ -552,77 +551,6 @@ export function LearningResourcesTab({ sharedParam }: { sharedParam?: string | u
                 {notice}
               </p>
             )}
-          </div>
-
-          <div
-            className="glass glass-card scaffold-card"
-            id="shelf"
-            style={{ marginTop: 24 }}
-          >
-            <h2>Textbook shelf</h2>
-            <p>
-              A reading list of the standard references in each discipline of
-              aerospace engineering: the books used in university courses and
-              industry design offices. Each entry names the author so the exact
-              title is easy to find in a library or bookstore.
-            </p>
-
-            {BOOK_TOPICS.map((topic) => (
-              <div className="book-topic" key={topic.id}>
-                <h3>{topic.label}</h3>
-                <p className="book-sub">{topic.sub}</p>
-                <ul className="book-list">
-                  {BOOKS.filter((b) => b.topic === topic.id).map((b) => {
-                    const saved = isSaved(b.id);
-                    return (
-                      <li key={b.id} className="book-row">
-                        <SkeletonImage
-                          src={bookCoverUrl(b.isbn13)}
-                          className="book-cover"
-                          alt={`Cover of ${b.title}`}
-                        />
-                        <div className="book-meta">
-                          <strong>{b.title}</strong>,{" "}
-                          <span className="book-author">{b.authors}</span>:{" "}
-                          {b.note}
-                          {b.freeUrl && b.freeLabel && (
-                            <>
-                              {" "}
-                              <a
-                                href={b.freeUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-accent"
-                              >
-                                {b.freeLabel}
-                              </a>
-                              .
-                            </>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          className={`book-save${saved ? " saved" : ""}`}
-                          aria-pressed={saved}
-                          aria-label={`${
-                            saved ? "Remove" : "Save"
-                          } ${b.title} ${saved ? "from" : "to"} my reading list`}
-                          onClick={() => toggle(b.id)}
-                        >
-                          {saved ? "Saved" : "Save"}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-
-            <p className="scaffold-note">
-              Most of these titles can be borrowed through university libraries
-              or interlibrary loan. The NASA engine design handbook listed above
-              is free to download.
-            </p>
           </div>
 
           <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
