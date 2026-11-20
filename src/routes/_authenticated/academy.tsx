@@ -1,17 +1,16 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import "@/styles/academy.css";
 import { useAcademyPrefs } from "@/lib/academy-prefs";
+import { useStudyWorkspaces } from "@/lib/study-workspace";
 
 /**
  * Academy layout
  * --------------
- * Parent for /academy, /academy/desk, /academy/progress, /academy/quiz,
- * /academy/settings, and /academy/workspace/:id.
- *
- * Navigation is one list, shown three ways:
- *   phone (<640px)   fixed bottom tab bar
- *   tablet (640-899) sticky top bar
- *   desktop (900+)   left sidebar
+ * Phones and tablets: navigation is a bar pinned under the site header.
+ *   Page content starts below it.
+ * Laptops and desktops: navigation is a sidebar.
+ * Reader and flashcard pages: a compact bar at every width, so the page has room.
+ * The open workspace appears in the bar as the current item (not a link).
  */
 
 export const Route = createFileRoute("/_authenticated/academy")({
@@ -20,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/academy")({
       { title: "The Academy · STELLUN" },
       {
         name: "description",
-        content: "Study dashboard, workspaces, and aerospace reference tools in one place.",
+        content: "Study dashboard, workspaces, flashcards, and aerospace reference tools in one place.",
       },
       { property: "og:title", content: "The Academy · STELLUN" },
       { property: "og:type", content: "website" },
@@ -31,16 +30,23 @@ export const Route = createFileRoute("/_authenticated/academy")({
 });
 
 const NAV = [
-  { to: "/academy", label: "Dashboard", short: "Home", end: true },
-  { to: "/academy/desk", label: "Study desk", short: "Desk", end: false },
-  { to: "/academy/progress", label: "Your progress", short: "Progress", end: false },
-  { to: "/academy/quiz", label: "Quick quiz", short: "Quiz", end: false },
-  { to: "/academy/settings", label: "Settings", short: "Settings", end: false },
+  { to: "/academy", label: "Dashboard", end: true },
+  { to: "/academy/desk", label: "Workspaces", end: false },
+  { to: "/academy/progress", label: "Your progress", end: false },
+  { to: "/academy/quiz", label: "Quick quiz", end: false },
+  { to: "/academy/settings", label: "Settings", end: false },
 ] as const;
 
 function AcademyLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [prefs] = useAcademyPrefs();
+  const { workspaces } = useStudyWorkspaces();
+
+  const match = pathname.match(/^\/academy\/(workspace|flashcards)\/([^/]+)/);
+  const kind = match ? match[1] : null;
+  const currentWs = match ? workspaces.find((w) => w.id === match[2]) : undefined;
+  const nowTitle = currentWs?.title || "Workspace";
+  const nowKind = kind === "flashcards" ? "Flashcards" : "Reading";
 
   const isActive = (to: string, end: boolean) => {
     if (end) return pathname === "/academy" || pathname === "/academy/";
@@ -52,6 +58,7 @@ function AcademyLayout() {
       className="ac-shell"
       data-academy-theme={prefs.appearance}
       data-text-size={prefs.textSize}
+      data-compact={kind ? "true" : "false"}
     >
       <aside className="ac-side" aria-label="Academy">
         <div className="ac-side-brand">
@@ -71,30 +78,20 @@ function AcademyLayout() {
                 </Link>
               </li>
             ))}
+            {kind && (
+              <li className="ac-nav-now" aria-current="page">
+                <span className="ac-nav-now-label">{nowKind}</span>
+                <span className="ac-nav-now-title">{nowTitle}</span>
+              </li>
+            )}
           </ul>
         </nav>
-        <p className="ac-side-foot">
-          Your workspaces and settings are saved in this browser. Sign in on the same device to keep
-          using them.
-        </p>
+        <p className="ac-side-foot">Your workspaces and settings are saved in this browser.</p>
       </aside>
 
       <div className="ac-main">
         <Outlet />
       </div>
-
-      <nav className="ac-bottom-nav" aria-label="Academy sections">
-        {NAV.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            aria-label={item.label}
-            aria-current={isActive(item.to, item.end) ? "page" : undefined}
-          >
-            {item.short}
-          </Link>
-        ))}
-      </nav>
     </div>
   );
 }

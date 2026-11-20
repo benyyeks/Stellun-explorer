@@ -3,19 +3,20 @@ import { useMemo, useState } from "react";
 import { pickQuizSet, type QuizQuestion } from "@/lib/academy-daily";
 
 /**
- * Academy quiz shell (Stage 3)
- * ----------------------------
- * Short multiple-choice set drawn from QUIZ_BANK.
- * Scores stay in component state for this session only.
+ * Quick quiz
+ * ----------
+ * Three questions drawn from the quiz bank. Each answer shows a short
+ * explanation, so the check teaches as well as grades.
+ * The score is kept for this session only.
  */
 
 export const Route = createFileRoute("/_authenticated/academy/quiz")({
   head: () => ({
     meta: [
-      { title: "Quiz · STELLUN Academy" },
+      { title: "Quick quiz · STELLUN Academy" },
       {
         name: "description",
-        content: "Short aerospace, astronomy, and aviation checks to reinforce study desk work.",
+        content: "Short aerospace, astronomy, and aviation checks to reinforce your study.",
       },
     ],
   }),
@@ -23,6 +24,13 @@ export const Route = createFileRoute("/_authenticated/academy/quiz")({
 });
 
 type Step = "intro" | "run" | "done";
+
+const TRACK_LABEL: Record<QuizQuestion["track"], string> = {
+  aerospace: "Aerospace",
+  astronomy: "Astronomy",
+  aviation: "Aviation",
+  general: "General",
+};
 
 function AcademyQuizPage() {
   const questions = useMemo(() => pickQuizSet(3), []);
@@ -60,38 +68,53 @@ function AcademyQuizPage() {
   };
 
   return (
-    <div className="academy-quiz">
-      <header className="academy-progress-hero glass glass-card">
-        <span className="eyebrow">Academy</span>
-        <h1 className="academy-progress-title">Quick quiz</h1>
-        <p className="muted">
-          Three questions from aerospace, astronomy, and aviation. Session score only — nothing is stored yet.
-        </p>
-        <p style={{ marginTop: 12 }}>
-          <Link to="/academy" className="btn btn-ghost btn-sm">
-            Back to dashboard
-          </Link>
-        </p>
+    <div className="ac-page">
+      <header className="ac-hero">
+        <div className="ac-hero-copy">
+          <span className="ac-kicker">Academy</span>
+          <h1 className="ac-title">Quick quiz</h1>
+          <p className="ac-hero-sub">
+            Three checks across aerospace, astronomy, and aviation. Every answer comes with an explanation.
+          </p>
+          <div className="ac-hero-actions">
+            <Link to="/academy" className="ac-btn ac-btn--ghost">
+              Back to dashboard
+            </Link>
+          </div>
+        </div>
+        {step !== "intro" && (
+          <div className="ac-quiz-dots" aria-label={`Question ${Math.min(index + 1, questions.length)} of ${questions.length}`}>
+            {questions.map((q, i) => (
+              <span
+                key={q.id}
+                className={`ac-quiz-dot${i < index || (i === index && step === "done") ? " is-done" : ""}${i === index && step === "run" ? " is-current" : ""}`}
+              />
+            ))}
+          </div>
+        )}
       </header>
 
       {step === "intro" && (
-        <section className="glass glass-card academy-quiz-panel">
-          <p>
-            Use this after a Study desk session. Answers show a short explanation so the check teaches, not only grades.
+        <section className="ac-card ac-quiz-card">
+          <h2 className="ac-h2">Ready when you are</h2>
+          <p className="ac-muted">
+            Answer each question, then read the short explanation. Your score is kept for this session only.
           </p>
-          <button type="button" className="btn btn-primary" onClick={() => setStep("run")}>
-            Start · {questions.length} questions
-          </button>
+          <div>
+            <button type="button" className="ac-btn ac-btn--primary" onClick={() => setStep("run")}>
+              Start · {questions.length} questions
+            </button>
+          </div>
         </section>
       )}
 
       {step === "run" && current && (
-        <section className="glass glass-card academy-quiz-panel">
-          <p className="muted small">
-            Question {index + 1} of {questions.length} · {current.track}
+        <section className="ac-card ac-quiz-card">
+          <p className="ac-small ac-muted">
+            Question {index + 1} of {questions.length} · {TRACK_LABEL[current.track]}
           </p>
-          <h2 className="academy-quiz-prompt">{current.prompt}</h2>
-          <ul className="academy-quiz-choices">
+          <h2 className="ac-quiz-prompt">{current.prompt}</h2>
+          <ul className="ac-quiz-choices">
             {current.choices.map((c, i) => {
               let state = "";
               if (revealed && i === current.answer) state = "is-correct";
@@ -100,7 +123,7 @@ function AcademyQuizPage() {
                 <li key={c}>
                   <button
                     type="button"
-                    className={`academy-quiz-choice ${state}`}
+                    className={`ac-quiz-choice ${state}`}
                     onClick={() => onChoose(i)}
                     disabled={revealed}
                   >
@@ -111,10 +134,10 @@ function AcademyQuizPage() {
             })}
           </ul>
           {revealed && (
-            <div className="academy-quiz-explain">
-              <p className="muted">{current.explain}</p>
-              <button type="button" className="btn btn-primary" onClick={onNext}>
-                {index + 1 >= questions.length ? "See score" : "Next"}
+            <div className="ac-quiz-explain">
+              <p>{current.explain}</p>
+              <button type="button" className="ac-btn ac-btn--primary" onClick={onNext}>
+                {index + 1 >= questions.length ? "See score" : "Next question"}
               </button>
             </div>
           )}
@@ -122,22 +145,23 @@ function AcademyQuizPage() {
       )}
 
       {step === "done" && (
-        <section className="glass glass-card academy-quiz-panel">
-          <h2 className="academy-sec">Session score</h2>
-          <p className="academy-metric">
-            {score}/{questions.length}
+        <section className="ac-card ac-quiz-card ac-quiz-done">
+          <p className="ac-kicker">Session score</p>
+          <p className="ac-score">
+            {score}
+            <span>/{questions.length}</span>
           </p>
-          <p className="muted">
+          <p className="ac-muted">
             {score === questions.length
-              ? "Clean pass — return to the desk or try again tomorrow."
-              : "Review the explanations once, then continue the checklist on Study desk."}
+              ? "Clean pass. Return to your workspaces or try again tomorrow."
+              : "Review the explanations once, then continue the checklist in Workspaces."}
           </p>
-          <div className="academy-quiz-actions">
-            <button type="button" className="btn btn-primary" onClick={restart}>
+          <div className="ac-hero-actions">
+            <button type="button" className="ac-btn ac-btn--primary" onClick={restart}>
               Try again
             </button>
-            <Link to="/academy/desk" className="btn btn-ghost">
-              Study desk
+            <Link to="/academy/desk" className="ac-btn ac-btn--ghost">
+              Workspaces
             </Link>
           </div>
         </section>

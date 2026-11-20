@@ -17,7 +17,7 @@ import {
   type LearningMode,
   type StudyWorkspace,
 } from "@/lib/study-workspace";
-import { buildDailyTasks } from "@/lib/academy-daily";
+import { buildFocusTasks } from "@/lib/workspace-cards";
 
 /**
  * Academy dashboard
@@ -148,7 +148,7 @@ function AcademyDashboard() {
     (n, w) => n + w.checklist.filter((c) => c.done).length,
     0,
   );
-  const tasks = useMemo(() => buildDailyTasks(workspaces, 5), [workspaces]);
+  const tasks = useMemo(() => buildFocusTasks(workspaces, 5), [workspaces]);
 
   const isFirstTime = ready && workspaces.length === 0 && !profile?.onboardingComplete;
   const greetingTitle = isFirstTime ? "Welcome to STELLUN Academy" : "Welcome back";
@@ -315,11 +315,24 @@ function AcademyDashboard() {
               <li key={t.id} className="ac-task">
                 <div className="ac-task-body">
                   <span className="ac-task-label">{t.label}</span>
-                  <div className="ac-small ac-muted">
-                    {t.source === "checklist" ? t.workspaceTitle || "Checklist" : "Flashcard"}
+                  <div className="ac-task-meta">
+                    <span className={`ac-type ac-type--${t.type.toLowerCase()}`}>{t.type}</span>
+                    <span className="ac-small ac-muted">{t.detail}</span>
                   </div>
                 </div>
-                {t.workspaceId ? (
+                {t.type === "Quiz" ? (
+                  <Link to="/academy/quiz" className="ac-btn ac-btn--primary ac-btn--sm">
+                    Start quiz
+                  </Link>
+                ) : t.type === "Flashcards" && t.workspaceId ? (
+                  <Link
+                    to="/academy/flashcards/$workspaceId"
+                    params={{ workspaceId: t.workspaceId }}
+                    className="ac-btn ac-btn--primary ac-btn--sm"
+                  >
+                    Study cards
+                  </Link>
+                ) : t.workspaceId ? (
                   <Link
                     to="/academy/workspace/$workspaceId"
                     params={{ workspaceId: t.workspaceId }}
@@ -327,11 +340,7 @@ function AcademyDashboard() {
                   >
                     Open
                   </Link>
-                ) : (
-                  <Link to="/academy/quiz" className="ac-btn ac-btn--ghost ac-btn--sm">
-                    Quiz
-                  </Link>
-                )}
+                ) : null}
               </li>
             ))}
           </ul>

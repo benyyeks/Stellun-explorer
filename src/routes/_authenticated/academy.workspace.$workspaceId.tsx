@@ -1,42 +1,45 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { MAX_FOCUS, MAX_NOTES, useStudyWorkspaces } from "@/lib/study-workspace";
 import { askStellun } from "@/lib/reader-ask";
-import { useReaderHighlights, type HighlightColor, type ReaderHighlight } from "@/lib/reader-highlights";
-import type { PdfDoc } from "@/lib/pdf-text";
+import {
+  useReaderHighlights,
+  type HighlightColor,
+  type HighlightRect,
+  type ReaderHighlight,
+} from "@/lib/reader-highlights";
+import type { PdfDoc, PdfLine } from "@/lib/pdf-text";
 
 /**
  * Workspace reader
  * ----------------
- * Left: the book. PDF (text view or pages view), TXT, or Markdown.
- * Select any text to get a toolbar: Ask Stellun, highlight, note, or copy.
- * Right: study panel (Stellun answers, highlights, notes, plan, checklist).
- *   - Tablet and laptop (768px and up): docked on the right.
- *   - Phone (below 768px): slides away after a few seconds of no use. A faint
- *     arrow on the right edge brings it back.
- * Book title and author come from the workspace, so they are not entered twice.
+ * PDF: each page is drawn as it is printed. Tap a line on the page to select
+ *      it, tap another line to select everything between. Choose a colour to
+ *      highlight it on the page. No text-selection menu appears.
+ * TXT and Markdown: tap a sentence the same way.
+ * Study panel: docked on the right on tablets and laptops (900px and up).
+ *      On phones it is a drawer. Use the tab on its edge to open or close it.
  */
 
 export const Route = createFileRoute("/_authenticated/academy/workspace/$workspaceId")({
   head: () => ({
     meta: [
       { title: "Workspace · STELLUN Academy" },
-      {
-        name: "description",
-        content: "Read, highlight, and ask Stellun about any passage in your book.",
-      },
+      { name: "description", content: "Read, highlight, and ask Stellun about any passage." },
     ],
   }),
   component: WorkspaceReader,
 });
 
-type Panel = "ask" | "highlights" | "notes" | "plan" | "checklist";
+type Item = { text: string; left?: number; top?: number; width?: number; height?: number };
+type Sentence = { text: string; para: number };
 
 type LoadedDoc =
-  | { kind: "text"; name: string; paragraphs: string[] }
-  | { kind: "pdf"; name: string; pdf: PdfDoc; paragraphs: string[] };
+  | { kind: "pdf"; name: string; pdf: PdfDoc }
+  | { kind: "text"; name: string; sentences: Sentence[] };
 
-type SelectionState = { text: string; x: number; y: number };
+type Sel = { anchor: number; focus: number } | null;
+type Panel = "ask" | "highlights" | "notes" | "plan" | "checklist" | "focus";
 
 type AskState = {
   status: "idle" | "loading" | "done" | "error";
@@ -52,6 +55,7 @@ const PANELS: { id: Panel; label: string }[] = [
   { id: "notes", label: "Notes" },
   { id: "plan", label: "Plan" },
   { id: "checklist", label: "Checklist" },
+  { id: "focus", label: "Focus" },
 ];
 
 const COLORS: { id: HighlightColor; label: string }[] = [
@@ -62,8 +66,8 @@ const COLORS: { id: HighlightColor; label: string }[] = [
 
 const MAX_TEXT_BYTES = 3_000_000;
 const MAX_PDF_BYTES = 40_000_000;
-const HIDE_AFTER_MS = 4500;
 const EMPTY_ASK: AskState = { status: "idle", question: "", passage: "", answer: "", error: "" };
+const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
 
 function readAsText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -74,31 +78,39 @@ function readAsText(file: File): Promise<string> {
   });
 }
 
-function toParagraphs(text: string): string[] {
-  return text
-    .split(/\r?\n\s*\r?\n/)
-    .map((p) => p.trim())
-    .filter(Boolean);
+/** Splits a paragraph into sentences without regex lookbehind (older iOS Safari). */
+function splitSentences(paragraph: string): string[] {
+  const out: string[] = [];
+  let buf = "";
+  for (const tok of paragraph.split(/\s+/)) {
+    buf = buf ? `${buf} ${tok}` : tok;
+    if (/[.!?]["”')\]]?$/.test(tok) && buf.length > 24) {
+      out.push(buf);
+      buf = "";
+    }
+  }
+  if (buf) out.push(buf);
+  return out;
 }
 
-/** Wraps saved highlights inside a paragraph, so they show as coloured marks. */
-function renderWithMarks(text: string, marks: ReaderHighlight[]): ReactNode[] {
-  if (marks.length === 0) return [text];
-  const sorted = [...marks].sort((a, b) => b.text.length - a.text.length);
-  const pattern = new RegExp(
-    `(${sorted.map((m) => m.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})`,
-    "g",
-  );
-  return text.split(pattern).map((part, i) => {
-    const hit = sorted.find((m) => m.text === part);
-    return hit ? (
-      <mark key={i} className={`ac-mark ac-mark--${hit.color}`}>
-        {part}
-      </mark>
-    ) : (
-      <span key={i}>{part}</span>
-    );
+function toSentences(text: string): Sentence[] {
+  const paragraphs = text
+    .split(/\r?\n\s*\r?\n/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  const out: Sentence[] = [];
+  paragraphs.forEach((p, para) => {
+    for (const s of splitSentences(p)) out.push({ text: s, para });
   });
+  return out;
+}
+
+/** The sentence or line index under a pointer event target, if any. */
+function indexFrom(target: EventTarget | null): number | null {
+  const el = (target as HTMLElement | null)?.closest?.("[data-idx]") as HTMLElement | null;
+  if (!el) return null;
+  const v = Number(el.dataset["idx"]);
+  return Number.isFinite(v) ? v : null;
 }
 
 function WorkspaceReader() {
@@ -111,23 +123,27 @@ function WorkspaceReader() {
   const [doc, setDoc] = useState<LoadedDoc | null>(null);
   const [docError, setDocError] = useState("");
   const [loadingDoc, setLoadingDoc] = useState(false);
-  const [viewMode, setViewMode] = useState<"text" | "pages">("text");
   const [pageNo, setPageNo] = useState(1);
-  const [selection, setSelection] = useState<SelectionState | null>(null);
+  const [pageInput, setPageInput] = useState("1");
+  const [zoom, setZoom] = useState(1);
+  const [drawing, setDrawing] = useState(false);
+  const [canvasSize, setCanvasSize] = useState<{ w: number; h: number } | null>(null);
+  const [sel, setSel] = useState<Sel>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const [panel, setPanel] = useState<Panel>("ask");
-  const [panelOpen, setPanelOpen] = useState(true);
-  const [focusInPanel, setFocusInPanel] = useState(false);
-  const [tick, setTick] = useState(0);
   const [ask, setAsk] = useState<AskState>(EMPTY_ASK);
   const [passage, setPassage] = useState("");
   const [draft, setDraft] = useState("");
-  const [progress, setProgress] = useState(0);
 
-  const textRef = useRef<HTMLDivElement | null>(null);
-  const pageCanvas = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const dragRef = useRef<{ idx: number; x: number; y: number; type: string } | null>(null);
 
-  const bump = () => setTick((t) => t + 1);
+  // The panel is docked on desktop and closed on phones.
+  useEffect(() => {
+    setPanelOpen(window.matchMedia("(min-width: 900px)").matches);
+  }, []);
 
   // Release the PDF when the book changes or the page closes.
   useEffect(() => {
@@ -136,65 +152,65 @@ function WorkspaceReader() {
     };
   }, [doc]);
 
-  // Reading progress through the text.
-  useEffect(() => {
-    const onScroll = () => {
-      const el = textRef.current;
-      if (!el) {
-        setProgress(0);
-        return;
-      }
-      const r = el.getBoundingClientRect();
-      const total = Math.max(r.height - window.innerHeight * 0.5, 1);
-      const passed = Math.min(Math.max(window.innerHeight * 0.25 - r.top, 0), total);
-      setProgress(Math.round((passed / total) * 100));
-      setSelection(null);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [doc, viewMode]);
+  const items: Item[] =
+    doc?.kind === "pdf" ? (doc.pdf.pageLines[pageNo - 1] ?? []) : doc?.kind === "text" ? doc.sentences : [];
 
-  // Selected text inside the reader opens the floating toolbar.
-  useEffect(() => {
-    const onSelection = () => {
-      const sel = window.getSelection();
-      const el = textRef.current;
-      if (!sel || sel.isCollapsed || sel.rangeCount === 0 || !el) return;
-      const range = sel.getRangeAt(0);
-      if (!el.contains(range.commonAncestorContainer)) return;
-      const text = sel.toString().replace(/\s+/g, " ").trim();
-      if (text.length < 2) return;
-      const rect = range.getBoundingClientRect();
-      setSelection({ text: text.slice(0, 1200), x: rect.left + rect.width / 2, y: rect.top });
-      bump();
-    };
-    document.addEventListener("selectionchange", onSelection);
-    return () => document.removeEventListener("selectionchange", onSelection);
-  }, [doc]);
+  const range: [number, number] | null = sel
+    ? [Math.min(sel.anchor, sel.focus), Math.max(sel.anchor, sel.focus)]
+    : null;
+  const selItems = range ? items.slice(range[0], range[1] + 1) : [];
+  const selText = selItems.map((i) => i.text).join(" ");
+  const selRects: HighlightRect[] = selItems
+    .filter((i) => i.left !== undefined)
+    .map((i) => ({ left: i.left!, top: i.top!, width: i.width!, height: i.height! }));
+  const inSel = (i: number) => (range ? i >= range[0] && i <= range[1] : false);
 
-  // Draw the current PDF page in pages view.
+  const pageHighlights = doc?.kind === "pdf" ? highlights.filter((h) => h.page === pageNo) : [];
+  const textHighlighted = new Set(doc?.kind === "text" ? highlights.filter((h) => h.page === 0).map((h) => h.text) : []);
+
+  // Draw the current PDF page.
   useEffect(() => {
-    if (viewMode !== "pages" || !doc || doc.kind !== "pdf" || !pageCanvas.current) return;
-    let cancelled = false;
-    const canvas = pageCanvas.current;
-    const width = Math.min(860, canvas.parentElement?.clientWidth || 680);
-    doc.pdf.render(pageNo, canvas, width).catch(() => {
-      if (!cancelled) setDocError("This page could not be drawn. Try the Text view.");
-    });
+    if (!doc || doc.kind !== "pdf" || !canvasRef.current) return;
+    let alive = true;
+    const width = Math.min(stageRef.current?.parentElement?.clientWidth || 680, 980) * zoom;
+    setDrawing(true);
+    doc.pdf
+      .render(pageNo, canvasRef.current, Math.max(240, Math.floor(width)))
+      .then(({ cssWidth, cssHeight }) => {
+        if (alive) setCanvasSize({ w: cssWidth, h: cssHeight });
+      })
+      .catch(() => {
+        if (alive) setDocError("This page could not be drawn. Try again or reload the file.");
+      })
+      .finally(() => {
+        if (alive) setDrawing(false);
+      });
     return () => {
-      cancelled = true;
+      alive = false;
     };
-  }, [viewMode, doc, pageNo]);
+  }, [doc, pageNo, zoom]);
 
-  // Phone only: the study panel slides away after a few seconds of no use.
-  // It stays open while a question is being answered, while the student is
-  // typing in the panel, or while a passage is selected.
+  // Keep the page box in sync with the input, and move with arrow keys.
+  useEffect(() => setPageInput(String(pageNo)), [pageNo]);
   useEffect(() => {
-    if (!doc || !panelOpen || focusInPanel || ask.status === "loading" || selection) return;
-    const t = window.setTimeout(() => setPanelOpen(false), HIDE_AFTER_MS);
-    return () => window.clearTimeout(t);
-  }, [doc, panelOpen, focusInPanel, ask.status, selection, tick]);
+    if (!doc || doc.kind !== "pdf") return;
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (document.activeElement as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "ArrowRight" || e.key === "PageDown") goToPage(pageNo + 1);
+      if (e.key === "ArrowLeft" || e.key === "PageUp") goToPage(pageNo - 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const pageCount = doc?.kind === "pdf" ? doc.pdf.pageCount : 1;
+
+  const goToPage = (n: number) => {
+    const next = Math.min(Math.max(1, Math.round(n)), pageCount);
+    setPageNo(next);
+    setSel(null);
+  };
 
   const openFile = async (file: File) => {
     setDocError("");
@@ -202,32 +218,67 @@ function WorkspaceReader() {
     try {
       const name = file.name;
       if (/\.pdf$/i.test(name) || file.type === "application/pdf") {
-        if (file.size > MAX_PDF_BYTES) {
-          throw new Error("That PDF is larger than 40 MB. Try a smaller part of the book.");
-        }
+        if (file.size > MAX_PDF_BYTES) throw new Error("That PDF is larger than 40 MB. Try a smaller part of the book.");
         const { openPdf } = await import("@/lib/pdf-text");
         const pdf = await openPdf(file);
-        const paragraphs = pdf.hasText ? toParagraphs(pdf.pages.join("\n\n")) : [];
-        setDoc({ kind: "pdf", name, pdf, paragraphs });
-        setViewMode(pdf.hasText ? "text" : "pages");
+        setDoc({ kind: "pdf", name, pdf });
         setPageNo(1);
+        setZoom(1);
       } else if (/\.(txt|md|markdown)$/i.test(name) || file.type.startsWith("text/")) {
-        if (file.size > MAX_TEXT_BYTES) {
-          throw new Error("That text file is larger than 3 MB. Try a shorter section.");
-        }
+        if (file.size > MAX_TEXT_BYTES) throw new Error("That text file is larger than 3 MB. Try a shorter section.");
         const text = await readAsText(file);
-        setDoc({ kind: "text", name, paragraphs: toParagraphs(text) });
-        setViewMode("text");
+        setDoc({ kind: "text", name, sentences: toSentences(text) });
       } else {
         throw new Error("Open a PDF, TXT, or Markdown file. Word and EPUB files come next.");
       }
-      setPanelOpen(true);
-      bump();
+      setSel(null);
+      setPanelOpen((open) => open || window.matchMedia("(min-width: 900px)").matches);
     } catch (err) {
       setDocError(err instanceof Error ? err.message : "Could not open that file.");
     } finally {
       setLoadingDoc(false);
     }
+  };
+
+  // Tap and drag handling. Touch selects only on a tap, so scrolling never selects.
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const idx = indexFrom(e.target);
+    if (idx === null) return;
+    dragRef.current = { idx, x: e.clientX, y: e.clientY, type: e.pointerType };
+    if (e.pointerType === "mouse") setSel({ anchor: idx, focus: idx });
+  };
+
+  const onPointerOver = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d || d.type !== "mouse" || e.buttons !== 1) return;
+    const idx = indexFrom(e.target);
+    if (idx === null) return;
+    setSel({ anchor: d.idx, focus: idx });
+  };
+
+  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d) return;
+    if (d.type === "mouse") {
+      const idx = indexFrom(e.target) ?? d.idx;
+      setSel({ anchor: d.idx, focus: idx });
+      return;
+    }
+    if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10) return;
+    const idx = d.idx;
+    setSel((prev) => {
+      if (!prev) return { anchor: idx, focus: idx };
+      if (prev.anchor === idx && prev.focus === idx) return null;
+      return { anchor: prev.anchor, focus: idx };
+    });
+  };
+
+  const highlightSelection = (color: HighlightColor) => {
+    if (!selText) return;
+    const page = doc?.kind === "pdf" ? pageNo : 0;
+    addHighlight({ text: selText, color, page, rects: selRects });
+    setSel(null);
   };
 
   const runAsk = async (question: string, passageText: string) => {
@@ -260,6 +311,27 @@ function WorkspaceReader() {
     }
   };
 
+  const askSelection = () => {
+    if (!selText) return;
+    setPassage(selText);
+    setSel(null);
+    void runAsk("Explain this in plain language and tell me why it matters.", selText);
+  };
+
+  const noteSelection = () => {
+    if (!selText || !ws) return;
+    update(ws.id, { notes: [ws.notes.trimEnd(), `“${selText}”`].filter(Boolean).join("\n\n").slice(0, MAX_NOTES) });
+    setSel(null);
+    setPanel("notes");
+    setPanelOpen(true);
+  };
+
+  const copySelection = () => {
+    if (!selText) return;
+    void navigator.clipboard?.writeText(selText).catch(() => undefined);
+    setSel(null);
+  };
+
   const stopAsk = () => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -271,39 +343,6 @@ function WorkspaceReader() {
     if (!draft.trim() || ask.status === "loading") return;
     void runAsk(draft.trim(), passage);
     setDraft("");
-  };
-
-  const askFromSelection = () => {
-    if (!selection) return;
-    const text = selection.text;
-    setPassage(text);
-    setSelection(null);
-    window.getSelection()?.removeAllRanges();
-    void runAsk("Explain this passage in plain language and tell me why it matters.", text);
-  };
-
-  const highlightSelection = (color: HighlightColor) => {
-    if (!selection) return;
-    addHighlight(selection.text, color);
-    setSelection(null);
-    window.getSelection()?.removeAllRanges();
-  };
-
-  const noteFromSelection = () => {
-    if (!selection || !ws) return;
-    const next = [ws.notes.trimEnd(), `“${selection.text}”`].filter(Boolean).join("\n\n");
-    update(ws.id, { notes: next.slice(0, MAX_NOTES) });
-    setSelection(null);
-    window.getSelection()?.removeAllRanges();
-    setPanel("notes");
-    setPanelOpen(true);
-  };
-
-  const copySelection = () => {
-    if (!selection) return;
-    void navigator.clipboard?.writeText(selection.text).catch(() => undefined);
-    setSelection(null);
-    window.getSelection()?.removeAllRanges();
   };
 
   const saveAnswerToNotes = () => {
@@ -338,8 +377,15 @@ function WorkspaceReader() {
 
   const done = ws.checklist.filter((c) => c.done).length;
   const total = ws.checklist.length;
-  const pct = total ? Math.round((100 * done) / total) : 0;
+  const pctDone = total ? Math.round((100 * done) / total) : 0;
   const bookLine = [ws.bookTitle || doc?.name || "No book named yet", ws.bookAuthor].filter(Boolean).join(" · ");
+
+  const hint =
+    doc?.kind === "pdf"
+      ? "Tap a line to select it. Tap another line to select everything between. Then choose a colour."
+      : "Tap a sentence to select it. Tap another to select everything between.";
+
+  const pageLines: PdfLine[] = doc?.kind === "pdf" ? (doc.pdf.pageLines[pageNo - 1] ?? []) : [];
 
   return (
     <div className="ac-page">
@@ -356,7 +402,7 @@ function WorkspaceReader() {
             {ws.title || "Untitled workspace"}
           </h1>
           <p className="ac-sub">
-            {bookLine} · checklist {pct}%
+            {bookLine} · checklist {pctDone}%
           </p>
         </div>
         <div className="ac-hero-actions">
@@ -365,8 +411,8 @@ function WorkspaceReader() {
               Accept plan
             </button>
           )}
-          <Link to="/ask" className="ac-btn ac-btn--ghost">
-            Open full Ask page
+          <Link to="/academy/flashcards/$workspaceId" params={{ workspaceId: ws.id }} className="ac-btn ac-btn--ghost">
+            Flashcards
           </Link>
         </div>
       </header>
@@ -374,44 +420,31 @@ function WorkspaceReader() {
       <div className="ac-split">
         <section className="ac-reader" aria-label="Reading area">
           <div className="ac-reader-bar">
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <span className="ac-small ac-muted">{doc ? doc.name : "No file open"}</span>
-              {doc?.kind === "pdf" && doc.paragraphs.length > 0 && (
-                <div className="ac-seg" role="group" aria-label="Reading view">
-                  <button
-                    type="button"
-                    aria-pressed={viewMode === "text"}
-                    onClick={() => setViewMode("text")}
-                  >
-                    Text
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={viewMode === "pages"}
-                    onClick={() => setViewMode("pages")}
-                  >
-                    Pages
-                  </button>
+            <span className="ac-small ac-muted ac-reader-name">{doc ? doc.name : "No file open"}</span>
+            <div className="ac-reader-tools">
+              {doc?.kind === "pdf" && (
+                <div className="ac-seg" role="group" aria-label="Zoom">
+                  <button type="button" onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.2).toFixed(2)))} aria-label="Zoom out">−</button>
+                  <button type="button" onClick={() => setZoom(1)} aria-label="Fit to width">{Math.round(zoom * 100)}%</button>
+                  <button type="button" onClick={() => setZoom((z) => Math.min(2, +(z + 0.2).toFixed(2)))} aria-label="Zoom in">+</button>
                 </div>
               )}
+              <label className="ac-btn ac-btn--primary ac-btn--sm ac-file-btn">
+                {loadingDoc ? "Opening…" : doc ? "Open another file" : "Open a file"}
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
+                  className="ac-sr-only"
+                  disabled={loadingDoc}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void openFile(file);
+                  }}
+                />
+              </label>
             </div>
-            <label className="ac-btn ac-btn--primary ac-btn--sm" style={{ cursor: loadingDoc ? "wait" : "pointer" }}>
-              {loadingDoc ? "Opening…" : doc ? "Open another file" : "Open a file"}
-              <input
-                type="file"
-                accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
-                className="ac-sr-only"
-                disabled={loadingDoc}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = "";
-                  if (file) void openFile(file);
-                }}
-              />
-            </label>
           </div>
-
-          {doc && <div className="ac-progress" aria-hidden="true"><i style={{ width: `${progress}%` }} /></div>}
 
           {docError && (
             <p className="ac-error" role="alert" style={{ padding: "12px 16px 0", margin: 0 }}>
@@ -425,8 +458,8 @@ function WorkspaceReader() {
                 <strong>Open a PDF, TXT, or Markdown file to start reading.</strong>
               </p>
               <p className="ac-small">
-                Select any passage to ask Stellun about it, highlight it, or save it to your notes.
-                Your file stays on this device for this visit.
+                Tap lines or sentences to highlight them, ask Stellun about them, or save them to your notes.
+                The file stays on this device for this visit.
               </p>
             </div>
           )}
@@ -437,354 +470,409 @@ function WorkspaceReader() {
             </div>
           )}
 
-          {doc && viewMode === "text" && (
-            <div className="ac-reader-body" ref={textRef}>
-              {doc.paragraphs.length === 0 ? (
-                <p>
-                  This PDF has no selectable text, so it is probably a scan. Switch to Pages view to
-                  read it.
-                </p>
-              ) : (
-                doc.paragraphs.map((p, i) => <p key={i}>{renderWithMarks(p, highlights)}</p>)
-              )}
+          {doc?.kind === "pdf" && (
+            <>
+              <div className="ac-pagebar" role="navigation" aria-label="Page navigation">
+                <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => goToPage(1)} disabled={pageNo <= 1} aria-label="First page">⏮</button>
+                <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => goToPage(pageNo - 1)} disabled={pageNo <= 1}>Previous</button>
+                <label className="ac-pagebox">
+                  <span className="ac-sr-only">Go to page</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={pageCount}
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") goToPage(Number(pageInput) || pageNo);
+                    }}
+                    onBlur={() => goToPage(Number(pageInput) || pageNo)}
+                  />
+                  <span className="ac-small ac-muted">of {pageCount}</span>
+                </label>
+                <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => goToPage(pageNo + 1)} disabled={pageNo >= pageCount}>Next</button>
+                <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => goToPage(pageCount)} disabled={pageNo >= pageCount} aria-label="Last page">⏭</button>
+              </div>
+              <input
+                className="ac-pageslider"
+                type="range"
+                min={1}
+                max={pageCount}
+                value={pageNo}
+                onChange={(e) => goToPage(Number(e.target.value))}
+                aria-label={`Page ${pageNo} of ${pageCount}`}
+              />
+            </>
+          )}
+
+          {doc?.kind === "pdf" && (
+            <p className="ac-hint ac-reader-hint">
+              {doc.pdf.hasText
+                ? hint
+                : "This PDF has no selectable text, so it may be a scan. You can read every page, but highlights need text."}
+            </p>
+          )}
+
+          {doc?.kind === "pdf" && (
+            <div className="ac-pages" ref={stageRef}>
+              {drawing && <p className="ac-small ac-muted">Drawing page {pageNo}…</p>}
+              <div
+                className="ac-stage"
+                style={canvasSize ? { width: canvasSize.w, height: canvasSize.h } : undefined}
+              >
+                <canvas ref={canvasRef} className="ac-page-canvas" aria-label={`Page ${pageNo}`} />
+                <div className="ac-hl-layer" aria-hidden="true">
+                  {pageHighlights.flatMap((h: ReaderHighlight) =>
+                    h.rects.map((r, i) => (
+                      <span
+                        key={`${h.id}-${i}`}
+                        className={`ac-hl-rect ac-hl-rect--${h.color}`}
+                        style={{ left: pct(r.left), top: pct(r.top), width: pct(r.width), height: pct(r.height) }}
+                      />
+                    )),
+                  )}
+                </div>
+                <div
+                  className="ac-hit-layer"
+                  onPointerDown={onPointerDown}
+                  onPointerOver={onPointerOver}
+                  onPointerUp={onPointerUp}
+                >
+                  {pageLines.map((l, i) => (
+                    <div
+                      key={i}
+                      data-idx={i}
+                      className={`ac-hit${inSel(i) ? " is-sel" : ""}`}
+                      style={{ left: pct(l.left), top: pct(l.top), width: pct(l.width), height: pct(l.height) }}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
-          {doc && viewMode === "pages" && doc.kind === "pdf" && (
-            <div className="ac-pages">
-              <canvas ref={pageCanvas} className="ac-page-canvas" aria-label={`Page ${pageNo}`} />
-              <div className="ac-pager">
-                <button
-                  type="button"
-                  className="ac-btn ac-btn--ghost ac-btn--sm"
-                  disabled={pageNo <= 1}
-                  onClick={() => setPageNo((n) => Math.max(1, n - 1))}
-                >
-                  Previous
-                </button>
-                <span className="ac-small">
-                  Page {pageNo} of {doc.pdf.pageCount}
-                </span>
-                <button
-                  type="button"
-                  className="ac-btn ac-btn--ghost ac-btn--sm"
-                  disabled={pageNo >= doc.pdf.pageCount}
-                  onClick={() => setPageNo((n) => Math.min(doc.pdf.pageCount, n + 1))}
-                >
-                  Next
-                </button>
+          {doc?.kind === "text" && (
+            <>
+              <p className="ac-hint ac-reader-hint">{hint}</p>
+              <div
+                className="ac-reader-body ac-no-callout"
+                onPointerDown={onPointerDown}
+                onPointerOver={onPointerOver}
+                onPointerUp={onPointerUp}
+              >
+                {doc.sentences.length === 0 ? (
+                  <p>This file is empty.</p>
+                ) : (
+                  groupByPara(doc.sentences).map((para, pi) => (
+                    <p key={pi}>
+                      {para.map((s) => {
+                        const cls = [
+                          "ac-sent",
+                          inSel(s.i) ? "is-sel" : "",
+                          textHighlighted.has(s.text) ? "is-hl" : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ");
+                        return (
+                          <span key={s.i} data-idx={s.i} className={cls}>
+                            {s.text}{" "}
+                          </span>
+                        );
+                      })}
+                    </p>
+                  ))
+                )}
               </div>
-            </div>
+            </>
+          )}
+
+          {sel && selText && (
+            <SelectionBar
+              count={selItems.length}
+              unit={doc?.kind === "pdf" ? "line" : "sentence"}
+              preview={selText}
+              onAsk={askSelection}
+              onHighlight={highlightSelection}
+              onNote={noteSelection}
+              onCopy={copySelection}
+              onClear={() => setSel(null)}
+            />
           )}
         </section>
 
         {doc && (
-          <button
-            type="button"
-            className="ac-peek"
-            aria-label={panelOpen ? "Hide the study panel" : "Show the study panel"}
-            aria-expanded={panelOpen}
-            onClick={() => {
-              setPanelOpen((o) => !o);
-              bump();
-            }}
-          >
-            {panelOpen ? "›" : "‹"}
-          </button>
-        )}
+          <aside className="ac-tools" data-open={panelOpen ? "true" : "false"} aria-label="Study panel">
+            <button
+              type="button"
+              className="ac-drawer-tab"
+              aria-expanded={panelOpen}
+              aria-label={panelOpen ? "Close the study panel" : "Open the study panel"}
+              onClick={() => setPanelOpen((o) => !o)}
+            >
+              <span aria-hidden="true">{panelOpen ? "›" : "‹"}</span>
+              <span className="ac-drawer-label">Study</span>
+            </button>
 
-        <aside
-          className="ac-tools"
-          data-open={panelOpen ? "true" : "false"}
-          aria-label="Study panel"
-          onPointerDown={bump}
-          onKeyDown={bump}
-          onFocus={() => setFocusInPanel(true)}
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusInPanel(false);
-          }}
-        >
-          <nav className="ac-tabs ac-tools-tabs" aria-label="Study panel sections">
-            {PANELS.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className="ac-tab"
-                aria-current={panel === p.id ? "true" : undefined}
-                onClick={() => setPanel(p.id)}
-              >
-                {p.label}
-                {p.id === "highlights" && highlights.length > 0 ? ` (${highlights.length})` : ""}
-              </button>
-            ))}
-          </nav>
+            <nav className="ac-tabs ac-tools-tabs" aria-label="Study panel sections">
+              {PANELS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="ac-tab"
+                  aria-current={panel === p.id ? "true" : undefined}
+                  onClick={() => setPanel(p.id)}
+                >
+                  {p.label}
+                  {p.id === "highlights" && highlights.length > 0 ? ` (${highlights.length})` : ""}
+                </button>
+              ))}
+            </nav>
 
-          <div className="ac-tools-body">
-            {panel === "ask" && (
-              <div className="ac-stack">
-                <div className="ac-ask-context">
-                  <span className="ac-small ac-muted">Asking about</span>
-                  <strong>{ws.bookTitle || doc?.name || "This workspace"}</strong>
-                </div>
-
-                {passage && (
-                  <div className="ac-passage">
-                    <span className="ac-small ac-muted">Passage</span>
-                    <p>“{passage.length > 400 ? `${passage.slice(0, 400)}…` : passage}”</p>
-                    <button
-                      type="button"
-                      className="ac-btn ac-btn--ghost ac-btn--sm"
-                      style={{ marginTop: 8 }}
-                      onClick={() => setPassage("")}
-                    >
-                      Remove passage
-                    </button>
+            <div className="ac-tools-body">
+              {panel === "ask" && (
+                <div className="ac-stack">
+                  <div className="ac-ask-context">
+                    <span className="ac-small ac-muted">Asking about</span>
+                    <strong>{ws.bookTitle || doc.name}</strong>
                   </div>
-                )}
 
-                <form className="ac-stack" style={{ gap: 8 }} onSubmit={submitQuestion}>
-                  <label className="ac-field">
-                    <span className="ac-sr-only">Your question</span>
-                    <textarea
-                      className="ac-textarea"
-                      rows={3}
-                      maxLength={600}
-                      value={draft}
-                      placeholder={passage ? "Ask about this passage…" : "Ask a question about this book…"}
-                      onChange={(e) => setDraft(e.target.value)}
-                    />
-                  </label>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button
-                      type="submit"
-                      className="ac-btn ac-btn--primary"
-                      disabled={!draft.trim() || ask.status === "loading"}
-                    >
-                      Ask Stellun
-                    </button>
-                    {ask.status === "loading" && (
-                      <button type="button" className="ac-btn ac-btn--ghost" onClick={stopAsk}>
-                        Stop
+                  {passage && (
+                    <div className="ac-passage">
+                      <span className="ac-small ac-muted">Passage</span>
+                      <p>“{passage.length > 400 ? `${passage.slice(0, 400)}…` : passage}”</p>
+                      <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" style={{ marginTop: 8 }} onClick={() => setPassage("")}>
+                        Remove passage
                       </button>
-                    )}
-                  </div>
-                </form>
-
-                {ask.status === "error" && (
-                  <p className="ac-error" role="alert">
-                    {ask.error}
-                  </p>
-                )}
-
-                {ask.answer ? (
-                  <>
-                    <div className="ac-answer" aria-live="polite">
-                      {ask.answer}
                     </div>
-                    {ask.status === "done" && (
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={saveAnswerToNotes}>
-                          Save to notes
-                        </button>
-                        <button
-                          type="button"
-                          className="ac-btn ac-btn--ghost ac-btn--sm"
-                          onClick={() => void runAsk(ask.question, ask.passage)}
-                        >
-                          Ask again
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  ask.status === "idle" && (
-                    <p className="ac-small ac-muted">
-                      Select text in the book and choose Ask Stellun, or type a question above.
-                    </p>
-                  )
-                )}
-              </div>
-            )}
+                  )}
 
-            {panel === "highlights" && (
-              <div className="ac-stack">
-                {highlights.length === 0 ? (
-                  <p className="ac-muted">
-                    Select a passage in the book and choose a colour to highlight it. Highlights appear
-                    here.
-                  </p>
-                ) : (
-                  highlights.map((h) => (
-                    <div key={h.id} className="ac-hl-row">
-                      <span className={`ac-hl-dot ac-hl-dot--${h.color}`} aria-hidden="true" />
-                      <div className="ac-stack" style={{ gap: 8 }}>
-                        <p style={{ margin: 0, fontSize: "0.92rem" }}>{h.text}</p>
+                  <form className="ac-stack" style={{ gap: 8 }} onSubmit={submitQuestion}>
+                    <label className="ac-field">
+                      <span className="ac-sr-only">Your question</span>
+                      <textarea
+                        className="ac-textarea"
+                        rows={3}
+                        maxLength={600}
+                        value={draft}
+                        placeholder={passage ? "Ask about this passage…" : "Ask a question about this book…"}
+                        onChange={(e) => setDraft(e.target.value)}
+                      />
+                    </label>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button type="submit" className="ac-btn ac-btn--primary" disabled={!draft.trim() || ask.status === "loading"}>
+                        Ask Stellun
+                      </button>
+                      {ask.status === "loading" && (
+                        <button type="button" className="ac-btn ac-btn--ghost" onClick={stopAsk}>
+                          Stop
+                        </button>
+                      )}
+                    </div>
+                  </form>
+
+                  {ask.status === "error" && (
+                    <p className="ac-error" role="alert">{ask.error}</p>
+                  )}
+
+                  {ask.answer ? (
+                    <>
+                      <div className="ac-answer" aria-live="polite">{ask.answer}</div>
+                      {ask.status === "done" && (
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <button
-                            type="button"
-                            className="ac-btn ac-btn--ghost ac-btn--sm"
-                            onClick={() => {
-                              setPassage(h.text);
-                              setPanel("ask");
-                              void runAsk("Explain this passage in plain language.", h.text);
-                            }}
-                          >
-                            Ask Stellun
-                          </button>
-                          <button
-                            type="button"
-                            className="ac-btn ac-btn--danger ac-btn--sm"
-                            onClick={() => removeHighlight(h.id)}
-                          >
-                            Remove
-                          </button>
+                          <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={saveAnswerToNotes}>Save to notes</button>
+                          <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => void runAsk(ask.question, ask.passage)}>Ask again</button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    ask.status === "idle" && (
+                      <p className="ac-small ac-muted">Select a line or sentence and choose Ask Stellun, or type a question above.</p>
+                    )
+                  )}
+                </div>
+              )}
+
+              {panel === "highlights" && (
+                <div className="ac-stack">
+                  {highlights.length === 0 ? (
+                    <p className="ac-muted">Select a line or sentence and choose a colour. Highlights appear here.</p>
+                  ) : (
+                    highlights.map((h) => (
+                      <div key={h.id} className="ac-hl-row">
+                        <span className={`ac-hl-dot ac-hl-dot--${h.color}`} aria-hidden="true" />
+                        <div className="ac-stack" style={{ gap: 8 }}>
+                          <span className="ac-small ac-muted">
+                            {h.page > 0 ? `Page ${h.page}` : "Text"}
+                          </span>
+                          <p style={{ margin: 0, fontSize: "0.92rem" }}>{h.text}</p>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {h.page > 0 && (
+                              <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => { goToPage(h.page); setPanelOpen(window.matchMedia("(min-width: 900px)").matches); }}>
+                                Go to page
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="ac-btn ac-btn--ghost ac-btn--sm"
+                              onClick={() => {
+                                setPassage(h.text);
+                                void runAsk("Explain this in plain language.", h.text);
+                              }}
+                            >
+                              Ask Stellun
+                            </button>
+                            <button type="button" className="ac-btn ac-btn--danger ac-btn--sm" onClick={() => removeHighlight(h.id)}>
+                              Remove
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {panel === "notes" && (
-              <div className="ac-stack">
-                <FocusTimer />
-                <label className="ac-field">
-                  <span className="ac-label">Focus for this session</span>
-                  <input
-                    className="ac-input"
-                    maxLength={MAX_FOCUS}
-                    value={ws.focus}
-                    placeholder="What are you working on today?"
-                    onChange={(e) => update(ws.id, { focus: e.target.value })}
-                  />
-                </label>
-                <label className="ac-field">
-                  <span className="ac-label">Notes</span>
-                  <textarea
-                    className="ac-textarea"
-                    rows={10}
-                    maxLength={MAX_NOTES}
-                    value={ws.notes}
-                    placeholder="Write notes, or save passages and answers from the book."
-                    onChange={(e) => update(ws.id, { notes: e.target.value })}
-                  />
-                  <span className="ac-hint">
-                    {ws.notes.length} of {MAX_NOTES} characters
-                  </span>
-                </label>
-              </div>
-            )}
-
-            {panel === "plan" && (
-              <div className="ac-stack">
-                {!ws.planAccepted && (
-                  <p className="ac-hint">Review the plan, then accept it to lock the checklist.</p>
-                )}
-                {ws.plan.length === 0 ? (
-                  <p className="ac-muted">No plan yet.</p>
-                ) : (
-                  ws.plan.map((p) => (
-                    <div key={p.id} className="ac-plan-item">
-                      <strong>{p.title}</strong>
-                      <div className="ac-small ac-muted">
-                        About {p.estimatedSessions} session{p.estimatedSessions === 1 ? "" : "s"}
-                      </div>
-                      <p className="ac-small" style={{ margin: "6px 0 0" }}>
-                        {p.detail}
-                      </p>
-                    </div>
-                  ))
-                )}
-                {!ws.planAccepted && (
-                  <button type="button" className="ac-btn ac-btn--primary" onClick={() => acceptPlan(ws.id)}>
-                    Accept plan
-                  </button>
-                )}
-              </div>
-            )}
-
-            {panel === "checklist" && (
-              <div className="ac-stack">
-                <div
-                  className="ac-bar"
-                  role="progressbar"
-                  aria-label="Checklist progress"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={pct}
-                >
-                  <i style={{ width: `${pct}%` }} />
+                    ))
+                  )}
                 </div>
-                <p className="ac-small ac-muted" style={{ margin: 0 }}>
-                  {done} of {total} done
-                </p>
-                {total === 0 ? (
-                  <p className="ac-muted">No checklist items yet.</p>
-                ) : (
-                  <ul className="ac-stack" style={{ gap: 2, listStyle: "none", margin: 0, padding: 0 }}>
-                    {ws.checklist.map((item, index) => (
-                      <li key={item.id}>
-                        <button
-                          type="button"
-                          className="ac-check-row"
-                          aria-pressed={item.done}
-                          onClick={() => toggleChecklistItem(ws.id, item.id, index)}
-                        >
-                          <span className="ac-check-box" aria-hidden="true">
-                            {item.done ? "✓" : ""}
-                          </span>
-                          <span className="ac-check-label">{item.label}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-        </aside>
+              )}
 
-        {selection && (
-          <div
-            className="ac-float"
-            role="toolbar"
-            aria-label="Selected text actions"
-            style={{
-              left: Math.min(Math.max(selection.x, 180), window.innerWidth - 180),
-              top: Math.max(84, selection.y - 64),
-            }}
-          >
-            <button type="button" className="ac-float-primary" onClick={askFromSelection}>
-              Ask Stellun
-            </button>
-            {COLORS.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={`ac-swatch ac-swatch--${c.id}`}
-                aria-label={`Highlight in ${c.label.toLowerCase()}`}
-                title={`Highlight in ${c.label.toLowerCase()}`}
-                onClick={() => highlightSelection(c.id)}
-              />
-            ))}
-            <button type="button" onClick={noteFromSelection}>
-              Note
-            </button>
-            <button type="button" onClick={copySelection}>
-              Copy
-            </button>
-            <button type="button" aria-label="Dismiss" onClick={() => setSelection(null)}>
-              ×
-            </button>
-          </div>
+              {panel === "notes" && (
+                <div className="ac-stack">
+                  <label className="ac-field">
+                    <span className="ac-label">Focus for this session</span>
+                    <input
+                      className="ac-input"
+                      maxLength={MAX_FOCUS}
+                      value={ws.focus}
+                      placeholder="What are you working on today?"
+                      onChange={(e) => update(ws.id, { focus: e.target.value })}
+                    />
+                  </label>
+                  <label className="ac-field">
+                    <span className="ac-label">Notes</span>
+                    <textarea
+                      className="ac-textarea"
+                      rows={10}
+                      maxLength={MAX_NOTES}
+                      value={ws.notes}
+                      placeholder="Write notes, or save passages and answers from the book."
+                      onChange={(e) => update(ws.id, { notes: e.target.value })}
+                    />
+                    <span className="ac-hint">{ws.notes.length} of {MAX_NOTES} characters</span>
+                  </label>
+                </div>
+              )}
+
+              {panel === "plan" && (
+                <div className="ac-stack">
+                  {!ws.planAccepted && <p className="ac-hint">Review the plan, then accept it to lock the checklist.</p>}
+                  {ws.plan.length === 0 ? (
+                    <p className="ac-muted">No plan yet.</p>
+                  ) : (
+                    ws.plan.map((p) => (
+                      <div key={p.id} className="ac-plan-item">
+                        <strong>{p.title}</strong>
+                        <div className="ac-small ac-muted">About {p.estimatedSessions} session{p.estimatedSessions === 1 ? "" : "s"}</div>
+                        <p className="ac-small" style={{ margin: "6px 0 0" }}>{p.detail}</p>
+                      </div>
+                    ))
+                  )}
+                  {!ws.planAccepted && (
+                    <button type="button" className="ac-btn ac-btn--primary" onClick={() => acceptPlan(ws.id)}>Accept plan</button>
+                  )}
+                </div>
+              )}
+
+              {panel === "checklist" && (
+                <div className="ac-stack">
+                  <div className="ac-bar" role="progressbar" aria-label="Checklist progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pctDone}>
+                    <i style={{ width: `${pctDone}%` }} />
+                  </div>
+                  <p className="ac-small ac-muted" style={{ margin: 0 }}>{done} of {total} done</p>
+                  {total === 0 ? (
+                    <p className="ac-muted">No checklist items yet.</p>
+                  ) : (
+                    <ul className="ac-stack" style={{ gap: 2, listStyle: "none", margin: 0, padding: 0 }}>
+                      {ws.checklist.map((item, index) => (
+                        <li key={item.id}>
+                          <button type="button" className="ac-check-row" aria-pressed={item.done} onClick={() => toggleChecklistItem(ws.id, item.id, index)}>
+                            <span className="ac-check-box" aria-hidden="true">{item.done ? "✓" : ""}</span>
+                            <span className="ac-check-label">{item.label}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {panel === "focus" && <FocusTimer />}
+            </div>
+          </aside>
         )}
       </div>
     </div>
   );
 }
 
-/** A simple 25-minute focus timer for study sessions. */
+/** Groups sentences by paragraph, keeping each sentence's index for selection. */
+function groupByPara(sentences: Sentence[]): { i: number; text: string }[][] {
+  const groups: { i: number; text: string }[][] = [];
+  let current = -1;
+  sentences.forEach((s, i) => {
+    if (s.para !== current) {
+      groups.push([]);
+      current = s.para;
+    }
+    const last = groups[groups.length - 1];
+    if (last) last.push({ i, text: s.text });
+  });
+  return groups;
+}
+
+function SelectionBar({
+  count,
+  unit,
+  preview,
+  onAsk,
+  onHighlight,
+  onNote,
+  onCopy,
+  onClear,
+}: {
+  count: number;
+  unit: string;
+  preview: string;
+  onAsk: () => void;
+  onHighlight: (c: HighlightColor) => void;
+  onNote: () => void;
+  onCopy: () => void;
+  onClear: () => void;
+}): ReactNode {
+  return (
+    <div className="ac-selbar" role="toolbar" aria-label="Selected text actions">
+      <div className="ac-selbar-text">
+        <strong>{count} {unit}{count === 1 ? "" : "s"} selected</strong>
+        <span className="ac-small ac-muted">“{preview.length > 90 ? `${preview.slice(0, 90)}…` : preview}”</span>
+      </div>
+      <div className="ac-selbar-actions">
+        <button type="button" className="ac-selbar-primary" onClick={onAsk}>Ask Stellun</button>
+        {COLORS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            className={`ac-swatch ac-swatch--${c.id}`}
+            aria-label={`Highlight in ${c.label.toLowerCase()}`}
+            title={`Highlight in ${c.label.toLowerCase()}`}
+            onClick={() => onHighlight(c.id)}
+          />
+        ))}
+        <button type="button" onClick={onNote}>Note</button>
+        <button type="button" onClick={onCopy}>Copy</button>
+        <button type="button" aria-label="Clear selection" onClick={onClear}>×</button>
+      </div>
+    </div>
+  );
+}
+
+/** A 25-minute focus timer for study sessions. */
 function FocusTimer() {
   const [secs, setSecs] = useState(25 * 60);
   const [running, setRunning] = useState(false);
@@ -804,21 +892,12 @@ function FocusTimer() {
 
   return (
     <div className="ac-timer-card">
-      <div className="ac-timer" aria-label={`Focus time left: ${mm} minutes ${ss} seconds`}>
-        {mm}:{ss}
-      </div>
+      <div className="ac-timer" aria-label={`Focus time left: ${mm} minutes ${ss} seconds`}>{mm}:{ss}</div>
       <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
         <button type="button" className="ac-btn ac-btn--primary ac-btn--sm" onClick={() => setRunning((r) => !r)}>
           {running ? "Pause" : secs === 0 ? "Done. Take a break" : "Start focus"}
         </button>
-        <button
-          type="button"
-          className="ac-btn ac-btn--ghost ac-btn--sm"
-          onClick={() => {
-            setRunning(false);
-            setSecs(25 * 60);
-          }}
-        >
+        <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => { setRunning(false); setSecs(25 * 60); }}>
           Reset
         </button>
       </div>
