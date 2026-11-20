@@ -47,6 +47,7 @@ import { Route as AuthenticatedTrackerIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedTrackerNoradIdRouteImport } from './routes/_authenticated/tracker.$noradId'
 import { Route as ApiPublicRefreshRouteImport } from './routes/api/public/refresh'
 import { Route as ApiPublicRefreshNewsRouteImport } from './routes/api/public/refresh-news'
+import { Route as AuthenticatedAcademyFlashcardsWorkspaceIdRouteImport } from './routes/_authenticated/academy.flashcards.$workspaceId'
 import { Route as AuthenticatedAcademyWorkspaceWorkspaceIdRouteImport } from './routes/_authenticated/academy.workspace.$workspaceId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -248,6 +249,12 @@ const ApiPublicRefreshNewsRoute = ApiPublicRefreshNewsRouteImport.update({
   path: '/api/public/refresh-news',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAcademyFlashcardsWorkspaceIdRoute =
+  AuthenticatedAcademyFlashcardsWorkspaceIdRouteImport.update({
+    id: '/flashcards/$workspaceId',
+    path: '/flashcards/$workspaceId',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
 const AuthenticatedAcademyWorkspaceWorkspaceIdRoute =
   AuthenticatedAcademyWorkspaceWorkspaceIdRouteImport.update({
     id: '/workspace/$workspaceId',
@@ -293,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/academy/': typeof AuthenticatedAcademyIndexRoute
   '/deepspace/': typeof AuthenticatedDeepspaceIndexRoute
   '/tracker/': typeof AuthenticatedTrackerIndexRoute
+  '/academy/flashcards/$workspaceId': typeof AuthenticatedAcademyFlashcardsWorkspaceIdRoute
   '/academy/workspace/$workspaceId': typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
 export interface FileRoutesByTo {
@@ -330,6 +338,7 @@ export interface FileRoutesByTo {
   '/academy': typeof AuthenticatedAcademyIndexRoute
   '/deepspace': typeof AuthenticatedDeepspaceIndexRoute
   '/tracker': typeof AuthenticatedTrackerIndexRoute
+  '/academy/flashcards/$workspaceId': typeof AuthenticatedAcademyFlashcardsWorkspaceIdRoute
   '/academy/workspace/$workspaceId': typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
 export interface FileRoutesById {
@@ -372,6 +381,7 @@ export interface FileRoutesById {
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
   '/_authenticated/deepspace/': typeof AuthenticatedDeepspaceIndexRoute
   '/_authenticated/tracker/': typeof AuthenticatedTrackerIndexRoute
+  '/_authenticated/academy/flashcards/$workspaceId': typeof AuthenticatedAcademyFlashcardsWorkspaceIdRoute
   '/_authenticated/academy/workspace/$workspaceId': typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
 export interface FileRouteTypes {
@@ -414,6 +424,7 @@ export interface FileRouteTypes {
     | '/academy/'
     | '/deepspace/'
     | '/tracker/'
+    | '/academy/flashcards/$workspaceId'
     | '/academy/workspace/$workspaceId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -451,6 +462,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/deepspace'
     | '/tracker'
+    | '/academy/flashcards/$workspaceId'
     | '/academy/workspace/$workspaceId'
   id:
     | '__root__'
@@ -492,6 +504,7 @@ export interface FileRouteTypes {
     | '/_authenticated/academy/'
     | '/_authenticated/deepspace/'
     | '/_authenticated/tracker/'
+    | '/_authenticated/academy/flashcards/$workspaceId'
     | '/_authenticated/academy/workspace/$workspaceId'
   fileRoutesById: FileRoutesById
 }
@@ -777,6 +790,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRefreshNewsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/academy/flashcards/$workspaceId': {
+      id: '/_authenticated/academy/flashcards/$workspaceId'
+      path: '/flashcards/$workspaceId'
+      fullPath: '/academy/flashcards/$workspaceId'
+      preLoaderRoute: typeof AuthenticatedAcademyFlashcardsWorkspaceIdRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
     '/_authenticated/academy/workspace/$workspaceId': {
       id: '/_authenticated/academy/workspace/$workspaceId'
       path: '/workspace/$workspaceId'
@@ -793,6 +813,7 @@ interface AuthenticatedAcademyRouteChildren {
   AuthenticatedAcademyQuizRoute: typeof AuthenticatedAcademyQuizRoute
   AuthenticatedAcademySettingsRoute: typeof AuthenticatedAcademySettingsRoute
   AuthenticatedAcademyIndexRoute: typeof AuthenticatedAcademyIndexRoute
+  AuthenticatedAcademyFlashcardsWorkspaceIdRoute: typeof AuthenticatedAcademyFlashcardsWorkspaceIdRoute
   AuthenticatedAcademyWorkspaceWorkspaceIdRoute: typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
 
@@ -802,6 +823,8 @@ const AuthenticatedAcademyRouteChildren: AuthenticatedAcademyRouteChildren = {
   AuthenticatedAcademyQuizRoute: AuthenticatedAcademyQuizRoute,
   AuthenticatedAcademySettingsRoute: AuthenticatedAcademySettingsRoute,
   AuthenticatedAcademyIndexRoute: AuthenticatedAcademyIndexRoute,
+  AuthenticatedAcademyFlashcardsWorkspaceIdRoute:
+    AuthenticatedAcademyFlashcardsWorkspaceIdRoute,
   AuthenticatedAcademyWorkspaceWorkspaceIdRoute:
     AuthenticatedAcademyWorkspaceWorkspaceIdRoute,
 }
