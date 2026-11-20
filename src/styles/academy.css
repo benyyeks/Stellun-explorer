@@ -1484,16 +1484,366 @@
   }
 }
 
-/* ---------- Older Academy pages and panels ----------
-   Progress, quiz, and the books panel still use the site's global glass
-   cards. Inside the Academy they become solid surfaces, so the whole section
-   matches the mockup. Other pages are not affected. */
-.ac-shell .glass,
-.ac-shell .glass-card,
-.ac-shell .scaffold-card {
-  background: var(--ac-surface) !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid var(--ac-border) !important;
-  box-shadow: var(--ac-shadow) !important;
+/* ==========================================================================
+   v2: site glass, blue section colour, header offset, reader and panel
+   These rules come last, so they override the earlier Academy rules.
+   ========================================================================== */
+
+/* Clear the fixed site header, the same way .page-main does for other pages. */
+.ac-shell {
+  padding-top: var(--header-h, 68px);
+  background:
+    radial-gradient(1100px 520px at 0% -8%, var(--accent-wash), transparent 62%),
+    radial-gradient(900px 480px at 100% 4%, var(--accent-soft), transparent 58%),
+    var(--color-bg);
 }
+
+@media (min-width: 640px) {
+  .ac-side { top: var(--header-h, 68px); }
+}
+
+@media (min-width: 900px) {
+  .ac-side {
+    top: var(--header-h, 68px);
+    height: calc(100vh - var(--header-h, 68px));
+    height: calc(100dvh - var(--header-h, 68px));
+  }
+}
+
+/* Site glass: the same surface, blur, border, and sheen as .glass elsewhere. */
+.ac-card, .ac-course, .ac-metric, .ac-shelf-card, .ac-continue, .ac-task,
+.ac-reader, .ac-tools, .ac-modal, .ac-side, .ac-bottom-nav, .ac-empty {
+  position: relative;
+  background: rgba(var(--surface-rgb), var(--surface-alpha));
+  -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+  backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-glass);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ac-card, .ac-course, .ac-metric, .ac-shelf-card, .ac-continue, .ac-task,
+  .ac-reader, .ac-tools, .ac-modal, .ac-side, .ac-bottom-nav, .ac-empty {
+    background: rgba(var(--surface-rgb), 0.97);
+  }
+}
+
+.ac-card::before, .ac-course::before, .ac-metric::before, .ac-shelf-card::before,
+.ac-continue::before, .ac-reader::before, .ac-tools::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 42%);
+  pointer-events: none;
+}
+
+.ac-card > *, .ac-course > *, .ac-metric > *, .ac-shelf-card > *, .ac-continue > *,
+.ac-reader > *, .ac-tools > * {
+  position: relative;
+}
+
+/* Blue hero band: the Academy's section colour. */
+.ac-hero {
+  background: linear-gradient(135deg, var(--accent-panel-solid) 0%, var(--accent-panel) 100%);
+  color: var(--accent-panel-text);
+  border: 1px solid var(--accent-panel-border);
+  box-shadow: var(--shadow-glass);
+}
+
+.ac-hero .ac-kicker,
+.ac-hero .ac-hero-sub,
+.ac-hero .ac-muted { color: var(--accent-panel-text-muted); }
+
+.ac-hero .ac-title { color: var(--accent-panel-text); }
+
+.ac-hero .ac-btn--primary {
+  background: var(--accent-panel-text);
+  color: var(--accent-panel);
+}
+
+.ac-hero .ac-btn--primary:hover { background: #ffffff; }
+
+.ac-hero .ac-btn--ghost {
+  color: var(--accent-panel-text);
+  border-color: rgba(255, 255, 255, 0.36);
+}
+
+.ac-hero .ac-btn--ghost:hover { background: rgba(255, 255, 255, 0.1); }
+
+.ac-hero .ac-orbit { color: #ffffff; opacity: 0.16; }
+
+.ac-hero .ac-continue {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: var(--accent-panel-text);
+  box-shadow: none;
+}
+
+.ac-hero .ac-continue .ac-muted { color: var(--accent-panel-text-muted); }
+.ac-hero .ac-continue .ac-bar { background: rgba(255, 255, 255, 0.2); }
+.ac-hero .ac-continue .ac-bar > i { background: var(--accent-panel-text); }
+
+/* Primary buttons use the blue panel colour. */
+.ac-btn--primary {
+  background: var(--accent-panel);
+  color: var(--accent-panel-text);
+}
+
+.ac-btn--primary:hover { background: var(--accent-panel-solid); }
+
+/* Course cards get one palette colour each: blue, navy, amber, green. */
+.ac-grid-courses > .ac-course:nth-child(1) { --tone: var(--color-accent); }
+.ac-grid-courses > .ac-course:nth-child(2) { --tone: var(--accent-panel); }
+.ac-grid-courses > .ac-course:nth-child(3) { --tone: var(--color-highlight); }
+.ac-grid-courses > .ac-course:nth-child(4) { --tone: var(--color-success); }
+
+.ac-course {
+  box-shadow: inset 0 3px 0 var(--tone, var(--color-accent)), var(--shadow-glass);
+}
+
+.ac-course-bar { background: var(--tone, var(--color-accent)); }
+.ac-course .ac-bar > i { background: var(--tone, var(--color-accent)); }
+
+/* Metric numbers take their colour from the palette too. */
+.ac-grid-2 > .ac-metric:nth-child(1) .ac-metric-value { color: var(--color-accent); }
+.ac-grid-2 > .ac-metric:nth-child(2) .ac-metric-value { color: var(--color-success); }
+.ac-grid-2 > .ac-metric:nth-child(3) .ac-metric-value { color: var(--color-highlight); }
+.ac-grid-2 > .ac-metric:nth-child(4) .ac-metric-value { color: var(--color-accent-strong); }
+
+.ac-tab[aria-current="true"] { border-bottom-color: var(--color-accent); }
+
+/* ---------- Reader: highlights, selection toolbar, progress ---------- */
+
+.ac-mark {
+  border-radius: 4px;
+  padding: 0 2px;
+  color: inherit;
+}
+
+.ac-mark--amber { background: rgba(245, 190, 90, 0.42); }
+.ac-mark--blue { background: rgba(120, 160, 230, 0.4); }
+.ac-mark--green { background: rgba(107, 191, 130, 0.4); }
+
+.ac-float {
+  position: fixed;
+  z-index: 80;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100vw - 16px);
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(var(--surface-rgb), 0.96);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-glass-hover);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ac-float button {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ac-float button:hover { background: var(--color-accent-soft); }
+
+.ac-float .ac-float-primary {
+  background: var(--accent-panel);
+  color: var(--accent-panel-text);
+}
+
+.ac-float .ac-float-primary:hover { background: var(--accent-panel-solid); }
+
+.ac-swatch {
+  width: 22px !important;
+  min-height: 22px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: 2px solid var(--color-bg-solid) !important;
+}
+
+.ac-swatch--amber { background: rgb(245, 190, 90) !important; }
+.ac-swatch--blue { background: rgb(120, 160, 230) !important; }
+.ac-swatch--green { background: rgb(107, 191, 130) !important; }
+
+@media (pointer: coarse) {
+  .ac-float button { min-height: 44px; }
+  .ac-swatch { min-height: 30px !important; width: 30px !important; }
+}
+
+.ac-progress {
+  position: sticky;
+  top: calc(var(--header-h, 68px) + 4px);
+  z-index: 5;
+  height: 3px;
+  margin: 0 16px;
+  border-radius: 99px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.ac-progress > i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent), var(--color-highlight));
+  transition: width 0.2s ease;
+}
+
+.ac-pages { display: grid; gap: 12px; justify-items: center; padding: 16px; }
+.ac-page-canvas { max-width: 100%; border-radius: 10px; box-shadow: var(--shadow-glass); background: #fff; }
+.ac-pager { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+
+/* ---------- Panel content ---------- */
+
+.ac-answer {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-border);
+  line-height: 1.65;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ac-passage {
+  padding: 10px 12px;
+  border-left: 3px solid var(--color-highlight);
+  border-radius: 10px;
+  background: var(--color-highlight-soft);
+  font-size: 0.88rem;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+.ac-passage p { margin: 4px 0 0; }
+
+.ac-hl-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+}
+
+.ac-hl-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; }
+.ac-hl-dot--amber { background: rgb(245, 190, 90); }
+.ac-hl-dot--blue { background: rgb(120, 160, 230); }
+.ac-hl-dot--green { background: rgb(107, 191, 130); }
+
+.ac-timer-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--accent-panel);
+  color: var(--accent-panel-text);
+  text-align: center;
+}
+
+.ac-timer {
+  font-family: var(--font-heading);
+  font-size: 2.4rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ac-timer-card .ac-small { color: var(--accent-panel-text-muted); margin: 0; }
+.ac-timer-card .ac-btn--ghost { color: var(--accent-panel-text); border-color: rgba(255, 255, 255, 0.36); }
+.ac-timer-card .ac-btn--primary { background: var(--accent-panel-text); color: var(--accent-panel); }
+
+.ac-ask-context { display: grid; gap: 2px; }
+.ac-check-row:hover { background: var(--color-accent-soft); }
+
+/* ---------- Phone: the panel slides away and leaves a peek arrow ----------
+   Below 768px the study panel is a drawer. It slides out after a few seconds
+   of no use, and a faint arrow stays on the right edge to bring it back.
+   From 768px up (tablet and laptop) the panel stays docked on the right. */
+
+.ac-peek {
+  display: grid;
+  place-items: center;
+  position: fixed;
+  right: 0;
+  top: 46%;
+  z-index: 69;
+  width: 32px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-right: 0;
+  border-radius: 14px 0 0 14px;
+  background: rgba(var(--surface-rgb), 0.6);
+  -webkit-backdrop-filter: blur(var(--blur-glass));
+  backdrop-filter: blur(var(--blur-glass));
+  color: var(--color-text);
+  font-size: 1.5rem;
+  line-height: 1;
+  opacity: 0.42;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.ac-peek:hover,
+.ac-peek:focus-visible { opacity: 0.92; }
+
+@media (max-width: 767px) {
+  .ac-tools {
+    position: fixed;
+    top: calc(var(--header-h, 68px) + 10px);
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    right: 8px;
+    left: auto;
+    width: min(92vw, 380px);
+    max-height: none;
+    overflow-y: auto;
+    z-index: 70;
+    transition: transform 0.28s ease, opacity 0.28s ease;
+    transform: translateX(0);
+  }
+
+  .ac-tools[data-open="false"] {
+    transform: translateX(calc(100% + 18px));
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ac-float { top: auto; }
+}
+
+@media (min-width: 768px) {
+  .ac-peek { display: none; }
+
+  .ac-tools {
+    position: sticky;
+    top: calc(var(--header-h, 68px) + 16px);
+    max-height: calc(100vh - var(--header-h, 68px) - 32px);
+    max-height: calc(100dvh - var(--header-h, 68px) - 32px);
+    overflow-y: auto;
+    transform: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-tools, .ac-peek, .ac-progress > i { transition: none !important; }
+}
+
+/* Let the reading-progress bar stay pinned while the text scrolls. */
+.ac-reader { overflow: visible; }
