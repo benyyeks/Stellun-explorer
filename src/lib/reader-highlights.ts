@@ -1,23 +1,31 @@
 /**
- * Highlights in the workspace reader.
- * Each highlight is a passage the student selected, with a colour.
+ * Reader highlights.
+ *
+ * - PDF highlights are stored with the page number and the rectangles they
+ *   cover, as fractions of the page, so they stay in place at any zoom.
+ * - Text-file highlights (TXT, Markdown) use page 0 and store the sentence.
+ *
  * Stored per workspace in this browser (localStorage).
  */
 
 import { useEffect, useState } from "react";
 
 export type HighlightColor = "amber" | "blue" | "green";
+export type HighlightRect = { left: number; top: number; width: number; height: number };
 
 export type ReaderHighlight = {
   id: string;
   text: string;
   color: HighlightColor;
+  page: number;
+  rects: HighlightRect[];
   createdAt: number;
 };
 
-const MAX_HIGHLIGHTS = 300;
+export type NewHighlight = Omit<ReaderHighlight, "id" | "createdAt">;
 
-const keyFor = (workspaceId: string) => `stellun:reader-highlights:v1:${workspaceId}`;
+const MAX_HIGHLIGHTS = 400;
+const keyFor = (workspaceId: string) => `stellun:reader-highlights:v2:${workspaceId}`;
 
 function readAll(workspaceId: string): ReaderHighlight[] {
   if (typeof window === "undefined") return [];
@@ -31,7 +39,8 @@ function readAll(workspaceId: string): ReaderHighlight[] {
         typeof h === "object" &&
         h !== null &&
         typeof (h as ReaderHighlight).text === "string" &&
-        typeof (h as ReaderHighlight).id === "string",
+        typeof (h as ReaderHighlight).id === "string" &&
+        typeof (h as ReaderHighlight).page === "number",
     );
   } catch {
     return [];
@@ -53,16 +62,15 @@ export function useReaderHighlights(workspaceId: string) {
     setHighlights(readAll(workspaceId));
   }, [workspaceId]);
 
-  const addHighlight = (text: string, color: HighlightColor) => {
-    const clean = text.replace(/\s+/g, " ").trim().slice(0, 1200);
-    if (clean.length < 2) return;
+  const addHighlight = (input: NewHighlight) => {
+    const text = input.text.replace(/\s+/g, " ").trim().slice(0, 1200);
+    if (text.length < 2) return;
     setHighlights((prev) => {
-      if (prev.some((h) => h.text === clean)) return prev;
       const next: ReaderHighlight[] = [
         {
           id: `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
-          text: clean,
-          color,
+          ...input,
+          text,
           createdAt: Date.now(),
         },
         ...prev,
