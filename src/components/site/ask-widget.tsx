@@ -191,6 +191,8 @@ export function AskWidget() {
 
   if (onAsk) return null;
 
+  if (path.startsWith("/academy/workspace")) return null;
+
   return (
     <div className="ask-widget">
       {open && (
