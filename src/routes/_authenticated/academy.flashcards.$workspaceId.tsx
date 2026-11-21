@@ -4,7 +4,7 @@ import { useStudyWorkspaces } from "@/lib/study-workspace";
 import { readHighlightsForBooks } from "@/lib/reader-highlights";
 import { useBookLibrary } from "@/lib/book-library";
 import { askStellun } from "@/lib/reader-ask";
-import { artUrl } from "@/lib/academy-art";
+import { artSrc } from "@/lib/academy-art";
 import { buildDeck, readKnownCards, writeKnownCards, type FlashCard } from "@/lib/workspace-cards";
 
 /**
@@ -194,7 +194,7 @@ function FlashcardsPage({ workspaceId }: { workspaceId: string }) {
           >
             <div className="ac-flip-face ac-flip-front">
               <div className="ac-flip-art">
-                <img src={artUrl(card.art)} alt="" />
+                <img src={artSrc(card.art)} alt="" />
               </div>
               <div className="ac-flip-body">
                 <div className="ac-flashcard-meta">
@@ -243,7 +243,7 @@ function FlashcardsPage({ workspaceId }: { workspaceId: string }) {
                   className={`ac-deck-item ac-deck-item--${c.kind}${isKnown ? " is-known" : ""}${card?.id === c.id ? " is-current" : ""}`}
                   onClick={() => jumpTo(c.id)}
                 >
-                  <img className="ac-deck-thumb" src={artUrl(c.art)} alt="" loading="lazy" />
+                  <img className="ac-deck-thumb" src={artSrc(c.art)} alt="" loading="lazy" />
                   <span className="ac-small ac-muted">{KIND_LABEL[c.kind]} · {isKnown ? "Learned" : "Learning"}</span>
                   <span className="ac-deck-item-front">{c.front}</span>
                 </button>

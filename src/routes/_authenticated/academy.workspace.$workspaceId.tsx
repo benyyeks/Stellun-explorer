@@ -6,11 +6,14 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { MAX_FOCUS, MAX_NOTES, useStudyWorkspaces } from "@/lib/study-workspace";
 import { askStellun } from "@/lib/reader-ask";
+import { buildExcerpt, indexBook, type BookIndex } from "@/lib/book-context";
+import { readDocx, readPptx } from "@/lib/office-text";
 import {
   clearHighlightsFor,
   migrateLegacyHighlights,
@@ -19,21 +22,21 @@ import {
   type HighlightRect,
   type ReaderHighlight,
 } from "@/lib/reader-highlights";
-import { useBookLibrary, type LibraryBook } from "@/lib/book-library";
+import { useBookLibrary, type BookKind, type LibraryBook } from "@/lib/book-library";
 import type { PdfDoc } from "@/lib/pdf-text";
+import { AnswerText } from "@/components/site/answer-text";
 
 /**
  * Workspace reader
  * ----------------
- * Books are stored on this device, so they reopen after a refresh. A workspace
- * can hold several books, and reading resumes at the last page.
+ * Books (PDF, Word, PowerPoint, TXT, Markdown) are stored on this device, so
+ * they reopen after a refresh. A workspace can hold several books.
  *
- * Highlighting: tap the first word of a passage, then the last word. The
- * passage is highlighted and can be named. Works on PDF pages and text files.
- * No phone copy menu appears, because nothing is selected natively.
- *
- * Study panel: docked on the right on tablets and laptops (900px and up). On
- * phones it slides in from the right. "Hide" closes it; the Study tab brings it back.
+ * Highlights: tap a start word, then a finish word. Name it, then choose a colour.
+ * Stellun: a chat thread. Each question is sent with the part of the book that
+ * matches it, so Stellun can read the book, not only its title.
+ * Study panel: docked on tablets and laptops (900px and up). On phones it
+ * slides in from the right; "Hide" closes it and the Study tab brings it back.
  */
 
 export const Route = createFileRoute("/_authenticated/academy/workspace/$workspaceId")({
@@ -51,19 +54,22 @@ function WorkspaceReaderRoute() {
   return <WorkspaceReader key={workspaceId} workspaceId={workspaceId} />;
 }
 
-/** One selectable unit: a PDF word or a text word. */
+/** One selectable unit: a PDF word or a word of a text file. */
 type Item = { text: string; left?: number; top?: number; width?: number; height?: number; line?: number };
 type Token = { text: string; para: number };
-type LoadedDoc = { kind: "pdf"; pdf: PdfDoc } | { kind: "text"; tokens: Token[] };
+type LoadedDoc =
+  | { kind: "pdf"; pdf: PdfDoc; index: BookIndex }
+  | { kind: "text"; tokens: Token[]; index: BookIndex };
 type Sel = { anchor: number; focus: number } | null;
 type Panel = "ask" | "highlights" | "notes" | "plan" | "checklist" | "focus";
 
-type AskState = {
-  status: "idle" | "loading" | "done" | "error";
-  question: string;
-  passage: string;
-  answer: string;
-  error: string;
+type ChatMsg = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  status: "done" | "pending" | "streaming" | "error";
+  question?: string | undefined;
+  passage?: string | undefined;
 };
 
 const PANELS: { id: Panel; label: string }[] = [
@@ -82,21 +88,21 @@ const COLORS: { id: HighlightColor; label: string }[] = [
 ];
 
 const MAX_TEXT_BYTES = 600_000;
+const MAX_OFFICE_BYTES = 25_000_000;
 const MAX_PDF_BYTES = 40_000_000;
-const EMPTY_ASK: AskState = { status: "idle", question: "", passage: "", answer: "", error: "" };
+const CHAT_KEEP = 30;
 const pct = (v: number) => `${(v * 100).toFixed(3)}%`;
+const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 const isDesktop = () => typeof window !== "undefined" && window.matchMedia("(min-width: 900px)").matches;
 
-/** Splits text into paragraphs (blank lines) and words. */
+/** Splits text into paragraphs (one per line) and words. */
 function tokenize(text: string): Token[] {
   const out: Token[] = [];
-  text
-    .split(/\r?\n\s*\r?\n/)
-    .forEach((para, p) => {
-      for (const word of para.split(/\s+/)) {
-        if (word) out.push({ text: word, para: p });
-      }
-    });
+  text.split(/\r?\n/).forEach((line, para) => {
+    for (const word of line.split(/\s+/)) {
+      if (word) out.push({ text: word, para });
+    }
+  });
   return out;
 }
 
@@ -138,6 +144,25 @@ function indexFrom(target: EventTarget | null): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
+function loadChat(bookId: string): ChatMsg[] {
+  try {
+    const raw = window.localStorage.getItem(`stellun:reader-chat:v1:${bookId}`);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(parsed) ? (parsed as ChatMsg[]).slice(-CHAT_KEEP) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveChat(bookId: string, messages: ChatMsg[]) {
+  try {
+    const keep = messages.filter((m) => m.status === "done" || m.status === "error").slice(-CHAT_KEEP);
+    window.localStorage.setItem(`stellun:reader-chat:v1:${bookId}`, JSON.stringify(keep));
+  } catch {
+    /* storage full or blocked: the chat stays for this visit */
+  }
+}
+
 function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   const { ready, workspaces, update, acceptPlan, toggleChecklistItem } = useStudyWorkspaces();
   const ws = workspaces.find((w) => w.id === workspaceId) ?? null;
@@ -157,18 +182,22 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   const [nameDraft, setNameDraft] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [panel, setPanel] = useState<Panel>("ask");
-  const [ask, setAsk] = useState<AskState>(EMPTY_ASK);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [busy, setBusy] = useState(false);
   const [passage, setPassage] = useState("");
   const [draft, setDraft] = useState("");
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const threadRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const dragRef = useRef<{ idx: number; x: number; y: number; type: string } | null>(null);
   const booted = useRef(false);
   const saveTimer = useRef<number | null>(null);
 
   const current: LibraryBook | null = bookId ? (library.books.find((b) => b.id === bookId) ?? null) : null;
+  const index = doc?.index ?? null;
+  const hasBookText = (index?.chunks.length ?? 0) > 0;
 
   useEffect(() => {
     setPanelOpen(isDesktop());
@@ -180,6 +209,17 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
       if (doc?.kind === "pdf") doc.pdf.destroy();
     };
   }, [doc]);
+
+  // Each book keeps its own conversation.
+  useEffect(() => {
+    setMessages(bookId ? loadChat(bookId) : []);
+  }, [bookId]);
+
+  // Keep the newest message in view.
+  useEffect(() => {
+    const el = threadRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages.length, panel]);
 
   const pageCount = doc?.kind === "pdf" ? doc.pdf.pageCount : 1;
 
@@ -201,11 +241,17 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
         if (rec.kind === "pdf") {
           const { openPdf } = await import("@/lib/pdf-text");
           const pdf = await openPdf(rec.blob);
-          setDoc({ kind: "pdf", pdf });
+          const idx = indexBook(pdf.pageTexts.map((text, i) => ({ label: `Page ${i + 1}`, text })));
+          setDoc({ kind: "pdf", pdf, index: idx });
           setPageNo(Math.min(Math.max(1, rec.lastPage || 1), pdf.pageCount));
-        } else {
+        } else if (rec.kind === "text") {
           const text = await rec.blob.text();
-          setDoc({ kind: "text", tokens: tokenize(text) });
+          setDoc({ kind: "text", tokens: tokenize(text), index: indexBook([{ label: "Text", text }]) });
+          setPageNo(1);
+        } else {
+          const buffer = await rec.blob.arrayBuffer();
+          const parsed = rec.kind === "docx" ? await readDocx(buffer) : await readPptx(buffer);
+          setDoc({ kind: "text", tokens: tokenize(parsed.text), index: indexBook(parsed.sources) });
           setPageNo(1);
         }
         setZoom(rec.zoom || 1);
@@ -231,7 +277,7 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   useEffect(() => {
     if (!doc || doc.kind !== "pdf" || !canvasRef.current) return;
     let alive = true;
-    const width = Math.min(stageRef.current?.parentElement?.clientWidth || 680, 980) * zoom;
+    const width = Math.min(stageRef.current?.clientWidth || 680, 980) * zoom;
     setDrawing(true);
     doc.pdf
       .render(pageNo, canvasRef.current, Math.max(240, Math.floor(width)))
@@ -266,7 +312,7 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   // Arrow keys move between pages.
   useEffect(() => {
     if (!doc || doc.kind !== "pdf") return;
-    const onKey = (e: KeyboardEvent) => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
       const tag = (document.activeElement as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (e.key === "ArrowRight" || e.key === "PageDown") goToPage(pageNo + 1);
@@ -276,23 +322,26 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  const kindOf = (file: File): BookKind | null => {
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".pdf") || file.type === "application/pdf") return "pdf";
+    if (name.endsWith(".docx")) return "docx";
+    if (name.endsWith(".pptx")) return "pptx";
+    if (/\.(txt|md|markdown)$/.test(name) || file.type.startsWith("text/")) return "text";
+    return null;
+  };
+
   const addFile = async (file: File) => {
-    const kind =
-      /\.pdf$/i.test(file.name) || file.type === "application/pdf"
-        ? "pdf"
-        : /\.(txt|md|markdown)$/i.test(file.name) || file.type.startsWith("text/")
-          ? "text"
-          : null;
+    const kind = kindOf(file);
     if (!kind) {
-      setNotice("Open a PDF, TXT, or Markdown file. Word and EPUB files come next.");
+      setNotice(
+        "Open a PDF, Word (.docx), PowerPoint (.pptx), TXT, or Markdown file. For older .doc or .ppt files, save a copy as .docx or .pptx first.",
+      );
       return;
     }
-    if (file.size > (kind === "pdf" ? MAX_PDF_BYTES : MAX_TEXT_BYTES)) {
-      setNotice(
-        kind === "pdf"
-          ? "That PDF is larger than 40 MB. Try a smaller part of the book."
-          : "That text file is larger than 600 KB. Split it into shorter parts.",
-      );
+    const limit = kind === "pdf" ? MAX_PDF_BYTES : kind === "text" ? MAX_TEXT_BYTES : MAX_OFFICE_BYTES;
+    if (file.size > limit) {
+      setNotice(`That file is larger than ${Math.round(limit / 1_000_000)} MB. Try a smaller part of it.`);
       return;
     }
     try {
@@ -304,9 +353,14 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   };
 
   const removeBook = async (rec: LibraryBook) => {
-    if (!window.confirm(`Remove “${rec.name}” and its highlights from this device?`)) return;
+    if (!window.confirm(`Remove “${rec.name}”, its highlights, and its chat from this device?`)) return;
     await library.remove(rec.id);
     clearHighlightsFor(rec.id);
+    try {
+      window.localStorage.removeItem(`stellun:reader-chat:v1:${rec.id}`);
+    } catch {
+      /* nothing to clean up */
+    }
     if (bookId === rec.id) {
       setDoc(null);
       setBookId(null);
@@ -385,41 +439,79 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
     setNameDraft("");
   };
 
-  const runAsk = async (question: string, passageText: string) => {
-    if (!question.trim()) return;
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  /** Writes to the chat and keeps it saved for this book. */
+  const updateMessages = (fn: (prev: ChatMsg[]) => ChatMsg[]) => {
+    setMessages((prev) => {
+      const next = fn(prev);
+      if (bookId) saveChat(bookId, next);
+      return next;
+    });
+  };
+
+  /** Sends a question with the part of the book that matches it. */
+  const send = async (question: string, passageText = "") => {
+    const q = question.trim();
+    if (!q || busy) return;
+    const botId = newId();
+    updateMessages((prev) => [
+      ...prev,
+      { id: newId(), role: "user", text: q, status: "done", passage: passageText || undefined },
+      { id: botId, role: "assistant", text: "", status: "pending", question: q, passage: passageText || undefined },
+    ]);
     setPanel("ask");
     setPanelOpen(true);
-    setAsk({ status: "loading", question, passage: passageText, answer: "", error: "" });
+    setBusy(true);
+    setDraft("");
+    setPassage("");
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const excerpt = index ? buildExcerpt(q, index) : "";
+
+    const patchBot = (patch: Partial<ChatMsg>) =>
+      updateMessages((prev) => prev.map((m) => (m.id === botId ? { ...m, ...patch } : m)));
+
     try {
       const answer = await askStellun({
-        question,
+        question: q,
         passage: passageText || undefined,
         bookTitle: current?.name,
         workspaceTitle: ws?.title,
+        excerpt: excerpt || undefined,
         signal: controller.signal,
-        onChunk: (text) => setAsk((s) => ({ ...s, answer: text })),
+        onChunk: (text) => patchBot({ text, status: "streaming" }),
       });
-      setAsk((s) => ({ ...s, status: "done", answer }));
+      patchBot({ text: answer, status: "done" });
     } catch (err) {
-      if ((err as Error).name === "AbortError") return;
-      setAsk((s) => ({
-        ...s,
-        status: "error",
-        error: err instanceof Error ? err.message : "Stellun AI is unavailable right now.",
-      }));
+      if ((err as Error).name === "AbortError") {
+        updateMessages((prev) =>
+          prev.map((m) =>
+            m.id === botId
+              ? { ...m, status: "error", text: m.text ? m.text : "Stopped before an answer arrived." }
+              : m,
+          ),
+        );
+      } else {
+        patchBot({
+          status: "error",
+          text: err instanceof Error ? err.message : "Stellun AI is unavailable right now.",
+        });
+      }
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
+      setBusy(false);
     }
+  };
+
+  const stopAnswer = () => {
+    abortRef.current?.abort();
   };
 
   const askSelection = () => {
     if (!selText) return;
-    setPassage(selText);
+    const passageText = selText;
     setSel(null);
-    void runAsk("Explain this in plain language and tell me why it matters.", selText);
+    void send("Explain this passage in plain language and tell me why it matters.", passageText);
   };
 
   const noteSelection = () => {
@@ -438,22 +530,21 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
     setSel(null);
   };
 
-  const stopAsk = () => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setAsk((s) => ({ ...s, status: s.answer ? "done" : "idle" }));
+  const onComposerKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (draft.trim()) void send(draft, passage);
+    }
   };
 
   const submitQuestion = (e: FormEvent) => {
     e.preventDefault();
-    if (!draft.trim() || ask.status === "loading") return;
-    void runAsk(draft.trim(), passage);
-    setDraft("");
+    if (draft.trim()) void send(draft, passage);
   };
 
-  const saveAnswerToNotes = () => {
-    if (!ws || !ask.answer) return;
-    const block = `Stellun on “${ask.question}”:\n${ask.answer}`;
+  const saveAnswerToNotes = (m: ChatMsg) => {
+    if (!ws) return;
+    const block = `Stellun on “${m.question ?? "a question"}”:\n${m.text}`;
     update(ws.id, { notes: [ws.notes.trimEnd(), block].filter(Boolean).join("\n\n").slice(0, MAX_NOTES) });
     setPanel("notes");
   };
@@ -485,22 +576,23 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   const total = ws.checklist.length;
   const pctDone = total ? Math.round((100 * done) / total) : 0;
   const bookLine = [ws.bookTitle || current?.name || "No book named yet", ws.bookAuthor].filter(Boolean).join(" · ");
-  const hint =
-    "Tap the first word of a passage, then the last word. Choose a colour, or name it first.";
+  const hint = "Tap the first word of a passage, then the last word. Choose a colour, or name it first.";
+  const kindLabel = (b: LibraryBook) =>
+    b.kind === "pdf" ? `Page ${b.lastPage}` : b.kind === "docx" ? "Word document" : b.kind === "pptx" ? "Slides" : "Text file";
 
   return (
     <div className="ac-page">
       <header className="ac-top">
-        <div>
-          <p className="ac-small ac-muted" style={{ margin: 0 }}>
+        <div className="ac-top-copy">
+          <p className="ac-small ac-muted ac-crumb">
             <Link to="/academy/desk" className="ac-link">Study desk</Link>
-            {" / "}
+            <span aria-hidden="true"> / </span>
             {ws.title || "Untitled workspace"}
           </p>
-          <h1 className="ac-title" style={{ marginTop: 4 }}>{ws.title || "Untitled workspace"}</h1>
+          <h1 className="ac-title">{ws.title || "Untitled workspace"}</h1>
           <p className="ac-sub">{bookLine} · checklist {pctDone}%</p>
         </div>
-        <div className="ac-hero-actions">
+        <div className="ac-top-actions">
           {!ws.planAccepted && (
             <button type="button" className="ac-btn ac-btn--ghost" onClick={() => acceptPlan(ws.id)}>
               Accept plan
@@ -524,7 +616,7 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
                   aria-current={b.id === bookId ? "true" : undefined}
                 >
                   <span className="ac-bookchip-name">{b.name}</span>
-                  <span className="ac-small ac-muted">{b.kind === "pdf" ? `Page ${b.lastPage}` : "Text file"}</span>
+                  <span className="ac-small ac-muted">{kindLabel(b)}</span>
                 </button>
                 <button
                   type="button"
@@ -541,7 +633,7 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
               {opening ? "Opening…" : "Add a book"}
               <input
                 type="file"
-                accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
+                accept=".pdf,.docx,.pptx,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
                 className="ac-sr-only"
                 disabled={opening}
                 onChange={(e) => {
@@ -554,55 +646,49 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
           </div>
 
           {current && doc && (
-            <div className="ac-reader-bar">
-              <span className="ac-small ac-muted ac-reader-name">{current.name}</span>
+            <div className="ac-reader-toolbar">
+              <span className="ac-reader-name" title={current.name}>{current.name}</span>
               {doc.kind === "pdf" && (
-                <div className="ac-reader-tools">
-                  <div className="ac-seg" role="group" aria-label="Zoom">
-                    <button type="button" onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.2).toFixed(2)))} aria-label="Zoom out">−</button>
-                    <button type="button" onClick={() => setZoom(1)} aria-label="Fit to width">{Math.round(zoom * 100)}%</button>
-                    <button type="button" onClick={() => setZoom((z) => Math.min(2, +(z + 0.2).toFixed(2)))} aria-label="Zoom in">+</button>
-                  </div>
+                <div className="ac-seg" role="group" aria-label="Zoom">
+                  <button type="button" onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.2).toFixed(2)))} aria-label="Zoom out">−</button>
+                  <button type="button" onClick={() => setZoom(1)} aria-label="Fit to width">{Math.round(zoom * 100)}%</button>
+                  <button type="button" onClick={() => setZoom((z) => Math.min(2, +(z + 0.2).toFixed(2)))} aria-label="Zoom in">+</button>
                 </div>
               )}
             </div>
           )}
 
           {notice && (
-            <p className="ac-error" role="alert" style={{ padding: "12px 16px 0", margin: 0 }}>
+            <p className="ac-error ac-reader-notice" role="alert">
               {notice}
             </p>
           )}
 
           {!doc && !opening && library.books.length === 0 && (
             <div className="ac-reader-empty">
-              <p>
-                <strong>Add a PDF, TXT, or Markdown book to start reading.</strong>
-              </p>
-              <p className="ac-small">
-                The book stays on this device, so it is still here after a refresh. Highlight passages, name them, and ask Stellun about them.
+              <p className="ac-reader-empty-title">Add a book to start reading</p>
+              <p className="ac-small ac-muted">
+                PDF, Word (.docx), PowerPoint (.pptx), TXT, or Markdown. The book stays on this device, so it is still here after a refresh.
               </p>
             </div>
           )}
 
           {!doc && !opening && library.books.length > 0 && (
             <div className="ac-reader-empty">
-              <p>
-                <strong>Choose a book above to continue reading.</strong>
-              </p>
+              <p className="ac-reader-empty-title">Choose a book above to keep reading</p>
             </div>
           )}
 
           {opening && (
             <div className="ac-reader-empty">
-              <p>Opening your book…</p>
+              <p className="ac-reader-empty-title">Opening your book…</p>
             </div>
           )}
 
           {doc?.kind === "pdf" && (
             <>
-              <div className="ac-pagebar" role="navigation" aria-label="Page navigation">
-                <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => goToPage(1)} disabled={pageNo <= 1} aria-label="First page">⏮</button>
+              <nav className="ac-pagebar" aria-label="Page navigation">
+                <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm ac-btn-edge" onClick={() => goToPage(1)} disabled={pageNo <= 1} aria-label="First page">⏮</button>
                 <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => goToPage(pageNo - 1)} disabled={pageNo <= 1}>Previous</button>
                 <label className="ac-pagebox">
                   <span className="ac-sr-only">Go to page</span>
@@ -621,8 +707,8 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
                   <span className="ac-small ac-muted">of {pageCount}</span>
                 </label>
                 <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => goToPage(pageNo + 1)} disabled={pageNo >= pageCount}>Next</button>
-                <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => goToPage(pageCount)} disabled={pageNo >= pageCount} aria-label="Last page">⏭</button>
-              </div>
+                <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm ac-btn-edge" onClick={() => goToPage(pageCount)} disabled={pageNo >= pageCount} aria-label="Last page">⏭</button>
+              </nav>
               <input
                 className="ac-pageslider"
                 type="range"
@@ -632,13 +718,11 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
                 onChange={(e) => goToPage(Number(e.target.value))}
                 aria-label={`Page ${pageNo} of ${pageCount}`}
               />
-              {!doc.pdf.hasText ? (
-                <p className="ac-hint ac-reader-hint">
-                  This PDF has no selectable text, so it may be a scan. You can read every page, but highlights need text.
-                </p>
-              ) : (
-                <p className="ac-hint ac-reader-hint">{hint}</p>
-              )}
+              <p className="ac-hint ac-reader-hint">
+                {doc.pdf.hasText
+                  ? hint
+                  : "This PDF has no selectable text, so it may be a scan. You can read every page, but highlights need text."}
+              </p>
               <div className="ac-pages" ref={stageRef}>
                 {drawing && <p className="ac-small ac-muted">Drawing page {pageNo}…</p>}
                 <div className="ac-stage" style={canvasSize ? { width: canvasSize.w, height: canvasSize.h } : undefined}>
@@ -654,23 +738,13 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
                       )),
                     )}
                   </div>
-                  <div
-                    className="ac-hit-layer"
-                    onPointerDown={onPointerDown}
-                    onPointerOver={onPointerOver}
-                    onPointerUp={onPointerUp}
-                  >
+                  <div className="ac-hit-layer" onPointerDown={onPointerDown} onPointerOver={onPointerOver} onPointerUp={onPointerUp}>
                     {items.map((w, i) => (
                       <div
                         key={i}
                         data-idx={i}
                         className={`ac-hit${inSel(i) ? " is-sel" : ""}`}
-                        style={{
-                          left: pct(w.left ?? 0),
-                          top: pct(w.top ?? 0),
-                          width: pct(w.width ?? 0),
-                          height: pct(w.height ?? 0),
-                        }}
+                        style={{ left: pct(w.left ?? 0), top: pct(w.top ?? 0), width: pct(w.width ?? 0), height: pct(w.height ?? 0) }}
                       />
                     ))}
                   </div>
@@ -682,12 +756,7 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
           {doc?.kind === "text" && (
             <>
               <p className="ac-hint ac-reader-hint">{hint}</p>
-              <div
-                className="ac-reader-body ac-no-callout"
-                onPointerDown={onPointerDown}
-                onPointerOver={onPointerOver}
-                onPointerUp={onPointerUp}
-              >
+              <div className="ac-reader-body ac-no-callout" onPointerDown={onPointerDown} onPointerOver={onPointerOver} onPointerUp={onPointerUp}>
                 {doc.tokens.length === 0 ? (
                   <p>This file is empty.</p>
                 ) : (
@@ -713,7 +782,6 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
           {sel && selText && (
             <SelectionBar
               count={selItems.length}
-              unit="word"
               preview={selText}
               name={nameDraft}
               onName={setNameDraft}
@@ -752,63 +820,87 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
 
             <div className="ac-tools-body">
               {panel === "ask" && (
-                <div className="ac-stack">
-                  <div className="ac-ask-context">
-                    <span className="ac-small ac-muted">Asking about</span>
-                    <strong>{current?.name ?? "this book"}</strong>
+                <div className="ac-chat">
+                  <div className="ac-chat-thread" ref={threadRef} aria-live="polite">
+                    {messages.length === 0 && (
+                      <div className="ac-chat-empty">
+                        <p className="ac-chat-empty-title">Ask about {current?.name ?? "this book"}</p>
+                        <p className="ac-small ac-muted">
+                          Type a question below. Stellun reads the part of the book that matches it. For a specific passage, select words and tap Ask Stellun.
+                        </p>
+                        {!hasBookText && (
+                          <p className="ac-error">This book has no readable text, so Stellun can only answer general questions about it.</p>
+                        )}
+                      </div>
+                    )}
+
+                    {messages.map((m) =>
+                      m.role === "user" ? (
+                        <div key={m.id} className="ac-msg ac-msg--user">
+                          <div className="ac-bubble ac-bubble--user">{m.text}</div>
+                          {m.passage && <span className="ac-msg-quote">About “{m.passage.length > 80 ? `${m.passage.slice(0, 80)}…` : m.passage}”</span>}
+                        </div>
+                      ) : (
+                        <div key={m.id} className="ac-msg ac-msg--bot">
+                          <span className="ac-avatar" aria-hidden="true">S</span>
+                          <div className="ac-bubble ac-bubble--bot">
+                            {m.status === "pending" ? (
+                              <Thinking label={hasBookText ? "Reading the book…" : "Thinking…"} />
+                            ) : m.status === "error" ? (
+                              <p className="ac-error" role="alert">{m.text}</p>
+                            ) : m.status === "streaming" && !m.text ? (
+                              <Thinking label="Writing…" />
+                            ) : (
+                              <AnswerText text={m.text} />
+                            )}
+                            {m.status === "done" && m.text && (
+                              <div className="ac-msg-actions">
+                                <button type="button" onClick={() => saveAnswerToNotes(m)}>Save to notes</button>
+                                {m.question && (
+                                  <button type="button" onClick={() => void send(m.question ?? "", m.passage ?? "")} disabled={busy}>
+                                    Ask again
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            {m.status === "error" && m.question && (
+                              <div className="ac-msg-actions">
+                                <button type="button" onClick={() => void send(m.question ?? "", m.passage ?? "")} disabled={busy}>
+                                  Try again
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ),
+                    )}
                   </div>
 
                   {passage && (
-                    <div className="ac-passage">
-                      <span className="ac-small ac-muted">Passage</span>
-                      <p>“{passage.length > 400 ? `${passage.slice(0, 400)}…` : passage}”</p>
-                      <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" style={{ marginTop: 8 }} onClick={() => setPassage("")}>
-                        Remove passage
-                      </button>
+                    <div className="ac-chat-quote">
+                      <span className="ac-small">About “{passage.length > 120 ? `${passage.slice(0, 120)}…` : passage}”</span>
+                      <button type="button" aria-label="Remove the passage" onClick={() => setPassage("")}>×</button>
                     </div>
                   )}
 
-                  <form className="ac-stack" style={{ gap: 8 }} onSubmit={submitQuestion}>
-                    <label className="ac-field">
-                      <span className="ac-sr-only">Your question</span>
-                      <textarea
-                        className="ac-textarea"
-                        rows={3}
-                        maxLength={600}
-                        value={draft}
-                        placeholder={passage ? "Ask about this passage…" : "Ask a question about this book…"}
-                        onChange={(e) => setDraft(e.target.value)}
-                      />
-                    </label>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button type="submit" className="ac-btn ac-btn--primary" disabled={!draft.trim() || ask.status === "loading"}>
-                        Ask Stellun
-                      </button>
-                      {ask.status === "loading" && (
-                        <button type="button" className="ac-btn ac-btn--ghost" onClick={stopAsk}>
-                          Stop
-                        </button>
-                      )}
-                    </div>
+                  <form className="ac-composer" onSubmit={submitQuestion}>
+                    <label className="ac-sr-only" htmlFor="reader-question">Your question about this book</label>
+                    <textarea
+                      id="reader-question"
+                      className="ac-composer-input"
+                      rows={1}
+                      maxLength={600}
+                      value={draft}
+                      placeholder={passage ? "Ask about this passage…" : "Ask about this book…"}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={onComposerKey}
+                    />
+                    {busy ? (
+                      <button type="button" className="ac-send ac-send--stop" onClick={stopAnswer} aria-label="Stop the answer">■</button>
+                    ) : (
+                      <button type="submit" className="ac-send" disabled={!draft.trim()} aria-label="Send question">↑</button>
+                    )}
                   </form>
-
-                  {ask.status === "error" && <p className="ac-error" role="alert">{ask.error}</p>}
-
-                  {ask.answer ? (
-                    <>
-                      <div className="ac-answer" aria-live="polite">{ask.answer}</div>
-                      {ask.status === "done" && (
-                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                          <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={saveAnswerToNotes}>Save to notes</button>
-                          <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => void runAsk(ask.question, ask.passage)}>Ask again</button>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    ask.status === "idle" && (
-                      <p className="ac-small ac-muted">Select words and choose Ask Stellun, or type a question above.</p>
-                    )
-                  )}
                 </div>
               )}
 
@@ -833,8 +925,8 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
                             }}
                           />
                           <span className="ac-small ac-muted">{h.page > 0 ? `Page ${h.page}` : "Text"}</span>
-                          <p style={{ margin: 0, fontSize: "0.92rem" }}>{h.text.length > 240 ? `${h.text.slice(0, 240)}…` : h.text}</p>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <p className="ac-hl-text">{h.text.length > 240 ? `${h.text.slice(0, 240)}…` : h.text}</p>
+                          <div className="ac-hl-actions">
                             {h.page > 0 && (
                               <button
                                 type="button"
@@ -847,14 +939,7 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
                                 Go to page
                               </button>
                             )}
-                            <button
-                              type="button"
-                              className="ac-btn ac-btn--ghost ac-btn--sm"
-                              onClick={() => {
-                                setPassage(h.text);
-                                void runAsk("Explain this in plain language.", h.text);
-                              }}
-                            >
+                            <button type="button" className="ac-btn ac-btn--ghost ac-btn--sm" onClick={() => { setPanel("ask"); void send("Explain this passage in plain language.", h.text); }}>
                               Ask Stellun
                             </button>
                             <button type="button" className="ac-btn ac-btn--danger ac-btn--sm" onClick={() => removeHighlight(h.id)}>
@@ -924,7 +1009,7 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
                   {total === 0 ? (
                     <p className="ac-muted">No checklist items yet.</p>
                   ) : (
-                    <ul className="ac-stack" style={{ gap: 2, listStyle: "none", margin: 0, padding: 0 }}>
+                    <ul className="ac-check-list">
                       {ws.checklist.map((item, index) => (
                         <li key={item.id}>
                           <button type="button" className="ac-check-row" aria-pressed={item.done} onClick={() => toggleChecklistItem(ws.id, item.id, index)}>
@@ -969,9 +1054,22 @@ function groupByPara(tokens: Token[]): { i: number; text: string }[][] {
   return groups;
 }
 
+/** The three-dot indicator used while Stellun is thinking (same idea as the site widget). */
+function Thinking({ label }: { label: string }) {
+  return (
+    <span className="ac-thinking" role="status">
+      <span className="ac-dots" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
 function SelectionBar({
   count,
-  unit,
   preview,
   name,
   onName,
@@ -982,7 +1080,6 @@ function SelectionBar({
   onClear,
 }: {
   count: number;
-  unit: string;
   preview: string;
   name: string;
   onName: (value: string) => void;
@@ -995,9 +1092,7 @@ function SelectionBar({
   return (
     <div className="ac-selbar" role="toolbar" aria-label="Selected text actions">
       <div className="ac-selbar-text">
-        <strong>
-          {count} {unit}{count === 1 ? "" : "s"} selected
-        </strong>
+        <strong>{count} word{count === 1 ? "" : "s"} selected</strong>
         <span className="ac-small ac-muted">“{preview.length > 90 ? `${preview.slice(0, 90)}…` : preview}”</span>
       </div>
       <div className="ac-selbar-side">
@@ -1051,7 +1146,7 @@ function FocusTimer() {
   return (
     <div className="ac-timer-card">
       <div className="ac-timer" aria-label={`Focus time left: ${mm} minutes ${ss} seconds`}>{mm}:{ss}</div>
-      <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+      <div className="ac-timer-actions">
         <button type="button" className="ac-btn ac-btn--primary ac-btn--sm" onClick={() => setRunning((r) => !r)}>
           {running ? "Pause" : secs === 0 ? "Done. Take a break" : "Start focus"}
         </button>
@@ -1059,7 +1154,7 @@ function FocusTimer() {
           Reset
         </button>
       </div>
-      <p className="ac-small">25 minutes of focus, then a short break.</p>
+      <p className="ac-small ac-muted">25 minutes of focus, then a short break.</p>
     </div>
   );
 }
