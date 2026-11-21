@@ -10,7 +10,17 @@
  * after a refresh.
  */
 
-import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import "./pdf-polyfills";
+
+let pdfWorker: Worker | null = null;
+
+/** One PDF worker per page load. It loads the compatibility fallback before pdf.js. */
+function getWorker(): Worker {
+  if (!pdfWorker) {
+    pdfWorker = new Worker(new URL("./pdf-worker-shim.ts", import.meta.url), { type: "module" });
+  }
+  return pdfWorker;
+}
 
 export type Box = { left: number; top: number; width: number; height: number };
 /** A word on the page. `line` groups words that sit on the same printed line. */
@@ -19,6 +29,8 @@ export type PdfWord = Box & { text: string; line: number };
 export type PdfDoc = {
   pageCount: number;
   pageWords: PdfWord[][];
+  /** Plain text of each page, one printed line per row. */
+  pageTexts: string[];
   hasText: boolean;
   render: (
     pageNo: number,
@@ -81,14 +93,32 @@ function buildWords(fragments: Fragment[], pageW: number, pageH: number): PdfWor
   return words;
 }
 
+/** Words grouped by printed line, joined into plain text. */
+function linesToText(words: PdfWord[]): string {
+  const lines: string[] = [];
+  let current = -1;
+  let buf: string[] = [];
+  for (const w of words) {
+    if (w.line !== current) {
+      if (buf.length) lines.push(buf.join(" "));
+      buf = [];
+      current = w.line;
+    }
+    buf.push(w.text);
+  }
+  if (buf.length) lines.push(buf.join(" "));
+  return lines.join("\n");
+}
+
 export async function openPdf(file: Blob): Promise<PdfDoc> {
   const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+  pdfjs.GlobalWorkerOptions.workerPort = getWorker();
 
   const data = new Uint8Array(await file.arrayBuffer());
   const doc = await pdfjs.getDocument({ data }).promise;
 
   const pageWords: PdfWord[][] = [];
+  const pageTexts: string[] = [];
   for (let n = 1; n <= doc.numPages; n++) {
     const page = await doc.getPage(n);
     const base = page.getViewport({ scale: 1 });
@@ -102,7 +132,9 @@ export async function openPdf(file: Blob): Promise<PdfDoc> {
       const w = typeof raw.width === "number" ? raw.width : 0;
       fragments.push({ text: raw.str, x, top: y - h, w, h });
     }
-    pageWords.push(buildWords(fragments, base.width, base.height));
+    const words = buildWords(fragments, base.width, base.height);
+    pageWords.push(words);
+    pageTexts.push(linesToText(words));
   }
 
   const totalChars = pageWords.reduce((n, words) => n + words.reduce((m, w) => m + w.text.length, 0), 0);
@@ -112,6 +144,7 @@ export async function openPdf(file: Blob): Promise<PdfDoc> {
   return {
     pageCount: doc.numPages,
     pageWords,
+    pageTexts,
     hasText: totalChars > 40,
 
     async render(pageNo, canvas, cssWidth) {

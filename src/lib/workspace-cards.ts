@@ -30,9 +30,9 @@ export type FocusTask = {
 };
 
 const FALLBACK_ART: Record<FlashCard["kind"], string> = {
-  concept: "book",
-  checklist: "checklist",
-  passage: "lightbulb",
+  concept: "earth",
+  checklist: "cockpit",
+  passage: "star-map",
 };
 
 export function buildDeck(

@@ -13,6 +13,8 @@ export type ReaderAskInput = {
   passage?: string | undefined;
   bookTitle?: string | undefined;
   workspaceTitle?: string | undefined;
+  /** Passages from the book chosen for this question (see book-context.ts). */
+  excerpt?: string | undefined;
   signal?: AbortSignal | undefined;
   onChunk: (text: string) => void;
 };
@@ -39,19 +41,28 @@ function buildPrompt(input: ReaderAskInput): string {
     context,
     task,
     `Question: ${input.question.trim().slice(0, MAX_QUESTION)}`,
-    "Use only the passage and the question. If the passage does not contain enough to answer, say so.",
+    "Answer from the book excerpt when one is given. If the excerpt does not contain the answer, say so.",
   ]
     .filter(Boolean)
     .join("\n\n");
 }
 
+/** Plain wording for every error the server can return. Raw codes are never shown. */
+const ERROR_COPY: Record<string, string> = {
+  unauthorized: "Sign in to ask Stellun.",
+  rate_limited: "Too many questions in a short time. Wait a moment, then try again.",
+  free_model_unavailable: "Stellun AI is offline until a free model is available.",
+  assistant_unavailable: "Stellun AI is temporarily unavailable. Try again shortly.",
+  bad_request: "That question could not be sent. Try again with a shorter question.",
+};
+
 function friendlyError(status: number, serverMessage?: string): string {
-  if (serverMessage) return serverMessage;
-  if (status === 401) return "Sign in to ask Stellun.";
-  if (status === 402 || status === 429) {
-    return "Stellun AI is busy right now. Wait a moment and try again.";
-  }
-  return "Stellun AI is unavailable right now. Try again shortly.";
+  if (serverMessage && !/^[a-z_]+$/.test(serverMessage)) return serverMessage;
+  if (serverMessage && ERROR_COPY[serverMessage]) return ERROR_COPY[serverMessage];
+  if (status === 401) return ERROR_COPY["unauthorized"]!;
+  if (status === 402 || status === 429) return ERROR_COPY["rate_limited"]!;
+  if (status === 503) return ERROR_COPY["assistant_unavailable"]!;
+  return "Stellun AI could not answer just now. Try again shortly.";
 }
 
 export async function askStellun(input: ReaderAskInput): Promise<string> {
@@ -74,6 +85,7 @@ export async function askStellun(input: ReaderAskInput): Promise<string> {
     body: JSON.stringify({
       mode: "explain",
       messages: [{ role: "user", content: prompt }],
+      book: input.excerpt ? { title: (input.bookTitle ?? "").slice(0, 200), excerpt: input.excerpt.slice(0, 9000) } : undefined,
     }),
     signal: input.signal ?? null,
   });

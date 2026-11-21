@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-export type BookKind = "pdf" | "text";
+export type BookKind = "pdf" | "text" | "docx" | "pptx";
 
 export type LibraryBook = {
   id: string;
