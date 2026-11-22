@@ -276,6 +276,7 @@ export const CATALOG: CatalogBook[] = [
     covers: ["Equations of motion for aircraft", "Longitudinal and lateral stability", "Handling qualities"],
     whoFor: "Engineers and students working on flight control.",
     studyTips: ["Linearise one case and check the mode frequencies.", "Relate each mode to what a pilot feels in the cockpit."],
+    isbn13: "9780471034186",
     related: ["phillips-mechanics-of-flight"],
   },
   {
@@ -406,6 +407,7 @@ export const CATALOG: CatalogBook[] = [
     covers: ["Stellar structure and evolution", "Galaxies", "Cosmology"],
     whoFor: "Astronomy and physics students moving beyond introductory courses.",
     studyTips: ["Estimate each quantity before you read its value.", "Use the problems to practise scaling arguments."],
+    isbn13: "9781108422161",
     related: ["birney-observational-astronomy", "sagan-cosmos"],
   },
   {
@@ -419,6 +421,7 @@ export const CATALOG: CatalogBook[] = [
     covers: ["Telescopes and detectors", "Photometry and imaging", "Spectroscopy and data reduction"],
     whoFor: "Students and amateurs who want to take and analyse their own data.",
     studyTips: ["Take a series of images of one object and reduce them yourself.", "Keep a log of the conditions for every session."],
+    isbn13: "9780521853705",
     related: ["carroll-ostlie-astrophysics", "consolmagno-turn-left-orion"],
   },
   {
