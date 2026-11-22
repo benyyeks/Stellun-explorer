@@ -45,12 +45,14 @@ import { Route as AuthenticatedAcademyProgressRouteImport } from './routes/_auth
 import { Route as AuthenticatedAcademyQuizRouteImport } from './routes/_authenticated/academy.quiz'
 import { Route as AuthenticatedAcademySettingsRouteImport } from './routes/_authenticated/academy.settings'
 import { Route as AuthenticatedAcademyShelfRouteImport } from './routes/_authenticated/academy.shelf'
+import { Route as AuthenticatedAcademyWorkspacesRouteImport } from './routes/_authenticated/academy.workspaces'
 import { Route as AuthenticatedDeepspaceIndexRouteImport } from './routes/_authenticated/deepspace.index'
 import { Route as AuthenticatedDeepspaceObjectIdRouteImport } from './routes/_authenticated/deepspace.$objectId'
 import { Route as AuthenticatedTrackerIndexRouteImport } from './routes/_authenticated/tracker.index'
 import { Route as AuthenticatedTrackerNoradIdRouteImport } from './routes/_authenticated/tracker.$noradId'
 import { Route as ApiPublicRefreshRouteImport } from './routes/api/public/refresh'
 import { Route as ApiPublicRefreshNewsRouteImport } from './routes/api/public/refresh-news'
+import { Route as AuthenticatedAcademyBooksBookIdRouteImport } from './routes/_authenticated/academy.books.$bookId'
 import { Route as AuthenticatedAcademyFlashcardsWorkspaceIdRouteImport } from './routes/_authenticated/academy.flashcards.$workspaceId'
 import { Route as AuthenticatedAcademyWorkspaceWorkspaceIdRouteImport } from './routes/_authenticated/academy.workspace.$workspaceId'
 
@@ -241,6 +243,12 @@ const AuthenticatedAcademyShelfRoute =
     path: '/shelf',
     getParentRoute: () => AuthenticatedAcademyRoute,
   } as any)
+const AuthenticatedAcademyWorkspacesRoute =
+  AuthenticatedAcademyWorkspacesRouteImport.update({
+    id: '/workspaces',
+    path: '/workspaces',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
 const AuthenticatedDeepspaceIndexRoute =
   AuthenticatedDeepspaceIndexRouteImport.update({
     id: '/',
@@ -275,6 +283,12 @@ const ApiPublicRefreshNewsRoute = ApiPublicRefreshNewsRouteImport.update({
   path: '/api/public/refresh-news',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAcademyBooksBookIdRoute =
+  AuthenticatedAcademyBooksBookIdRouteImport.update({
+    id: '/books/$bookId',
+    path: '/books/$bookId',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
 const AuthenticatedAcademyFlashcardsWorkspaceIdRoute =
   AuthenticatedAcademyFlashcardsWorkspaceIdRouteImport.update({
     id: '/flashcards/$workspaceId',
@@ -323,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/academy/quiz': typeof AuthenticatedAcademyQuizRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/academy/shelf': typeof AuthenticatedAcademyShelfRoute
+  '/academy/workspaces': typeof AuthenticatedAcademyWorkspacesRoute
   '/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
@@ -330,6 +345,7 @@ export interface FileRoutesByFullPath {
   '/academy/': typeof AuthenticatedAcademyIndexRoute
   '/deepspace/': typeof AuthenticatedDeepspaceIndexRoute
   '/tracker/': typeof AuthenticatedTrackerIndexRoute
+  '/academy/books/$bookId': typeof AuthenticatedAcademyBooksBookIdRoute
   '/academy/flashcards/$workspaceId': typeof AuthenticatedAcademyFlashcardsWorkspaceIdRoute
   '/academy/workspace/$workspaceId': typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
@@ -365,6 +381,7 @@ export interface FileRoutesByTo {
   '/academy/quiz': typeof AuthenticatedAcademyQuizRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/academy/shelf': typeof AuthenticatedAcademyShelfRoute
+  '/academy/workspaces': typeof AuthenticatedAcademyWorkspacesRoute
   '/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
@@ -372,6 +389,7 @@ export interface FileRoutesByTo {
   '/academy': typeof AuthenticatedAcademyIndexRoute
   '/deepspace': typeof AuthenticatedDeepspaceIndexRoute
   '/tracker': typeof AuthenticatedTrackerIndexRoute
+  '/academy/books/$bookId': typeof AuthenticatedAcademyBooksBookIdRoute
   '/academy/flashcards/$workspaceId': typeof AuthenticatedAcademyFlashcardsWorkspaceIdRoute
   '/academy/workspace/$workspaceId': typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
@@ -412,6 +430,7 @@ export interface FileRoutesById {
   '/_authenticated/academy/quiz': typeof AuthenticatedAcademyQuizRoute
   '/_authenticated/academy/settings': typeof AuthenticatedAcademySettingsRoute
   '/_authenticated/academy/shelf': typeof AuthenticatedAcademyShelfRoute
+  '/_authenticated/academy/workspaces': typeof AuthenticatedAcademyWorkspacesRoute
   '/_authenticated/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/_authenticated/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
@@ -419,6 +438,7 @@ export interface FileRoutesById {
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
   '/_authenticated/deepspace/': typeof AuthenticatedDeepspaceIndexRoute
   '/_authenticated/tracker/': typeof AuthenticatedTrackerIndexRoute
+  '/_authenticated/academy/books/$bookId': typeof AuthenticatedAcademyBooksBookIdRoute
   '/_authenticated/academy/flashcards/$workspaceId': typeof AuthenticatedAcademyFlashcardsWorkspaceIdRoute
   '/_authenticated/academy/workspace/$workspaceId': typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
@@ -459,6 +479,7 @@ export interface FileRouteTypes {
     | '/academy/quiz'
     | '/academy/settings'
     | '/academy/shelf'
+    | '/academy/workspaces'
     | '/deepspace/$objectId'
     | '/tracker/$noradId'
     | '/api/public/refresh'
@@ -466,6 +487,7 @@ export interface FileRouteTypes {
     | '/academy/'
     | '/deepspace/'
     | '/tracker/'
+    | '/academy/books/$bookId'
     | '/academy/flashcards/$workspaceId'
     | '/academy/workspace/$workspaceId'
   fileRoutesByTo: FileRoutesByTo
@@ -501,6 +523,7 @@ export interface FileRouteTypes {
     | '/academy/quiz'
     | '/academy/settings'
     | '/academy/shelf'
+    | '/academy/workspaces'
     | '/deepspace/$objectId'
     | '/tracker/$noradId'
     | '/api/public/refresh'
@@ -508,6 +531,7 @@ export interface FileRouteTypes {
     | '/academy'
     | '/deepspace'
     | '/tracker'
+    | '/academy/books/$bookId'
     | '/academy/flashcards/$workspaceId'
     | '/academy/workspace/$workspaceId'
   id:
@@ -547,6 +571,7 @@ export interface FileRouteTypes {
     | '/_authenticated/academy/quiz'
     | '/_authenticated/academy/settings'
     | '/_authenticated/academy/shelf'
+    | '/_authenticated/academy/workspaces'
     | '/_authenticated/deepspace/$objectId'
     | '/_authenticated/tracker/$noradId'
     | '/api/public/refresh'
@@ -554,6 +579,7 @@ export interface FileRouteTypes {
     | '/_authenticated/academy/'
     | '/_authenticated/deepspace/'
     | '/_authenticated/tracker/'
+    | '/_authenticated/academy/books/$bookId'
     | '/_authenticated/academy/flashcards/$workspaceId'
     | '/_authenticated/academy/workspace/$workspaceId'
   fileRoutesById: FileRoutesById
@@ -828,6 +854,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAcademyShelfRouteImport
       parentRoute: typeof AuthenticatedAcademyRoute
     }
+    '/_authenticated/academy/workspaces': {
+      id: '/_authenticated/academy/workspaces'
+      path: '/workspaces'
+      fullPath: '/academy/workspaces'
+      preLoaderRoute: typeof AuthenticatedAcademyWorkspacesRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
     '/_authenticated/deepspace/': {
       id: '/_authenticated/deepspace/'
       path: '/'
@@ -870,6 +903,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicRefreshNewsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/academy/books/$bookId': {
+      id: '/_authenticated/academy/books/$bookId'
+      path: '/books/$bookId'
+      fullPath: '/academy/books/$bookId'
+      preLoaderRoute: typeof AuthenticatedAcademyBooksBookIdRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
     '/_authenticated/academy/flashcards/$workspaceId': {
       id: '/_authenticated/academy/flashcards/$workspaceId'
       path: '/flashcards/$workspaceId'
@@ -894,7 +934,9 @@ interface AuthenticatedAcademyRouteChildren {
   AuthenticatedAcademyQuizRoute: typeof AuthenticatedAcademyQuizRoute
   AuthenticatedAcademySettingsRoute: typeof AuthenticatedAcademySettingsRoute
   AuthenticatedAcademyShelfRoute: typeof AuthenticatedAcademyShelfRoute
+  AuthenticatedAcademyWorkspacesRoute: typeof AuthenticatedAcademyWorkspacesRoute
   AuthenticatedAcademyIndexRoute: typeof AuthenticatedAcademyIndexRoute
+  AuthenticatedAcademyBooksBookIdRoute: typeof AuthenticatedAcademyBooksBookIdRoute
   AuthenticatedAcademyFlashcardsWorkspaceIdRoute: typeof AuthenticatedAcademyFlashcardsWorkspaceIdRoute
   AuthenticatedAcademyWorkspaceWorkspaceIdRoute: typeof AuthenticatedAcademyWorkspaceWorkspaceIdRoute
 }
@@ -906,7 +948,9 @@ const AuthenticatedAcademyRouteChildren: AuthenticatedAcademyRouteChildren = {
   AuthenticatedAcademyQuizRoute: AuthenticatedAcademyQuizRoute,
   AuthenticatedAcademySettingsRoute: AuthenticatedAcademySettingsRoute,
   AuthenticatedAcademyShelfRoute: AuthenticatedAcademyShelfRoute,
+  AuthenticatedAcademyWorkspacesRoute: AuthenticatedAcademyWorkspacesRoute,
   AuthenticatedAcademyIndexRoute: AuthenticatedAcademyIndexRoute,
+  AuthenticatedAcademyBooksBookIdRoute: AuthenticatedAcademyBooksBookIdRoute,
   AuthenticatedAcademyFlashcardsWorkspaceIdRoute:
     AuthenticatedAcademyFlashcardsWorkspaceIdRoute,
   AuthenticatedAcademyWorkspaceWorkspaceIdRoute:
