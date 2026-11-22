@@ -8,9 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
  * Site header — primary navigation for STELLUN.
  *
  * Large screens (≥1040px):
- *   - Pillar dropdowns for Mission Control, Planetary Data, Operations
- *   - Academy is a single link (no dropdown) → /academy
- *   - Settings is a standalone link → /settings
+ *   - Home, pillar dropdowns, Academy, and signed-in account links
  *   - Menu (hamburger) is hidden; only desktop nav shows
  *
  * Small screens:
@@ -169,6 +167,9 @@ export function SiteHeader() {
 
           {/* Desktop primary nav — visible only ≥1040px via CSS */}
           <nav className="nav-desktop" aria-label="Primary">
+            <Link to="/" aria-current={pathname === "/" ? "page" : undefined}>
+              Home
+            </Link>
             {PILLARS.map((pillar) => {
               const isOpen = openPillar === pillar.id;
               const hasActive = pillar.links.some((l) => isMatch(pathname, l.to));
@@ -216,7 +217,7 @@ export function SiteHeader() {
                 The Academy
               </Link>
             ) : (
-              <Link to="/auth" search={{ redirect: "/academy" }}>
+              <Link to="/auth" search={{ redirect: "/academy" }} aria-current={academyActive ? "page" : undefined}>
                 The Academy
               </Link>
             )}
