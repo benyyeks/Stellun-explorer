@@ -85,7 +85,7 @@ export const BOOKS: Book[] = [
     id: "huzel-huang-rocket-engines",
     title: "Modern Engineering for Design of Liquid-Propellant Rocket Engines",
     authors: "Huzel and Huang",
-    note: "the NASA engine design handbook, published as SP-125 and",
+    note: "the NASA engine design handbook, published as SP-125.",
     topic: "propulsion",
     isbn13: "9781563470134",
     freeUrl: "https://ntrs.nasa.gov/citations/19710019929",

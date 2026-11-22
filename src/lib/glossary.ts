@@ -5,6 +5,8 @@
 // Elements). Numeric values are the conventional textbook figures and are
 // labelled as approximate where they vary by source.
 
+import { EXTRA_GLOSSARY } from "./glossary-extra";
+
 export type GlossaryCategory =
   | "orbits"
   | "keplerian"
@@ -15,7 +17,16 @@ export type GlossaryCategory =
   | "launch"
   | "environment"
   | "operations"
-  | "aviation";
+  | "aviation"
+  | "stars-galaxies"
+  | "solar-system"
+  | "observing"
+  | "celestial"
+  | "mathematics"
+  | "physics"
+  | "engineering";
+
+export type GlossaryTrack = "aviation" | "astronomy" | "aerospace" | "stem";
 
 export type GlossaryEntry = {
   term: string;
@@ -27,7 +38,7 @@ export type GlossaryEntry = {
   aka?: string[];
 };
 
-export const GLOSSARY_CATEGORIES: { id: GlossaryCategory; label: string; blurb: string }[] = [
+const BASE_CATEGORIES: { id: GlossaryCategory; label: string; blurb: string }[] = [
   {
     id: "orbits",
     label: "Orbits and regimes",
@@ -80,7 +91,48 @@ export const GLOSSARY_CATEGORIES: { id: GlossaryCategory; label: string; blurb: 
   },
 ];
 
-export const GLOSSARY: GlossaryEntry[] = [
+/** Categories added for the astronomy and STEM sections. */
+const NEW_CATEGORIES: { id: GlossaryCategory; label: string; blurb: string }[] = [
+  { id: "stars-galaxies", label: "Stars and galaxies", blurb: "How stars shine, change, and die, and the structures they build." },
+  { id: "solar-system", label: "Solar system and planets", blurb: "The planets, small bodies, and the search for planets around other stars." },
+  { id: "observing", label: "Telescopes and observing", blurb: "How telescopes collect and sharpen light, and the methods used to read it." },
+  { id: "celestial", label: "Sky coordinates and time", blurb: "How positions and times on the celestial sphere are described." },
+  { id: "mathematics", label: "Mathematics", blurb: "The mathematical language used in every quantitative track." },
+  { id: "physics", label: "Physics", blurb: "The laws of motion, energy, radiation, and fluids behind flight and orbits." },
+  { id: "engineering", label: "Engineering method", blurb: "How structures, systems, and missions are designed, tested, and kept safe." },
+];
+
+export const GLOSSARY_CATEGORIES = [...BASE_CATEGORIES, ...NEW_CATEGORIES];
+
+export const GLOSSARY_TRACKS: { id: GlossaryTrack; label: string; blurb: string }[] = [
+  { id: "aviation", label: "Aviation", blurb: "How aircraft fly: lift, stability, control, performance, and the instruments that report it." },
+  { id: "astronomy", label: "Astronomy", blurb: "Stars, galaxies, planets, the instruments we observe with, and how positions in the sky are described." },
+  { id: "aerospace", label: "Aerospace", blurb: "Spacecraft, orbits, launch, propulsion, and the operations that keep missions running." },
+  { id: "stem", label: "STEM foundations", blurb: "The mathematics, physics, and engineering method that every track depends on." },
+];
+
+/** Which section each category belongs to. */
+export const CATEGORY_TRACK: Record<GlossaryCategory, GlossaryTrack> = {
+  aviation: "aviation",
+  orbits: "aerospace",
+  keplerian: "aerospace",
+  maneuvers: "aerospace",
+  propulsion: "aerospace",
+  bus: "aerospace",
+  comms: "aerospace",
+  launch: "aerospace",
+  environment: "aerospace",
+  operations: "aerospace",
+  "stars-galaxies": "astronomy",
+  "solar-system": "astronomy",
+  observing: "astronomy",
+  celestial: "astronomy",
+  mathematics: "stem",
+  physics: "stem",
+  engineering: "stem",
+};
+
+const BASE_GLOSSARY: GlossaryEntry[] = [
   // ---------------------------------------------------------------- orbits
   {
     term: "Low Earth Orbit",
@@ -1501,6 +1553,8 @@ export const GLOSSARY: GlossaryEntry[] = [
       "Returning Falcon 9 boosters and the Space Shuttle produced audible double booms near landing sites.",
   },
 ];
+
+export const GLOSSARY: GlossaryEntry[] = [...BASE_GLOSSARY, ...EXTRA_GLOSSARY];
 
 export function glossaryCategoryLabel(id: GlossaryCategory): string {
   return GLOSSARY_CATEGORIES.find((c) => c.id === id)?.label ?? "Reference";
