@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -186,6 +187,8 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   const [busy, setBusy] = useState(false);
   const [passage, setPassage] = useState("");
   const [draft, setDraft] = useState("");
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [bar, setBar] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -277,7 +280,7 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   useEffect(() => {
     if (!doc || doc.kind !== "pdf" || !canvasRef.current) return;
     let alive = true;
-    const width = Math.min(stageRef.current?.clientWidth || 680, 980) * zoom;
+    const width = Math.min(Math.max(240, (stageRef.current?.clientWidth || 680) - 24), 980) * zoom;
     setDrawing(true);
     doc.pdf
       .render(pageNo, canvasRef.current, Math.max(240, Math.floor(width)))
@@ -378,6 +381,30 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
   const selText = selItems.map((i) => i.text).join(" ");
   const selRects = doc?.kind === "pdf" ? mergeRects(selItems) : [];
   const inSel = (i: number) => (range ? i >= range[0] && i <= range[1] : false);
+
+  const selFirst = range ? range[0] : -1;
+  const selLast = range ? range[1] : -1;
+  useLayoutEffect(() => {
+    const section = sectionRef.current;
+    if (!sel || !section || selFirst < 0) {
+      setBar(null);
+      return;
+    }
+    const first = section.querySelector<HTMLElement>(`[data-idx="${selFirst}"]`);
+    const last = section.querySelector<HTMLElement>(`[data-idx="${selLast}"]`);
+    if (!first || !last) {
+      setBar(null);
+      return;
+    }
+    const box = section.getBoundingClientRect();
+    const f = first.getBoundingClientRect();
+    const l = last.getBoundingClientRect();
+    const width = Math.min(340, box.width - 16);
+    let top = f.top - box.top - 52;
+    if (top < 6) top = l.bottom - box.top + 10;
+    const left = Math.max(8, Math.min(f.left - box.left, box.width - width - 8));
+    setBar({ top, left, width });
+  }, [sel, selFirst, selLast, canvasSize, pageNo, zoom, doc]);
 
   const pageHighlights = doc?.kind === "pdf" ? highlights.filter((h) => h.page === pageNo) : [];
   const textHighlighted = useMemo(() => {
@@ -605,7 +632,7 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
       </header>
 
       <div className="ac-split" data-panel={doc && panelOpen ? "open" : "closed"}>
-        <section className="ac-reader" aria-label="Reading area">
+        <section className="ac-reader" aria-label="Reading area" ref={sectionRef}>
           <div className="ac-shelfbar" role="list" aria-label="Books in this workspace">
             {library.books.map((b) => (
               <div key={b.id} role="listitem" className={`ac-bookchip${b.id === bookId ? " is-open" : ""}`}>
@@ -779,10 +806,10 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
             </>
           )}
 
-          {sel && selText && (
-            <SelectionBar
+          {sel && selText && bar && (
+            <FloatingBar
+              style={{ top: bar.top, left: bar.left, width: bar.width }}
               count={selItems.length}
-              preview={selText}
               name={nameDraft}
               onName={setNameDraft}
               onAsk={askSelection}
@@ -1068,9 +1095,10 @@ function Thinking({ label }: { label: string }) {
   );
 }
 
-function SelectionBar({
+/** Compact toolbar that floats just above the selected words, like the browser's copy bar. */
+function FloatingBar({
+  style,
   count,
-  preview,
   name,
   onName,
   onAsk,
@@ -1079,8 +1107,8 @@ function SelectionBar({
   onCopy,
   onClear,
 }: {
+  style: { top: number; left: number; width: number };
   count: number;
-  preview: string;
   name: string;
   onName: (value: string) => void;
   onAsk: () => void;
@@ -1089,23 +1117,12 @@ function SelectionBar({
   onCopy: () => void;
   onClear: () => void;
 }): ReactNode {
+  const [nameOpen, setNameOpen] = useState(false);
   return (
-    <div className="ac-selbar" role="toolbar" aria-label="Selected text actions">
-      <div className="ac-selbar-text">
-        <strong>{count} word{count === 1 ? "" : "s"} selected</strong>
-        <span className="ac-small ac-muted">“{preview.length > 90 ? `${preview.slice(0, 90)}…` : preview}”</span>
-      </div>
-      <div className="ac-selbar-side">
-        <input
-          className="ac-input ac-selbar-name"
-          value={name}
-          maxLength={60}
-          placeholder="Name this highlight (optional)"
-          aria-label="Name this highlight"
-          onChange={(e) => onName(e.target.value)}
-        />
-        <div className="ac-selbar-actions">
-          <button type="button" className="ac-selbar-primary" onClick={onAsk}>Ask Stellun</button>
+    <div className="ac-pop" role="toolbar" aria-label="Selected text actions" style={style}>
+      <div className="ac-pop-row">
+        <button type="button" className="ac-pop-ask" onClick={onAsk}>Ask</button>
+        <span className="ac-pop-colours">
           {COLORS.map((c) => (
             <button
               key={c.id}
@@ -1116,11 +1133,25 @@ function SelectionBar({
               onClick={() => onHighlight(c.id)}
             />
           ))}
-          <button type="button" onClick={onNote}>Note</button>
-          <button type="button" onClick={onCopy}>Copy</button>
-          <button type="button" aria-label="Clear selection" onClick={onClear}>×</button>
-        </div>
+        </span>
+        <button type="button" className="ac-pop-btn" aria-expanded={nameOpen} onClick={() => setNameOpen((o) => !o)}>
+          Name
+        </button>
+        <button type="button" className="ac-pop-btn" onClick={onNote}>Note</button>
+        <button type="button" className="ac-pop-btn" onClick={onCopy}>Copy</button>
+        <button type="button" className="ac-pop-close" aria-label="Clear selection" onClick={onClear}>×</button>
       </div>
+      {nameOpen && (
+        <input
+          className="ac-input ac-pop-name"
+          value={name}
+          maxLength={60}
+          placeholder={`Name this highlight (${count} word${count === 1 ? "" : "s"})`}
+          aria-label="Name this highlight"
+          autoFocus
+          onChange={(e) => onName(e.target.value)}
+        />
+      )}
     </div>
   );
 }

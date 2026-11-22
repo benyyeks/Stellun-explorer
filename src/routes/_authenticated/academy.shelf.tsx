@@ -1,29 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { BOOKS, BOOK_TOPICS, bookCoverUrl, type Book } from "@/lib/books";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useEffect, useMemo, useState } from "react";
+import { BOOK_TOPICS } from "@/lib/books";
+import { useAcademyContent, type ShelfBook } from "@/lib/academy-content";
 
 /**
  * Book shelf
  * ----------
- * The reference books chosen for each topic. The shelf shows covers and titles.
- * Tapping a book opens its details in a centred dialog.
+ * Reference books for each topic. Covers and titles only. Tapping a book opens
+ * its details in the same card style as the competitions, so both feel alike.
  */
 
 export const Route = createFileRoute("/_authenticated/academy/shelf")({
   head: () => ({
     meta: [
       { title: "Book shelf · STELLUN Academy" },
-      {
-        name: "description",
-        content: "Reference books for aerospace, astronomy, and aviation, with details for each.",
-      },
+      { name: "description", content: "Reference books for aerospace, astronomy, aviation, and STEM, with details for each." },
     ],
   }),
   component: BookShelfPage,
@@ -33,20 +24,36 @@ const topicLabel = (id: string) => BOOK_TOPICS.find((t) => t.id === id)?.label ?
 const topicSub = (id: string) => BOOK_TOPICS.find((t) => t.id === id)?.sub ?? "";
 
 function BookShelfPage() {
+  const content = useAcademyContent();
+  const books = content.books;
   const [topic, setTopic] = useState("all");
   const [query, setQuery] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return BOOKS.filter((b) => {
+    return books.filter((b) => {
       if (topic !== "all" && b.topic !== topic) return false;
       if (!q) return true;
       return `${b.title} ${b.authors} ${b.note} ${topicLabel(b.topic)}`.toLowerCase().includes(q);
     });
-  }, [topic, query]);
+  }, [books, topic, query]);
 
-  const open: Book | null = BOOKS.find((b) => b.id === openId) ?? null;
+  const open: ShelfBook | null = books.find((b) => b.id === openId) ?? null;
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenId(null);
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   return (
     <div className="ac-page">
@@ -54,12 +61,10 @@ function BookShelfPage() {
         <div className="ac-hero-copy">
           <span className="ac-kicker">Academy</span>
           <h1 className="ac-title">Book shelf</h1>
-          <p className="ac-hero-sub">
-            Reference books chosen for each topic. Tap a book to see its details.
-          </p>
+          <p className="ac-hero-sub">Reference books chosen for each topic. Tap a book to see its details.</p>
         </div>
         <div className="ac-hero-meta">
-          <span className="ac-chip-static">{BOOKS.length} books</span>
+          <span className="ac-chip-static">{books.length} books</span>
           <span className="ac-chip-static">{BOOK_TOPICS.length} topics</span>
         </div>
       </header>
@@ -70,13 +75,7 @@ function BookShelfPage() {
             All topics
           </button>
           {BOOK_TOPICS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className="shelf-chip"
-              aria-pressed={topic === t.id}
-              onClick={() => setTopic(t.id)}
-            >
+            <button key={t.id} type="button" className="shelf-chip" aria-pressed={topic === t.id} onClick={() => setTopic(t.id)}>
               {t.label}
             </button>
           ))}
@@ -101,16 +100,11 @@ function BookShelfPage() {
         <ul className="shelf-grid">
           {list.map((b) => (
             <li key={b.id}>
-              <button
-                type="button"
-                className="shelf-book"
-                onClick={() => setOpenId(b.id)}
-                aria-label={`${b.title}. Show details`}
-              >
+              <button type="button" className="shelf-book" onClick={() => setOpenId(b.id)} aria-label={`${b.title}. Show details`}>
                 <span className="shelf-cover">
                   <span className="shelf-cover-fallback">{b.title}</span>
                   <img
-                    src={bookCoverUrl(b.isbn13)}
+                    src={b.cover}
                     alt=""
                     loading="lazy"
                     onError={(e) => {
@@ -125,63 +119,61 @@ function BookShelfPage() {
         </ul>
       )}
 
-      <Dialog open={open !== null} onOpenChange={(next) => !next && setOpenId(null)}>
-        <DialogContent className="shelf-dialog">
-          {open && (
-            <>
-              <DialogHeader>
-                <DialogTitle>{open.title}</DialogTitle>
-                <DialogDescription>{open.authors}</DialogDescription>
-              </DialogHeader>
-
-              <div className="shelf-detail">
-                <div className="shelf-detail-cover">
-                  <span className="shelf-cover">
-                    <span className="shelf-cover-fallback">{open.title}</span>
-                    <img
-                      src={bookCoverUrl(open.isbn13)}
-                      alt={`Cover of ${open.title}`}
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  </span>
-                </div>
-
-                <dl className="shelf-facts">
-                  <div>
-                    <dt>Topic</dt>
-                    <dd>{topicLabel(open.topic)}</dd>
-                  </div>
-                  <div>
-                    <dt>About the topic</dt>
-                    <dd>{topicSub(open.topic)}</dd>
-                  </div>
-                  <div>
-                    <dt>Why it is on the shelf</dt>
-                    <dd>{open.note}</dd>
-                  </div>
-                  <div>
-                    <dt>ISBN-13</dt>
-                    <dd className="shelf-isbn">{open.isbn13}</dd>
-                  </div>
-                </dl>
-
-                <div className="shelf-actions">
-                  {open.freeUrl && (
-                    <a className="ac-btn ac-btn--ghost" href={open.freeUrl} target="_blank" rel="noreferrer">
-                      {open.freeLabel ?? "Free version"}
-                    </a>
-                  )}
-                  <Link to="/academy/desk" className="ac-btn ac-btn--primary">
-                    Open Study desk
-                  </Link>
-                </div>
+      {open && (
+        <div className="comp-modal-backdrop" role="presentation" onClick={() => setOpenId(null)}>
+          <div
+            className="glass glass-card comp-modal shelf-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="shelf-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button type="button" className="comp-modal-close" onClick={() => setOpenId(null)} aria-label="Close">
+              ×
+            </button>
+            <div className="comp-modal-hero shelf-modal-hero">
+              <span className="shelf-modal-fallback">{open.title}</span>
+              <img
+                src={open.cover}
+                alt={`Cover of ${open.title}`}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+            <div className="comp-modal-body">
+              <span className="badge badge-accent">{topicLabel(open.topic)}</span>
+              <h2 id="shelf-modal-title">{open.title}</h2>
+              <p className="competition-org">{open.authors}</p>
+              <p className="comp-modal-desc">{open.note}</p>
+              <dl className="comp-meta">
+                <dt>About this topic</dt>
+                <dd>{topicSub(open.topic)}</dd>
+                <dt>ISBN-13</dt>
+                <dd className="shelf-isbn">{open.isbn13}</dd>
+                {open.freeUrl ? (
+                  <>
+                    <dt>Free version</dt>
+                    <dd>
+                      <a href={open.freeUrl} target="_blank" rel="noopener noreferrer">
+                        {open.freeLabel ?? "Open the free version"}
+                      </a>
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
+              <div className="shelf-modal-actions">
+                <Link to="/academy/desk" className="btn btn-primary">
+                  Start a workspace with this book
+                </Link>
+                <button type="button" className="btn" onClick={() => setOpenId(null)}>
+                  Close
+                </button>
               </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
