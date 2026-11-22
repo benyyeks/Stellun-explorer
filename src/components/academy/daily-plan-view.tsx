@@ -163,7 +163,9 @@ function HomeworkSection({
   }, [answersKey, answers]);
 
   const add = () => {
+    // Due date from the size of the assignment: one part per day of work, up to three days.
     const due = new Date();
+    due.setDate(due.getDate() + Math.min(3, Math.max(1, hw.parts.length - 1)) - 1);
     due.setHours(23, 59, 0, 0);
     addHomework({
       title: hw.title,
