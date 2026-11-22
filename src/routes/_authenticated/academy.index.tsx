@@ -48,27 +48,27 @@ const MODULES: {
 }[] = [
   {
     trackId: "astronomy",
-    title: "Introduction to astronomy",
+    title: "Introduction to Astronomy",
     kind: "Astronomy",
-    defaultTitle: "Astronomy · foundations",
+    defaultTitle: "Introduction to Astronomy",
   },
   {
     trackId: "aerospace",
-    title: "Aerospace engineering",
+    title: "Introduction to Aerospace",
     kind: "Aerospace",
-    defaultTitle: "Aerospace · foundations",
+    defaultTitle: "Introduction to Aerospace",
   },
   {
     trackId: "aviation",
-    title: "Aviation mechanics",
+    title: "Introduction to Aviation",
     kind: "Aviation",
-    defaultTitle: "Aviation · foundations",
+    defaultTitle: "Introduction to Aviation",
   },
   {
     trackId: "stem",
-    title: "STEM foundations",
+    title: "Introduction to STEM",
     kind: "STEM",
-    defaultTitle: "STEM · foundations",
+    defaultTitle: "Introduction to STEM",
   },
 ];
 
@@ -154,7 +154,7 @@ function AcademyDashboard() {
   const greetingTitle = isFirstTime ? "Welcome to STELLUN Academy" : "Welcome back";
   const greetingSub = latest
     ? `Pick up where you stopped in ${latest.title || "your latest workspace"}.`
-    : "Explore the Astronomy, Aerospace, Aviation, and STEM tracks. Open a course to start a workspace with a study plan.";
+    : "Explore the Astronomy, Aerospace, Aviation, and STEM tracks. Open an introduction to start a workspace with a study plan.";
 
   const openTrack = (trackId: AcademyTrackId, defaultTitle: string) => {
     const existing = findTrackWorkspace(workspaces, trackId);
@@ -250,7 +250,7 @@ function AcademyDashboard() {
             <span className="ac-small ac-muted">No workspace yet</span>
             <p className="ac-continue-title">Start with a course</p>
             <p className="ac-small ac-muted">
-              Each course opens a workspace with a study plan and a checklist.
+              Each introduction opens a workspace with a study plan and a checklist.
             </p>
           </div>
         )}
@@ -259,7 +259,7 @@ function AcademyDashboard() {
       <section aria-labelledby="courses-h">
         <div className="ac-section-head">
           <h2 id="courses-h" className="ac-h2">
-            Your courses
+            Introductions to each track
           </h2>
           <Link to="/academy/desk" className="ac-link">
             All in Study desk

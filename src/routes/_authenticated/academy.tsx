@@ -31,8 +31,8 @@ export const Route = createFileRoute("/_authenticated/academy")({
 
 const NAV = [
   { to: "/academy", label: "Dashboard", end: true },
-  { to: "/academy/workspaces", label: "Workspaces", end: false },
   { to: "/academy/desk", label: "Study desk", end: false },
+  { to: "/academy/workspaces", label: "Workspaces", end: false },
   { to: "/academy/shelf", label: "Book shelf", end: false },
   { to: "/academy/practice", label: "Practice", end: false },
   { to: "/academy/progress", label: "Your progress", end: false },

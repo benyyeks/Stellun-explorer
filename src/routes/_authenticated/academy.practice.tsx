@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useStudyWorkspaces } from "@/lib/study-workspace";
 import { useAcademyContent } from "@/lib/academy-content";
 import { CATEGORY_TRACK, GLOSSARY_TRACKS, type GlossaryTrack } from "@/lib/glossary";
@@ -126,12 +126,23 @@ const PENALTY_KINDS: { id: Penalty["kind"]; label: string }[] = [
   { id: "none", label: "No late penalty" },
 ];
 
+type TaskSize = "quick" | "set" | "long";
+const TASK_DAYS: Record<TaskSize, number> = { quick: 1, set: 3, long: 7 };
+
+/** Due at 23:59 on the day the task's size allows. The learner does not pick the date. */
+export function dueFromSize(size: TaskSize, from: Date = new Date()): string {
+  const d = new Date(from);
+  d.setDate(d.getDate() + TASK_DAYS[size] - 1);
+  d.setHours(23, 59, 0, 0);
+  return d.toISOString();
+}
+
 function HomeworkPanel() {
   const hw = useHomework();
   const { defaults, remember } = usePenaltyDefaults();
   const [title, setTitle] = useState("");
   const [track, setTrack] = useState<GlossaryTrack>("aerospace");
-  const [dueAt, setDueAt] = useState("");
+  const [size, setSize] = useState<TaskSize>("set");
   const [maxPoints, setMaxPoints] = useState("100");
 
   const [kind, setKind] = useState<Penalty["kind"]>("percent");
@@ -198,7 +209,6 @@ function HomeworkPanel() {
   const add = () => {
     setError("");
     if (!title.trim()) return setError("Give the homework a title.");
-    if (!dueAt) return setError("Choose a due date and time.");
     const points = Number(maxPoints);
     if (!(points > 0)) return setError("Maximum points must be above zero.");
     const built = buildPenalty();
@@ -209,13 +219,13 @@ function HomeworkPanel() {
     hw.add({
       title: title.trim().slice(0, 120),
       track,
-      dueAt: new Date(dueAt).toISOString(),
+      dueAt: dueFromSize(size),
       maxPoints: points,
       penalty: built.penalty,
     });
     if (rememberSection) remember(track, built.penalty);
     setTitle("");
-    setDueAt("");
+
   };
 
   const saveGrade = (h: Homework) => {
@@ -258,8 +268,12 @@ function HomeworkPanel() {
             </select>
           </label>
           <label className="pr-field">
-            <span className="ac-label">Due</span>
-            <input className="ac-input" type="datetime-local" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+            <span className="ac-label">Task size</span>
+            <select className="ac-input" value={size} onChange={(e) => setSize(e.target.value as TaskSize)}>
+              <option value="quick">Quick check · due in 1 day</option>
+              <option value="set">Problem set · due in 3 days</option>
+              <option value="long">Long assignment · due in 7 days</option>
+            </select>
           </label>
           <label className="pr-field">
             <span className="ac-label">Maximum points</span>
@@ -602,105 +616,197 @@ function WordMatch() {
 
 // ------------------------------------------------------------------ puzzle
 
-const NEIGHBOURS = (i: number) => {
-  const r = Math.floor(i / 3);
-  const c = i % 3;
+type PuzzleLevel = { id: "easy" | "medium" | "hard"; label: string; size: number; steps: number };
+const PUZZLE_LEVELS: PuzzleLevel[] = [
+  { id: "easy", label: "Easy · 3 × 3", size: 3, steps: 120 },
+  { id: "medium", label: "Medium · 4 × 4", size: 4, steps: 300 },
+  { id: "hard", label: "Hard · 5 × 5", size: 5, steps: 600 },
+];
+
+const neighbours = (n: number, i: number): number[] => {
+  const r = Math.floor(i / n);
+  const c = i % n;
   const out: number[] = [];
-  if (r > 0) out.push(i - 3);
-  if (r < 2) out.push(i + 3);
+  if (r > 0) out.push(i - n);
+  if (r < n - 1) out.push(i + n);
   if (c > 0) out.push(i - 1);
-  if (c < 2) out.push(i + 1);
+  if (c < n - 1) out.push(i + 1);
   return out;
 };
 
-function scrambled(): number[] {
-  const board = [1, 2, 3, 4, 5, 6, 7, 8, 0];
-  let blank = 8;
+/** A solvable starting board: the solved board, shuffled by legal slides of the space. */
+function scrambled(n: number, steps: number): number[] {
+  const board = Array.from({ length: n * n }, (_, i) => (i + 1) % (n * n));
+  let blank = n * n - 1;
   let prev = -1;
-  for (let k = 0; k < 160; k++) {
-    const options = NEIGHBOURS(blank).filter((n) => n !== prev);
-    const n = options[Math.floor(Math.random() * options.length)]!;
-    board[blank] = board[n]!;
-    board[n] = 0;
+  for (let k = 0; k < steps; k++) {
+    const options = neighbours(n, blank).filter((x) => x !== prev);
+    const pick = options[Math.floor(Math.random() * options.length)]!;
+    board[blank] = board[pick]!;
+    board[pick] = 0;
     prev = blank;
-    blank = n;
+    blank = pick;
   }
   return board;
 }
 
-/** The day's picture. A new picture each day, not one shown before until the library is used up. */
+const isSolved = (board: number[], n: number) => board.every((v, i) => v === (i + 1) % (n * n));
+
+/**
+ * Slides the tile at `from` one cell toward the empty space at `blank`. This needs the tile
+ * to be in the same row or column as the space. Tiles between them move along with it.
+ */
+function slideLine(board: number[], n: number, from: number, blank: number): number[] | null {
+  const sameRow = Math.floor(from / n) === Math.floor(blank / n);
+  const sameCol = from % n === blank % n;
+  if (from === blank || (!sameRow && !sameCol)) return null;
+  const step = sameRow ? Math.sign(blank - from) : Math.sign(blank - from) * n;
+  const next = [...board];
+  for (let idx = blank; idx !== from; idx -= step) next[idx] = board[idx - step]!;
+  next[from] = 0;
+  return next;
+}
+
+type Drag = { from: number; axis: "x" | "y"; sign: number; start: number; offset: number; cell: number; pointer: number };
+
+/**
+ * The day's picture as a sliding puzzle. Drag any tile that is in line with the empty space.
+ * It moves toward the space and stays inside the board. Let go past halfway to make the move.
+ */
 function PicturePuzzle() {
   const content = useAcademyContent();
   const pictures = content.pictures;
   const [picture, setPicture] = useState<PictureEntry | null>(null);
   const [note, setNote] = useState("");
-  const [board, setBoard] = useState<number[]>(() => scrambled());
-  const [moves, setMoves] = useState(0);
+  const [level, setLevel] = useState<PuzzleLevel>(PUZZLE_LEVELS[0]!);
+  const [board, setBoard] = useState<number[]>(() => scrambled(3, 120));
+  const [drag, setDrag] = useState<Drag | null>(null);
+  // The live drag and board are also kept in refs, so a release always sees the latest values.
+  const dragRef = useRef<Drag | null>(null);
+  const boardRef = useRef<number[]>(board);
+  boardRef.current = board;
+  const n = level.size;
+  const solved = isSolved(board, n);
 
   useEffect(() => {
     setPicture(dailyPick("puzzle", pictures, (p) => p.src, 1).items[0] ?? null);
     setNote("");
-    setBoard(scrambled());
-    setMoves(0);
   }, [pictures]);
 
-  const solved = board.every((v, i) => v === (i + 1) % 9);
+  useEffect(() => {
+    setBoard(scrambled(level.size, level.steps));
+    setDrag(null);
+  }, [level]);
 
-  const move = (index: number) => {
+  const onDown = (e: ReactPointerEvent<HTMLDivElement>, index: number) => {
     if (solved) return;
     const blank = board.indexOf(0);
-    if (!NEIGHBOURS(blank).includes(index)) return;
-    const next = [...board];
-    next[blank] = next[index]!;
-    next[index] = 0;
-    setBoard(next);
-    setMoves((m) => m + 1);
+    const sameRow = Math.floor(index / n) === Math.floor(blank / n);
+    const sameCol = index % n === blank % n;
+    if (index === blank || (!sameRow && !sameCol)) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const axis: "x" | "y" = sameRow ? "x" : "y";
+    const sign = axis === "x" ? Math.sign((blank % n) - (index % n)) : Math.sign(Math.floor(blank / n) - Math.floor(index / n));
+    const next: Drag = {
+      from: index,
+      axis,
+      sign,
+      start: axis === "x" ? e.clientX : e.clientY,
+      offset: 0,
+      cell: e.currentTarget.getBoundingClientRect().width,
+      pointer: e.pointerId,
+    };
+    dragRef.current = next;
+    setDrag(next);
+  };
+
+  const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d || e.pointerId !== d.pointer) return;
+    const pos = d.axis === "x" ? e.clientX : e.clientY;
+    const raw = (pos - d.start) * d.sign;
+    const offset = Math.max(0, Math.min(d.cell, raw)) * d.sign;
+    const next = { ...d, offset };
+    dragRef.current = next;
+    setDrag(next);
+  };
+
+  const onUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const d = dragRef.current;
+    if (!d || e.pointerId !== d.pointer) return;
+    const current = boardRef.current;
+    if (Math.abs(d.offset) >= d.cell * 0.5) {
+      const next = slideLine(current, n, d.from, current.indexOf(0));
+      if (next) setBoard(next);
+    }
+    dragRef.current = null;
+    setDrag(null);
   };
 
   const anotherPicture = () => {
     const r = freshPick("puzzle", pictures, (p) => p.src, 1);
     setPicture(r.items[0] ?? null);
     setNote(r.reset ? "You have seen every picture once, so the library starts again." : "");
-    setBoard(scrambled());
-    setMoves(0);
+    setBoard(scrambled(n, level.steps));
+    setDrag(null);
   };
 
   if (!picture) return <p className="ac-empty">No pictures available yet.</p>;
+  const blank = board.indexOf(0);
 
   return (
     <section className="pr-panel pr-puzzle" aria-label="Picture puzzle">
+      <div className="pr-actions" role="group" aria-label="Difficulty">
+        {PUZZLE_LEVELS.map((l) => (
+          <button key={l.id} type="button" className="ac-tab" aria-pressed={level.id === l.id} onClick={() => setLevel(l)}>
+            {l.label}
+          </button>
+        ))}
+      </div>
       <p className="pr-score">
         <span>{picture.label}</span>
-        <span>Moves {moves}</span>
+        <span>{solved ? "Solved" : "Drag a tile in line with the space"}</span>
       </p>
       <img className="pr-ref" src={picture.src} alt={`Target picture: ${picture.label}`} loading="lazy" />
-      <div className="pr-board" role="grid" aria-label="Sliding puzzle">
-        {board.map((v, i) =>
-          v === 0 ? (
-            <div key={i} className="pr-tile pr-tile--blank" aria-hidden="true" />
-          ) : (
-            <button
-              key={i}
-              type="button"
+      <div className="pr-board" role="grid" aria-label="Sliding puzzle" style={{ gridTemplateColumns: `repeat(${n}, 1fr)`, touchAction: "none" }}>
+        {board.map((v, i) => {
+          if (v === 0) return <div key="blank" className="pr-tile pr-tile--blank" aria-hidden="true" />;
+          const r = Math.floor((v - 1) / n);
+          const c = (v - 1) % n;
+          const movable = i !== blank && (Math.floor(i / n) === Math.floor(blank / n) || i % n === blank % n);
+          const isDragged = drag?.from === i;
+          const style: CSSProperties = {
+            backgroundImage: `url("${picture.src}")`,
+            backgroundSize: `${n * 100}% ${n * 100}%`,
+            backgroundPosition: `${(c / (n - 1)) * 100}% ${(r / (n - 1)) * 100}%`,
+            cursor: movable && !solved ? "grab" : "default",
+            touchAction: "none",
+            ...(isDragged && drag
+              ? { transform: drag.axis === "x" ? `translateX(${drag.offset}px)` : `translateY(${drag.offset}px)`, zIndex: 2, position: "relative" as const }
+              : {}),
+          };
+          return (
+            <div
+              key={v}
+              role="gridcell"
+              aria-label={`Tile ${v}${movable ? ", can be moved" : ""}`}
               className={`pr-tile${solved ? " pr-tile--solved" : ""}`}
-              aria-label={`Tile ${v}`}
-              onClick={() => move(i)}
-              style={{
-                backgroundImage: `url("${picture.src}")`,
-                backgroundSize: "300% 300%",
-                backgroundPosition: `${((v - 1) % 3) * 50}% ${Math.floor((v - 1) / 3) * 50}%`,
-              }}
+              style={style}
+              onPointerDown={(e) => onDown(e, i)}
+              onPointerMove={onMove}
+              onPointerUp={onUp}
+              onPointerCancel={onUp}
             />
-          ),
-        )}
+          );
+        })}
       </div>
       <p className="pr-caption">
-        {solved ? `Solved in ${moves} moves.` : "Slide the tiles into order. The picture is the target."}
+        {solved ? "Solved. Try a harder level, or another picture." : "Drag a tile toward the empty space. Tiles between them slide along."}
       </p>
       {note ? <p className="ac-small ac-muted">{note}</p> : null}
       <div className="pr-actions">
         <button type="button" className="btn btn-primary" onClick={anotherPicture}>Another picture</button>
-        <button type="button" className="btn" onClick={() => { setBoard(scrambled()); setMoves(0); }}>Reshuffle this picture</button>
+        <button type="button" className="btn" onClick={() => setBoard(scrambled(n, level.steps))}>Reshuffle</button>
       </div>
       <p className="pr-caption">{picture.credit}</p>
     </section>
