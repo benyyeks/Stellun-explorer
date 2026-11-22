@@ -431,7 +431,7 @@ a.glass-card:hover, button.glass-card:hover, .glass-card.interactive:hover {
 }
 .footer-grid {
   display: grid;
-  grid-template-columns: 1.4fr repeat(3, 1fr);
+  grid-template-columns: 1.4fr repeat(4, 1fr);
   gap: 28px;
   margin-bottom: 28px;
 }
