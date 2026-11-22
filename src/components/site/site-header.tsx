@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
  *
  * Small screens:
  *   - Hamburger opens the full mobile sheet
- *   - Academy is an accordion: Dashboard, Study desk
+ *   - Academy is a direct link to its dashboard
  *   - Settings appears as its own row (site-wide, not Academy-only)
  */
 
@@ -58,15 +58,6 @@ const PILLARS: Pillar[] = [
       { id: "intelligence", label: "Mission Intelligence", to: "/intelligence", hint: "Mission profiles and flight telemetry" },
     ],
   },
-];
-
-/**
- * Academy destinations for the mobile accordion only.
- * Desktop uses a single “The Academy” link to /academy (dashboard).
- */
-const ACADEMY_MOBILE_LINKS: NavLink[] = [
-  { id: "academy-home", label: "Dashboard", to: "/academy", hint: "Continue where you left off" },
-  { id: "academy-desk", label: "Study desk", to: "/academy/desk", hint: "Workspaces, plans, and notes" },
 ];
 
 function isMatch(pathname: string, to: string): boolean {
@@ -305,32 +296,25 @@ export function SiteHeader() {
           );
         })}
 
-        {/* Academy accordion — mobile destinations only */}
-        <div className="nav-group">
-          <button
-            type="button"
-            className="nav-accordion-trigger"
-            aria-expanded={openSection === "academy"}
-            onClick={() => setOpenSection(openSection === "academy" ? null : "academy")}
+        {/* Academy is a direct link to the dashboard, matching desktop navigation. */}
+        {signedIn || loading ? (
+          <Link
+            to="/academy"
+            aria-current={academyActive ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
           >
             The Academy
-            <svg
-              className={`chevron${openSection === "academy" ? " chevron-open" : ""}`}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              aria-hidden="true"
-            >
-              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          {openSection === "academy" && (
-            <div className="nav-accordion-body">
-              {ACADEMY_MOBILE_LINKS.map((l) => renderToolLink(l, false))}
-            </div>
-          )}
-        </div>
+          </Link>
+        ) : (
+          <Link
+            to="/auth"
+            search={{ redirect: "/academy" }}
+            aria-current={academyActive ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
+          >
+            The Academy
+          </Link>
+        )}
 
         {signedIn && (
           <div className="nav-group">
