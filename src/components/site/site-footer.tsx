@@ -13,8 +13,9 @@ export function SiteFooter() {
               <BrandWord />
             </div>
             <p>
-              An independent space intelligence dashboard. Not affiliated with
-              NASA, NOAA, ESA, or any space agency.
+              An independent space intelligence dashboard and study academy for
+              aviation, astronomy, aerospace and STEM. Not affiliated with NASA, NOAA,
+              ESA, or any space agency.
             </p>
           </div>
           <div className="footer-col">
@@ -24,6 +25,14 @@ export function SiteFooter() {
             <Link to="/mars">Mars</Link>
             <Link to="/weather">Space Weather</Link>
             <Link to="/sky">Sky Tonight</Link>
+          </div>
+          <div className="footer-col">
+            <h4>Academy</h4>
+            <Link to="/academy">Dashboard</Link>
+            <Link to="/academy/desk">Study desk</Link>
+            <Link to="/academy/workspaces">Workspaces</Link>
+            <Link to="/academy/shelf">Book shelf</Link>
+            <Link to="/academy/practice">Practice</Link>
           </div>
           <div className="footer-col">
             <h4>More</h4>
