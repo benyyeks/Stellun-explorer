@@ -1831,13 +1831,10 @@
 
   .ac-tools {
     position: sticky;
-    top: calc(var(--header-h, 68px) + 16px);
-    max-height: calc(100vh - var(--header-h, 68px) - 32px);
-    max-height: calc(100dvh - var(--header-h, 68px) - 32px);
+    top: calc(var(--header-h, 68px) + var(--ac-nav-h, 56px) + 16px);
+    max-height: calc(100vh - var(--header-h, 68px) - var(--ac-nav-h, 56px) - 40px);
+    max-height: calc(100dvh - var(--header-h, 68px) - var(--ac-nav-h, 56px) - 40px);
     overflow-y: auto;
-    transform: none !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
   }
 }
 
@@ -2020,10 +2017,11 @@
 
   .ac-tools {
     position: sticky;
-    top: calc(var(--header-h, 68px) + 16px);
+    top: calc(var(--header-h, 68px) + var(--ac-nav-h, 56px) + 16px);
+    z-index: 20;
     transform: none;
-    max-height: calc(100vh - var(--header-h, 68px) - 32px);
-    max-height: calc(100dvh - var(--header-h, 68px) - 32px);
+    max-height: calc(100vh - var(--header-h, 68px) - var(--ac-nav-h, 56px) - 40px);
+    max-height: calc(100dvh - var(--header-h, 68px) - var(--ac-nav-h, 56px) - 40px);
     overflow-y: auto;
   }
 }
