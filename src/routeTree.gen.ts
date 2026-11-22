@@ -35,9 +35,12 @@ import { Route as AuthenticatedStudyDeskRouteImport } from './routes/_authentica
 import { Route as AuthenticatedTrackerRouteImport } from './routes/_authenticated/tracker'
 import { Route as AuthenticatedWeatherRouteImport } from './routes/_authenticated/weather'
 import { Route as ApiAskRouteImport } from './routes/api/ask'
+import { Route as ApiDailyPlanRouteImport } from './routes/api/daily-plan'
+import { Route as ApiQuizRouteImport } from './routes/api/quiz'
 import { Route as ListShareIdRouteImport } from './routes/list.$shareId'
 import { Route as AuthenticatedAcademyIndexRouteImport } from './routes/_authenticated/academy.index'
 import { Route as AuthenticatedAcademyDeskRouteImport } from './routes/_authenticated/academy.desk'
+import { Route as AuthenticatedAcademyPracticeRouteImport } from './routes/_authenticated/academy.practice'
 import { Route as AuthenticatedAcademyProgressRouteImport } from './routes/_authenticated/academy.progress'
 import { Route as AuthenticatedAcademyQuizRouteImport } from './routes/_authenticated/academy.quiz'
 import { Route as AuthenticatedAcademySettingsRouteImport } from './routes/_authenticated/academy.settings'
@@ -181,6 +184,16 @@ const ApiAskRoute = ApiAskRouteImport.update({
   path: '/api/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDailyPlanRoute = ApiDailyPlanRouteImport.update({
+  id: '/api/daily-plan',
+  path: '/api/daily-plan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiQuizRoute = ApiQuizRouteImport.update({
+  id: '/api/quiz',
+  path: '/api/quiz',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ListShareIdRoute = ListShareIdRouteImport.update({
   id: '/list/$shareId',
   path: '/list/$shareId',
@@ -196,6 +209,12 @@ const AuthenticatedAcademyDeskRoute =
   AuthenticatedAcademyDeskRouteImport.update({
     id: '/desk',
     path: '/desk',
+    getParentRoute: () => AuthenticatedAcademyRoute,
+  } as any)
+const AuthenticatedAcademyPracticeRoute =
+  AuthenticatedAcademyPracticeRouteImport.update({
+    id: '/practice',
+    path: '/practice',
     getParentRoute: () => AuthenticatedAcademyRoute,
   } as any)
 const AuthenticatedAcademyProgressRoute =
@@ -295,8 +314,11 @@ export interface FileRoutesByFullPath {
   '/tracker': typeof AuthenticatedTrackerRouteWithChildren
   '/weather': typeof AuthenticatedWeatherRoute
   '/api/ask': typeof ApiAskRoute
+  '/api/daily-plan': typeof ApiDailyPlanRoute
+  '/api/quiz': typeof ApiQuizRoute
   '/list/$shareId': typeof ListShareIdRoute
   '/academy/desk': typeof AuthenticatedAcademyDeskRoute
+  '/academy/practice': typeof AuthenticatedAcademyPracticeRoute
   '/academy/progress': typeof AuthenticatedAcademyProgressRoute
   '/academy/quiz': typeof AuthenticatedAcademyQuizRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
@@ -334,8 +356,11 @@ export interface FileRoutesByTo {
   '/study-desk': typeof AuthenticatedStudyDeskRoute
   '/weather': typeof AuthenticatedWeatherRoute
   '/api/ask': typeof ApiAskRoute
+  '/api/daily-plan': typeof ApiDailyPlanRoute
+  '/api/quiz': typeof ApiQuizRoute
   '/list/$shareId': typeof ListShareIdRoute
   '/academy/desk': typeof AuthenticatedAcademyDeskRoute
+  '/academy/practice': typeof AuthenticatedAcademyPracticeRoute
   '/academy/progress': typeof AuthenticatedAcademyProgressRoute
   '/academy/quiz': typeof AuthenticatedAcademyQuizRoute
   '/academy/settings': typeof AuthenticatedAcademySettingsRoute
@@ -378,8 +403,11 @@ export interface FileRoutesById {
   '/_authenticated/tracker': typeof AuthenticatedTrackerRouteWithChildren
   '/_authenticated/weather': typeof AuthenticatedWeatherRoute
   '/api/ask': typeof ApiAskRoute
+  '/api/daily-plan': typeof ApiDailyPlanRoute
+  '/api/quiz': typeof ApiQuizRoute
   '/list/$shareId': typeof ListShareIdRoute
   '/_authenticated/academy/desk': typeof AuthenticatedAcademyDeskRoute
+  '/_authenticated/academy/practice': typeof AuthenticatedAcademyPracticeRoute
   '/_authenticated/academy/progress': typeof AuthenticatedAcademyProgressRoute
   '/_authenticated/academy/quiz': typeof AuthenticatedAcademyQuizRoute
   '/_authenticated/academy/settings': typeof AuthenticatedAcademySettingsRoute
@@ -422,8 +450,11 @@ export interface FileRouteTypes {
     | '/tracker'
     | '/weather'
     | '/api/ask'
+    | '/api/daily-plan'
+    | '/api/quiz'
     | '/list/$shareId'
     | '/academy/desk'
+    | '/academy/practice'
     | '/academy/progress'
     | '/academy/quiz'
     | '/academy/settings'
@@ -461,8 +492,11 @@ export interface FileRouteTypes {
     | '/study-desk'
     | '/weather'
     | '/api/ask'
+    | '/api/daily-plan'
+    | '/api/quiz'
     | '/list/$shareId'
     | '/academy/desk'
+    | '/academy/practice'
     | '/academy/progress'
     | '/academy/quiz'
     | '/academy/settings'
@@ -504,8 +538,11 @@ export interface FileRouteTypes {
     | '/_authenticated/tracker'
     | '/_authenticated/weather'
     | '/api/ask'
+    | '/api/daily-plan'
+    | '/api/quiz'
     | '/list/$shareId'
     | '/_authenticated/academy/desk'
+    | '/_authenticated/academy/practice'
     | '/_authenticated/academy/progress'
     | '/_authenticated/academy/quiz'
     | '/_authenticated/academy/settings'
@@ -530,6 +567,8 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   TermsRoute: typeof TermsRoute
   ApiAskRoute: typeof ApiAskRoute
+  ApiDailyPlanRoute: typeof ApiDailyPlanRoute
+  ApiQuizRoute: typeof ApiQuizRoute
   ListShareIdRoute: typeof ListShareIdRoute
   ApiPublicRefreshRoute: typeof ApiPublicRefreshRoute
   ApiPublicRefreshNewsRoute: typeof ApiPublicRefreshNewsRoute
@@ -719,6 +758,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAskRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/daily-plan': {
+      id: '/api/daily-plan'
+      path: '/api/daily-plan'
+      fullPath: '/api/daily-plan'
+      preLoaderRoute: typeof ApiDailyPlanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/quiz': {
+      id: '/api/quiz'
+      path: '/api/quiz'
+      fullPath: '/api/quiz'
+      preLoaderRoute: typeof ApiQuizRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/list/$shareId': {
       id: '/list/$shareId'
       path: '/list/$shareId'
@@ -738,6 +791,13 @@ declare module '@tanstack/react-router' {
       path: '/desk'
       fullPath: '/academy/desk'
       preLoaderRoute: typeof AuthenticatedAcademyDeskRouteImport
+      parentRoute: typeof AuthenticatedAcademyRoute
+    }
+    '/_authenticated/academy/practice': {
+      id: '/_authenticated/academy/practice'
+      path: '/practice'
+      fullPath: '/academy/practice'
+      preLoaderRoute: typeof AuthenticatedAcademyPracticeRouteImport
       parentRoute: typeof AuthenticatedAcademyRoute
     }
     '/_authenticated/academy/progress': {
@@ -829,6 +889,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAcademyRouteChildren {
   AuthenticatedAcademyDeskRoute: typeof AuthenticatedAcademyDeskRoute
+  AuthenticatedAcademyPracticeRoute: typeof AuthenticatedAcademyPracticeRoute
   AuthenticatedAcademyProgressRoute: typeof AuthenticatedAcademyProgressRoute
   AuthenticatedAcademyQuizRoute: typeof AuthenticatedAcademyQuizRoute
   AuthenticatedAcademySettingsRoute: typeof AuthenticatedAcademySettingsRoute
@@ -840,6 +901,7 @@ interface AuthenticatedAcademyRouteChildren {
 
 const AuthenticatedAcademyRouteChildren: AuthenticatedAcademyRouteChildren = {
   AuthenticatedAcademyDeskRoute: AuthenticatedAcademyDeskRoute,
+  AuthenticatedAcademyPracticeRoute: AuthenticatedAcademyPracticeRoute,
   AuthenticatedAcademyProgressRoute: AuthenticatedAcademyProgressRoute,
   AuthenticatedAcademyQuizRoute: AuthenticatedAcademyQuizRoute,
   AuthenticatedAcademySettingsRoute: AuthenticatedAcademySettingsRoute,
@@ -937,6 +999,8 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   TermsRoute: TermsRoute,
   ApiAskRoute: ApiAskRoute,
+  ApiDailyPlanRoute: ApiDailyPlanRoute,
+  ApiQuizRoute: ApiQuizRoute,
   ListShareIdRoute: ListShareIdRoute,
   ApiPublicRefreshRoute: ApiPublicRefreshRoute,
   ApiPublicRefreshNewsRoute: ApiPublicRefreshNewsRoute,
