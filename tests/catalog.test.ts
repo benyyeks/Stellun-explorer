@@ -15,7 +15,7 @@ function check(name: string, ok: boolean, detail = "") {
 }
 
 const ids = CATALOG.map((b) => b.id);
-check("at least 40 books on the shelf", CATALOG.length >= 40, `found ${CATALOG.length}`);
+check("at least 70 books on the shelf", CATALOG.length >= 70, `found ${CATALOG.length}`);
 check("book ids are unique", new Set(ids).size === ids.length);
 check("every 'read next' link points to a book on the shelf", CATALOG.every((b) => b.related.every((r) => ids.includes(r))));
 check("every book has a summary, covers, a 'who for' and study tips", CATALOG.every((b) => b.summary.length >= 60 && b.covers.length >= 2 && b.whoFor.length >= 20 && b.studyTips.length >= 2));
@@ -32,7 +32,7 @@ check("books with a checked ISBN are listed with it", ["carroll-ostlie-astrophys
 check("free links are https addresses", CATALOG.every((b) => !b.free || b.free.url.startsWith("https://")));
 check("the first fifteen verified books still have their covers", ["bate-fundamentals", "huzel-huang-rocket-engines", "hastings-garrett-environment"].every((id) => !!findBook(id)?.isbn13));
 check("technical and general readers are both covered", CATALOG.filter((b) => b.audience === "technical").length >= 20 && CATALOG.filter((b) => b.audience === "general").length >= 12);
-check("every subject has books", (["aviation", "astronomy", "aerospace", "stem"] as const).every((t) => CATALOG.some((b) => b.tracks.includes(t))));
+check("every subject has books", (["aviation", "astronomy", "aerospace", "stem", "policy"] as const).every((t) => CATALOG.some((b) => b.tracks.includes(t))));
 check("every recommended workspace has at least one book on the shelf", WORKSPACE_TEMPLATES.every((t) => templateBooks(t).length === t.bookIds.length && t.bookIds.length >= 1));
 check("recommended workspace ids are unique", new Set(WORKSPACE_TEMPLATES.map((t) => t.id)).size === WORKSPACE_TEMPLATES.length);
 
