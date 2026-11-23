@@ -263,6 +263,7 @@ export const CATALOG: CatalogBook[] = [
     covers: ["Aircraft performance", "Static and dynamic stability", "Control and handling"],
     whoFor: "Students of flight mechanics who want the full equations.",
     studyTips: ["Derive one stability equation from the force and moment balances.", "Compare your results with flight-test data where you can find it."],
+    isbn13: "9780470539750",
     related: ["etkin-reid-dynamics-of-flight", "anderson-aircraft-performance"],
   },
   {
