@@ -28,7 +28,7 @@ const isbnOk = (isbn: string) => {
   return (10 - (sum % 10)) % 10 === d[12];
 };
 check("every ISBN has a valid ISBN-13 check digit", CATALOG.every((b) => !b.isbn13 || isbnOk(b.isbn13)));
-check("books with a checked ISBN are listed with it", ["carroll-ostlie-astrophysics", "birney-observational-astronomy", "etkin-reid-dynamics-of-flight"].every((id) => !!findBook(id)?.isbn13));
+check("books with a checked ISBN are listed with it", ["carroll-ostlie-astrophysics", "birney-observational-astronomy", "etkin-reid-dynamics-of-flight", "phillips-mechanics-of-flight"].every((id) => !!findBook(id)?.isbn13));
 check("free links are https addresses", CATALOG.every((b) => !b.free || b.free.url.startsWith("https://")));
 check("the first fifteen verified books still have their covers", ["bate-fundamentals", "huzel-huang-rocket-engines", "hastings-garrett-environment"].every((id) => !!findBook(id)?.isbn13));
 check("technical and general readers are both covered", CATALOG.filter((b) => b.audience === "technical").length >= 20 && CATALOG.filter((b) => b.audience === "general").length >= 12);
