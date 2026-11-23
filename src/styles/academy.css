@@ -782,20 +782,19 @@
   color: var(--ac-muted);
 }
 
+/* Book shelf: vertical stack on phones, grid on larger screens.
+   Never horizontal-scroll the catalogue on mobile. */
 .ac-shelf {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(200px, 78%);
+  grid-auto-flow: row;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
+  overflow-x: visible;
   padding-bottom: 6px;
-  scrollbar-width: thin;
 }
 
 .ac-shelf > * {
-  scroll-snap-align: start;
+  min-width: 0;
 }
 
 .ac-shelf-card {
