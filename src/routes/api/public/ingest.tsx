@@ -1,5 +1,7 @@
-// Receives one CelesTrak group fetched by the GitHub Actions ingest job and stores it in Supabase.
-// Authorization: Bearer <STELLUN_CRON_SECRET>. Body: { "group": "<group id>", "payload": [ ...records ] }.
+// Receives data fetched by the GitHub Actions ingest job and stores it in Supabase.
+// Authorization: Bearer <STELLUN_CRON_SECRET>.
+//   CelesTrak group:  { "group": "<group id>", "payload": [ ...records ] }
+//   Mars latest:      { "kind": "mars-perseverance-latest", "payload": <NASA raw feed> }
 import { createFileRoute } from "@tanstack/react-router";
 
 // Smaller groups: stored in api_cache under "satellites", which the tracker reads.
@@ -30,11 +32,35 @@ function reply(body: unknown, status = 200): Response {
 async function handle(request: Request): Promise<Response> {
   if (!verifyCaller(request)) return new Response("Unauthorized", { status: 401 });
 
-  let body: { group?: unknown; payload?: unknown };
+  let body: { kind?: unknown; group?: unknown; payload?: unknown };
   try {
-    body = (await request.json()) as { group?: unknown; payload?: unknown };
+    body = (await request.json()) as { kind?: unknown; group?: unknown; payload?: unknown };
   } catch {
     return reply({ ok: false, error: "Body must be JSON" }, 400);
+  }
+
+  if (body.kind === "mars-perseverance-latest") {
+    if (!body.payload || typeof body.payload !== "object") {
+      return reply({ ok: false, error: "Payload must be the NASA feed" }, 422);
+    }
+    try {
+      const { mapPerseveranceRaw } = await import("@/lib/mars-gallery-map");
+      const { cached } = await import("@/lib/api-cache.server");
+      const mapped = mapPerseveranceRaw(body.payload, null);
+      if (mapped.frames.length === 0) {
+        return reply({ ok: false, error: "NASA returned no frames" }, 422);
+      }
+      const r = await cached(
+        "mars-gallery",
+        { craft: "perseverance", sol: null, page: 0 },
+        7200,
+        async () => mapped,
+        { force: true },
+      );
+      return reply({ ok: true, kind: "mars", frames: mapped.frames.length, source: r.source });
+    } catch (e) {
+      return reply({ ok: false, error: e instanceof Error ? e.message.slice(0, 300) : String(e) }, 500);
+    }
   }
 
   const group = typeof body.group === "string" ? body.group : "";
