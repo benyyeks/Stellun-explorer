@@ -36,8 +36,8 @@ jobs:
           BASE="${BASE:-https://stellun.space}"
           BASE="${BASE%/}"
 
-          GROUPS="stations iridium-NEXT weather science resource gps-ops galileo glo-ops beidou visual 19820 starlink active geo cosmos-2251-debris iridium-33-debris"
-          echo "Groups this run: $GROUPS"
+          CT_GROUPS="stations iridium-NEXT weather science resource gps-ops galileo glo-ops beidou visual 19820 starlink active geo cosmos-2251-debris iridium-33-debris"
+          echo "Groups this run: $CT_GROUPS"
 
           cat > /tmp/wrap.py <<'PY'
           import json, sys
@@ -57,7 +57,7 @@ jobs:
           PY
 
           FAILED=""
-          for G in $GROUPS; do
+          for G in $CT_GROUPS; do
             OK=0
             for TRY in 1 2; do
               CODE=$(curl -sS -o /tmp/ct.json -w "%{http_code}" --max-time 180 \
