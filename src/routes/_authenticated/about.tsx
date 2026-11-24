@@ -55,9 +55,21 @@ function AboutPage() {
             <span className="eyebrow">About</span>
             <h1>A place to learn space science, and to test what you know</h1>
             <p>
-              STELLUN is a learning platform and a hub for astronomy, aviation, aerospace and
-              STEM enthusiasts. Live space data from public agencies sits next to the study tools,
-              so what you read and what you see are connected.
+              STELLUN is an open-access platform built for students, researchers, and enthusiasts
+              to learn and practise aerospace, aviation, astronomy, and STEM-related fields. Rather
+              than relying solely on static textbooks, the platform connects learners directly with
+              live space data from space agencies and communities such as NASA, NOAA, CelesTrak,
+              and JPL, to turn theoretical concepts into practical exploration.
+            </p>
+            <p>
+              Through its suite of interactive tools, users can track satellites and space stations,
+              including the ISS, in real time, monitor space weather and near-Earth asteroids,
+              examine telemetry and imagery from Mars rovers, and follow upcoming global rocket
+              launches. To support structured learning alongside hands-on data analysis, STELLUN
+              features STELLUN Academy, which provides technical glossaries covering all of these
+              fields. The platform also curates global STEM competitions and hackathons so students
+              can apply their skills, and pairs them with an AI study assistant to guide their
+              research and learning.
             </p>
           </div>
           <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 24 }}>
@@ -72,6 +84,10 @@ function AboutPage() {
             <div className="glass glass-card scaffold-card">
               <h3>Compete</h3>
               <p>Research fairs, design competitions and hackathons across astronomy, aviation, aerospace and STEM, with official links to each one.</p>
+            </div>
+            <div className="glass glass-card scaffold-card">
+              <h3>Open access</h3>
+              <p>Free to learn from. Study material, the Academy and the live data tools are open to students, researchers and enthusiasts.</p>
             </div>
           </div>
           <p style={{ marginTop: 20 }}>
@@ -100,6 +116,10 @@ function AboutPage() {
               on STELLUN. If a source is temporarily unreachable, the page shows the most
               recent verified reading with its timestamp, rather than a blank space or an
               invented value.
+            </p>
+            <p>
+              It
+              aggregates publicly available data for education and research.
             </p>
           </div>
 
