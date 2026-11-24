@@ -2906,3 +2906,35 @@
 
 /* v7: the reading card clips its content, so it cannot scroll sideways and move the toolbar */
 .ac-reader { overflow: clip; }
+
+/* ── Glass surfaces, light and dark ───────────────────────────────────────── */
+:root {
+  --ac-glass: rgba(255, 255, 255, 0.58);
+  --ac-glass-border: rgba(255, 255, 255, 0.72);
+  --ac-glass-shadow: 0 12px 34px rgba(24, 36, 58, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ac-glass: rgba(26, 30, 42, 0.55);
+    --ac-glass-border: rgba(255, 255, 255, 0.09);
+    --ac-glass-shadow: 0 14px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+}
+.ac-card,
+.ac-shelf-card,
+.ac-search,
+.pr-hw,
+.pr-day,
+.pr-pair {
+  background: var(--ac-glass);
+  border: 1px solid var(--ac-glass-border);
+  box-shadow: var(--ac-glass-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+  backdrop-filter: blur(18px) saturate(1.5);
+}
+.ac-hero {
+  background: linear-gradient(135deg, rgba(31, 53, 86, 0.94) 0%, rgba(31, 53, 86, 0.78) 100%);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
