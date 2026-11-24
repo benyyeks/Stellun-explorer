@@ -37,6 +37,8 @@ const SLOTS: Record<string, string[]> = {
   mars: ["mars-perseverance"],
   launches: ["launches"], // past-launches on separate manual/rare runs to save LL2
   news: ["space-news", "picture-of-the-day", "space-weather-alerts"],
+  sso: ["satellites-sso"],
+  asteroids: ["asteroids"],
 };
 
 async function handle(request: Request) {
