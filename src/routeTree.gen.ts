@@ -50,6 +50,7 @@ import { Route as AuthenticatedDeepspaceIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedDeepspaceObjectIdRouteImport } from './routes/_authenticated/deepspace.$objectId'
 import { Route as AuthenticatedTrackerIndexRouteImport } from './routes/_authenticated/tracker.index'
 import { Route as AuthenticatedTrackerNoradIdRouteImport } from './routes/_authenticated/tracker.$noradId'
+import { Route as ApiPublicIngestRouteImport } from './routes/api/public/ingest'
 import { Route as ApiPublicRefreshRouteImport } from './routes/api/public/refresh'
 import { Route as ApiPublicRefreshNewsRouteImport } from './routes/api/public/refresh-news'
 import { Route as AuthenticatedAcademyBooksBookIdRouteImport } from './routes/_authenticated/academy.books.$bookId'
@@ -273,6 +274,11 @@ const AuthenticatedTrackerNoradIdRoute =
     path: '/$noradId',
     getParentRoute: () => AuthenticatedTrackerRoute,
   } as any)
+const ApiPublicIngestRoute = ApiPublicIngestRouteImport.update({
+  id: '/api/public/ingest',
+  path: '/api/public/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicRefreshRoute = ApiPublicRefreshRouteImport.update({
   id: '/api/public/refresh',
   path: '/api/public/refresh',
@@ -340,6 +346,7 @@ export interface FileRoutesByFullPath {
   '/academy/workspaces': typeof AuthenticatedAcademyWorkspacesRoute
   '/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
+  '/api/public/ingest': typeof ApiPublicIngestRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
   '/api/public/refresh-news': typeof ApiPublicRefreshNewsRoute
   '/academy/': typeof AuthenticatedAcademyIndexRoute
@@ -384,6 +391,7 @@ export interface FileRoutesByTo {
   '/academy/workspaces': typeof AuthenticatedAcademyWorkspacesRoute
   '/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
+  '/api/public/ingest': typeof ApiPublicIngestRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
   '/api/public/refresh-news': typeof ApiPublicRefreshNewsRoute
   '/academy': typeof AuthenticatedAcademyIndexRoute
@@ -433,6 +441,7 @@ export interface FileRoutesById {
   '/_authenticated/academy/workspaces': typeof AuthenticatedAcademyWorkspacesRoute
   '/_authenticated/deepspace/$objectId': typeof AuthenticatedDeepspaceObjectIdRoute
   '/_authenticated/tracker/$noradId': typeof AuthenticatedTrackerNoradIdRoute
+  '/api/public/ingest': typeof ApiPublicIngestRoute
   '/api/public/refresh': typeof ApiPublicRefreshRoute
   '/api/public/refresh-news': typeof ApiPublicRefreshNewsRoute
   '/_authenticated/academy/': typeof AuthenticatedAcademyIndexRoute
@@ -482,6 +491,7 @@ export interface FileRouteTypes {
     | '/academy/workspaces'
     | '/deepspace/$objectId'
     | '/tracker/$noradId'
+    | '/api/public/ingest'
     | '/api/public/refresh'
     | '/api/public/refresh-news'
     | '/academy/'
@@ -526,6 +536,7 @@ export interface FileRouteTypes {
     | '/academy/workspaces'
     | '/deepspace/$objectId'
     | '/tracker/$noradId'
+    | '/api/public/ingest'
     | '/api/public/refresh'
     | '/api/public/refresh-news'
     | '/academy'
@@ -574,6 +585,7 @@ export interface FileRouteTypes {
     | '/_authenticated/academy/workspaces'
     | '/_authenticated/deepspace/$objectId'
     | '/_authenticated/tracker/$noradId'
+    | '/api/public/ingest'
     | '/api/public/refresh'
     | '/api/public/refresh-news'
     | '/_authenticated/academy/'
@@ -596,6 +608,7 @@ export interface RootRouteChildren {
   ApiDailyPlanRoute: typeof ApiDailyPlanRoute
   ApiQuizRoute: typeof ApiQuizRoute
   ListShareIdRoute: typeof ListShareIdRoute
+  ApiPublicIngestRoute: typeof ApiPublicIngestRoute
   ApiPublicRefreshRoute: typeof ApiPublicRefreshRoute
   ApiPublicRefreshNewsRoute: typeof ApiPublicRefreshNewsRoute
 }
@@ -889,6 +902,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTrackerNoradIdRouteImport
       parentRoute: typeof AuthenticatedTrackerRoute
     }
+    '/api/public/ingest': {
+      id: '/api/public/ingest'
+      path: '/api/public/ingest'
+      fullPath: '/api/public/ingest'
+      preLoaderRoute: typeof ApiPublicIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/refresh': {
       id: '/api/public/refresh'
       path: '/api/public/refresh'
@@ -1046,6 +1066,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDailyPlanRoute: ApiDailyPlanRoute,
   ApiQuizRoute: ApiQuizRoute,
   ListShareIdRoute: ListShareIdRoute,
+  ApiPublicIngestRoute: ApiPublicIngestRoute,
   ApiPublicRefreshRoute: ApiPublicRefreshRoute,
   ApiPublicRefreshNewsRoute: ApiPublicRefreshNewsRoute,
 }
