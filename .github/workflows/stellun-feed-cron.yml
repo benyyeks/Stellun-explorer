@@ -1,7 +1,8 @@
-# STELLUN staggered feeds: one slot per run.
-# Each run takes the next slot from a 14-slot rotation keyed on the clock (every 15 minutes), so each
-# slot comes round every 3.5 hours. CelesTrak groups are fetched by "Stellun CelesTrak ingest" (every
-# 2 hours), and the ISS by its own workflow (every minute).
+# STELLUN staggered feeds.
+# Scheduled: one slot per run from a 14-slot rotation keyed on the clock (every 15 minutes),
+# so each slot comes round every 3.5 hours.
+# Manual: pick a slot from the dropdown, or auto for the normal rotation.
+# CelesTrak groups and Mars are fetched by "Stellun CelesTrak ingest" (every 2 hours); the ISS has its own workflow.
 # Secrets: STELLUN_CRON_SECRET, STELLUN_SITE_URL (= https://stellun.space)
 
 name: Stellun feed refresh
@@ -12,9 +13,26 @@ on:
   workflow_dispatch:
     inputs:
       slot:
-        description: "Slot to run (leave empty for the scheduled rotation)"
+        description: "Slot to run, or auto for the normal rotation"
         required: false
-        type: string
+        default: "auto"
+        type: choice
+        options:
+          - "auto"
+          - "stations"
+          - "starlink"
+          - "space-weather"
+          - "iridium"
+          - "resource"
+          - "geo"
+          - "weather"
+          - "science"
+          - "gps"
+          - "launches"
+          - "news"
+          - "mars"
+          - "sso"
+          - "asteroids"
 
 permissions:
   contents: read
@@ -43,7 +61,7 @@ jobs:
           BASE="${BASE%/}"
 
           SLOTS=(stations starlink space-weather iridium resource geo weather science gps launches news mars sso asteroids)
-          if [ -n "${MANUAL_SLOT:-}" ]; then
+          if [ -n "${MANUAL_SLOT:-}" ] && [ "$MANUAL_SLOT" != "auto" ]; then
             SLOT="$MANUAL_SLOT"
           else
             Q=$(( $(date -u +%s) / 900 ))

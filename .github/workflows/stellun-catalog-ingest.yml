@@ -1,7 +1,7 @@
-# STELLUN CelesTrak ingest.
-# GitHub fetches every CelesTrak group and posts it to /api/public/ingest, which stores it in Supabase.
-# The site only reads from Supabase. This workflow has no input fields: it always fetches all groups.
-# Runs every 2 hours, and can also be started by hand with Run workflow.
+# STELLUN CelesTrak and Mars ingest.
+# GitHub fetches the CelesTrak groups and the Mars Perseverance feed, then posts them to /api/public/ingest,
+# which stores them in Supabase. The site only reads from Supabase.
+# Scheduled: every 2 hours, everything. Manual: pick one item from the dropdown, or all.
 # Secrets: STELLUN_CRON_SECRET, STELLUN_SITE_URL (= https://stellun.space)
 
 name: Stellun CelesTrak ingest
@@ -10,6 +10,31 @@ on:
   schedule:
     - cron: "5 */2 * * *"
   workflow_dispatch:
+    inputs:
+      group:
+        description: "Pick one CelesTrak group or mars, or all"
+        required: false
+        default: "all"
+        type: choice
+        options:
+          - "all"
+          - "mars"
+          - "galileo"
+          - "glo-ops"
+          - "beidou"
+          - "visual"
+          - "19820"
+          - "stations"
+          - "iridium-NEXT"
+          - "weather"
+          - "science"
+          - "resource"
+          - "gps-ops"
+          - "starlink"
+          - "active"
+          - "geo"
+          - "cosmos-2251-debris"
+          - "iridium-33-debris"
 
 permissions:
   contents: read
@@ -23,10 +48,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
-      - name: Fetch every CelesTrak group and send to STELLUN
+      - name: Fetch CelesTrak groups and Mars, send to STELLUN
         env:
           SECRET: ${{ secrets.STELLUN_CRON_SECRET }}
           BASE: ${{ secrets.STELLUN_SITE_URL }}
+          ONLY: ${{ github.event.inputs.group }}
         run: |
           set -uo pipefail
           if [ -z "${SECRET:-}" ]; then
@@ -36,8 +62,25 @@ jobs:
           BASE="${BASE:-https://stellun.space}"
           BASE="${BASE%/}"
 
-          CT_GROUPS="stations iridium-NEXT weather science resource gps-ops galileo glo-ops beidou visual 19820 starlink active geo cosmos-2251-debris iridium-33-debris"
-          echo "Groups this run: $CT_GROUPS"
+          ALL="stations iridium-NEXT weather science resource gps-ops galileo glo-ops beidou visual 19820 starlink active geo cosmos-2251-debris iridium-33-debris"
+          REQ="${ONLY:-all}"
+          if [ -z "$REQ" ] || [ "$REQ" = "all" ]; then
+            CT_GROUPS="$ALL"
+            DO_MARS=1
+          elif [ "$REQ" = "mars" ]; then
+            CT_GROUPS=""
+            DO_MARS=1
+          else
+            CT_GROUPS="$REQ"
+            DO_MARS=0
+          fi
+          for G in $CT_GROUPS; do
+            case " $ALL " in
+              *" $G "*) ;;
+              *) echo "Unknown group '$G'. Allowed: $ALL mars"; exit 1 ;;
+            esac
+          done
+          echo "CelesTrak groups this run: ${CT_GROUPS:-none} | Mars: $DO_MARS"
 
           cat > /tmp/wrap.py <<'PY'
           import json, sys
@@ -54,6 +97,23 @@ jobs:
           with open("/tmp/body.json", "w") as f:
               json.dump({"group": group, "payload": data}, f)
           print(f"{group}: {len(data)} records from CelesTrak")
+          PY
+
+          cat > /tmp/wrap_mars.py <<'PY'
+          import json
+          raw = open("/tmp/mars.json", "rb").read()
+          try:
+              data = json.loads(raw)
+          except Exception as e:
+              print(f"mars: NASA did not return JSON ({e}). Start of response: {raw[:160]!r}")
+              raise SystemExit(2)
+          images = data.get("images") if isinstance(data, dict) else None
+          if not isinstance(images, list) or not images:
+              print(f"mars: NASA returned no images. Start: {raw[:160]!r}")
+              raise SystemExit(2)
+          with open("/tmp/mars_body.json", "w") as f:
+              json.dump({"kind": "mars-perseverance-latest", "payload": data}, f)
+          print(f"mars: {len(images)} frames from NASA")
           PY
 
           FAILED=""
@@ -79,8 +139,29 @@ jobs:
             sleep 5
           done
 
+          if [ "$DO_MARS" = "1" ]; then
+            OKM=0
+            for TRY in 1 2; do
+              CODE=$(curl -sS -o /tmp/mars.json -w "%{http_code}" --max-time 120 \
+                "https://mars.nasa.gov/rss/api/?feed=raw_images&category=mars2020&feedtype=json&num=48&page=0&format=json&order=sol+desc" || echo "000")
+              if [ "$CODE" = "200" ] && python3 /tmp/wrap_mars.py; then
+                RESP=$(curl -sS --max-time 180 -X POST \
+                  -H "Authorization: Bearer ${SECRET}" \
+                  -H "Content-Type: application/json" \
+                  --data-binary @/tmp/mars_body.json \
+                  "${BASE}/api/public/ingest" || echo '{"ok":false,"error":"request failed"}')
+                echo "mars -> $RESP"
+                if echo "$RESP" | grep -q '"ok":true'; then OKM=1; break; fi
+              else
+                echo "mars: no usable data this attempt (NASA HTTP $CODE, attempt $TRY)"
+              fi
+              sleep 20
+            done
+            if [ "$OKM" != "1" ]; then FAILED="$FAILED mars"; fi
+          fi
+
           if [ -n "$FAILED" ]; then
-            echo "Failed groups:$FAILED"
+            echo "Failed:$FAILED"
             exit 1
           fi
-          echo "All groups ingested"
+          echo "All ingested"

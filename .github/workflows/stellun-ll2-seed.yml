@@ -13,9 +13,14 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "upcoming | past | both"
-        required: true
+        description: "Which launches to refresh"
+        required: false
         default: "both"
+        type: choice
+        options:
+          - "both"
+          - "upcoming"
+          - "past"
 
 jobs:
   seed:
