@@ -1,6 +1,7 @@
 # STELLUN CelesTrak ingest.
-# GitHub fetches each CelesTrak group and posts it to /api/public/ingest, which stores it in Supabase.
-# The site only reads from Supabase, so the Worker no longer waits on CelesTrak.
+# GitHub fetches every CelesTrak group and posts it to /api/public/ingest, which stores it in Supabase.
+# The site only reads from Supabase. This workflow has no input fields: it always fetches all groups.
+# Runs every 2 hours, and can also be started by hand with Run workflow.
 # Secrets: STELLUN_CRON_SECRET, STELLUN_SITE_URL (= https://stellun.space)
 
 name: Stellun CelesTrak ingest
@@ -9,30 +10,6 @@ on:
   schedule:
     - cron: "5 */2 * * *"
   workflow_dispatch:
-    inputs:
-      group:
-        description: "Pick one group to test, or all"
-        required: false
-        default: "all"
-        type: choice
-        options:
-          - "all"
-          - "galileo"
-          - "glo-ops"
-          - "beidou"
-          - "visual"
-          - "19820"
-          - "stations"
-          - "iridium-NEXT"
-          - "weather"
-          - "science"
-          - "resource"
-          - "gps-ops"
-          - "starlink"
-          - "active"
-          - "geo"
-          - "cosmos-2251-debris"
-          - "iridium-33-debris"
 
 permissions:
   contents: read
@@ -44,13 +21,12 @@ concurrency:
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 240
     steps:
-      - name: Fetch CelesTrak groups and send to STELLUN
+      - name: Fetch every CelesTrak group and send to STELLUN
         env:
           SECRET: ${{ secrets.STELLUN_CRON_SECRET }}
           BASE: ${{ secrets.STELLUN_SITE_URL }}
-          ONLY: ${{ github.event.inputs.group }}
         run: |
           set -uo pipefail
           if [ -z "${SECRET:-}" ]; then
@@ -60,21 +36,7 @@ jobs:
           BASE="${BASE:-https://stellun.space}"
           BASE="${BASE%/}"
 
-          ALL="stations iridium-NEXT weather science resource gps-ops galileo glo-ops beidou visual 19820 starlink active geo cosmos-2251-debris iridium-33-debris"
-          REQ="${ONLY:-all}"
-          if [ -z "$REQ" ] || [ "$REQ" = "all" ]; then
-            GROUPS="$ALL"
-          else
-            GROUPS="$REQ"
-          fi
-
-          # Reject unknown names before contacting CelesTrak.
-          for G in $GROUPS; do
-            case " $ALL " in
-              *" $G "*) ;;
-              *) echo "Unknown group '$G'. Allowed: $ALL"; exit 1 ;;
-            esac
-          done
+          GROUPS="stations iridium-NEXT weather science resource gps-ops galileo glo-ops beidou visual 19820 starlink active geo cosmos-2251-debris iridium-33-debris"
           echo "Groups this run: $GROUPS"
 
           cat > /tmp/wrap.py <<'PY'
@@ -97,8 +59,8 @@ jobs:
           FAILED=""
           for G in $GROUPS; do
             OK=0
-            for TRY in 1 2 3; do
-              CODE=$(curl -sS -o /tmp/ct.json -w "%{http_code}" --max-time 150 \
+            for TRY in 1 2; do
+              CODE=$(curl -sS -o /tmp/ct.json -w "%{http_code}" --max-time 180 \
                 "https://celestrak.org/NORAD/elements/gp.php?GROUP=${G}&FORMAT=json" || echo "000")
               if [ "$CODE" = "200" ] && python3 /tmp/wrap.py "$G"; then
                 RESP=$(curl -sS --max-time 180 -X POST \
@@ -111,7 +73,7 @@ jobs:
               else
                 echo "$G: no usable data this attempt (CelesTrak HTTP $CODE, attempt $TRY)"
               fi
-              sleep 30
+              sleep 20
             done
             if [ "$OK" != "1" ]; then FAILED="$FAILED $G"; fi
             sleep 5
