@@ -4,13 +4,15 @@ import { FeedbackForm } from "@/components/site/feedback-form";
 export const Route = createFileRoute("/_authenticated/about")({
   head: () => ({
     meta: [
-      { title: "About & Data Sources — STELLUN" },
+      { title: "About STELLUN — learn astronomy, aviation, aerospace and STEM" },
       {
         name: "description",
         content:
-          "How STELLUN gets its numbers: every figure is fetched live from NASA, NOAA, CelesTrak, JPL, The Space Devs, and Open-Meteo, or computed from documented formulas. Nothing is invented.",
+          "STELLUN is a learning platform and hub for astronomy, aviation, aerospace and STEM enthusiasts. It explains where its live space data comes from and how each figure is computed.",
       },
-      { property: "og:title", content: "About & Data Sources — STELLUN" },
+      { property: "og:title", content: "About STELLUN — learn astronomy, aviation, aerospace and STEM" },
+      { property: "og:image", content: "https://stellun.space/og-about.png" },
+      { name: "twitter:image", content: "https://stellun.space/og-about.png" },
       {
         property: "og:description",
         content:
@@ -47,6 +49,41 @@ const SOURCES: Source[] = [
 function AboutPage() {
   return (
     <main className="page-main">
+      <section>
+        <div className="container narrow">
+          <div className="page-hero">
+            <span className="eyebrow">About</span>
+            <h1>A place to learn space science, and to test what you know</h1>
+            <p>
+              STELLUN is a learning platform and a hub for astronomy, aviation, aerospace and
+              STEM enthusiasts. Live space data from public agencies sits next to the study tools,
+              so what you read and what you see are connected.
+            </p>
+          </div>
+          <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 24 }}>
+            <div className="glass glass-card scaffold-card">
+              <h3>Learn</h3>
+              <p>Study workspaces, a reader for your own books, flashcards, daily practice, quizzes, and a shelf of books for each subject.</p>
+            </div>
+            <div className="glass glass-card scaffold-card">
+              <h3>Explore</h3>
+              <p>A live dashboard of launches, the sky, the International Space Station, Mars, near-Earth objects, and the Picture of the Day.</p>
+            </div>
+            <div className="glass glass-card scaffold-card">
+              <h3>Compete</h3>
+              <p>Research fairs, design competitions and hackathons across astronomy, aviation, aerospace and STEM, with official links to each one.</p>
+            </div>
+            <div className="glass glass-card scaffold-card">
+              <h3>Independent</h3>
+              <p>STELLUN is not affiliated with NASA, NOAA or any space agency. The Terms explain what that means for you.</p>
+            </div>
+          </div>
+          <p style={{ marginTop: 20 }}>
+            Read the <Link to="/privacy">Privacy Policy</Link> and the <Link to="/terms">Terms of Use</Link> before you sign up.
+          </p>
+        </div>
+      </section>
+
       <section>
         <div className="container narrow">
           <div className="page-hero">
