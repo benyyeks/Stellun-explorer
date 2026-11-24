@@ -14,8 +14,7 @@ export function SiteFooter() {
             </div>
             <p>
               An independent space intelligence dashboard and study academy for
-              aviation, astronomy, aerospace and STEM. Not affiliated with NASA, NOAA,
-              ESA, or any space agency.
+              aviation, astronomy, aerospace and STEM.
             </p>
           </div>
           <div className="footer-col">
