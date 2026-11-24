@@ -1,0 +1,151 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  Outlet,
+  Link,
+  createRootRouteWithContext,
+  useRouter,
+  HeadContent,
+  Scripts,
+  type ErrorComponentProps,
+} from "@tanstack/react-router";
+import { useEffect, type ReactNode } from "react";
+
+import appCss from "../styles.css?url";
+import { reportError } from "../lib/error-reporting";
+import { SiteHeader } from "@/components/site/site-header";
+import { SiteFooter } from "@/components/site/site-footer";
+import { AskWidget } from "@/components/site/ask-widget";
+import { ErrorReporter } from "@/components/site/error-reporter";
+import { migrateLegacyStorage } from "@/lib/storage-migrate";
+
+migrateLegacyStorage();
+
+function NotFoundComponent() {
+  return (
+    <main className="container error-page">
+      <span className="badge badge-amber">404</span>
+      <h1>Page not found</h1>
+      <p>
+        The page you're looking for doesn't exist or has drifted off orbit. Let's
+        get you back to known space.
+      </p>
+      <Link to="/" className="btn btn-primary">
+        Return home
+      </Link>
+    </main>
+  );
+}
+
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
+  console.error(error);
+  const router = useRouter();
+  useEffect(() => {
+    reportError(error, { boundary: "tanstack_root_error_component" });
+  }, [error]);
+
+  return (
+    <main className="container error-page">
+      <span className="badge badge-amber">Signal lost</span>
+      <h1>This page didn't load</h1>
+      <p>
+        Something went wrong on our end. You can try re-establishing the link or
+        head back to home base.
+      </p>
+      <div className="error-actions">
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => {
+            router.invalidate();
+            reset();
+          }}
+        >
+          Try again
+        </button>
+        <Link to="/" className="btn btn-ghost">
+          Go home
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  head: () => ({
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "STELLUN: Learn astronomy, aviation, aerospace and STEM" },
+      {
+        name: "description",
+        content:
+          "STELLUN is a learning platform and hub for astronomy, aviation, aerospace and STEM enthusiasts to build and test their knowledge. Space data comes from NASA, NOAA, CelesTrak and JPL.",
+      },
+      { name: "author", content: "STELLUN" },
+      { name: "theme-color", content: "#f2f0ea", media: "(prefers-color-scheme: light)" },
+      { name: "theme-color", content: "#16140f", media: "(prefers-color-scheme: dark)" },
+      { property: "og:title", content: "STELLUN: Learn astronomy, aviation, aerospace and STEM" },
+      {
+        property: "og:description",
+        content:
+          "A learning platform for astronomy, aviation, aerospace and STEM, with space data from NASA, NOAA, CelesTrak and JPL.",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "STELLUN" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap",
+      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/favicon-32x32.png" },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+      { rel: "manifest", href: "/site.webmanifest" },
+      { property: "og:url", content: "https://stellun.space/" },
+      { property: "og:image", content: "https://stellun.space/og-image.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "STELLUN: a learning platform for astronomy, aviation, aerospace and STEM" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://stellun.space/og-image.png" },
+    ],
+  }),
+  shellComponent: RootShell,
+  component: RootComponent,
+  notFoundComponent: NotFoundComponent,
+  errorComponent: ErrorComponent,
+});
+
+function RootShell({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
+  );
+}
+
+function RootComponent() {
+  const { queryClient } = Route.useRouteContext();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SiteHeader />
+      <Outlet />
+      <ErrorReporter />
+      <SiteFooter />
+      <AskWidget />
+    </QueryClientProvider>
+  );
+}
