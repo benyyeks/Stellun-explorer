@@ -73,10 +73,6 @@ function AboutPage() {
               <h3>Compete</h3>
               <p>Research fairs, design competitions and hackathons across astronomy, aviation, aerospace and STEM, with official links to each one.</p>
             </div>
-            <div className="glass glass-card scaffold-card">
-              <h3>Independent</h3>
-              <p>STELLUN is not affiliated with NASA, NOAA or any space agency. The Terms explain what that means for you.</p>
-            </div>
           </div>
           <p style={{ marginTop: 20 }}>
             Read the <Link to="/privacy">Privacy Policy</Link> and the <Link to="/terms">Terms of Use</Link> before you sign up.
@@ -104,10 +100,6 @@ function AboutPage() {
               on STELLUN. If a source is temporarily unreachable, the page shows the most
               recent verified reading with its timestamp, rather than a blank space or an
               invented value.
-            </p>
-            <p>
-              STELLUN is not affiliated with NASA, NOAA, ESA, or any space agency. It
-              aggregates publicly available data for education and research.
             </p>
           </div>
 
