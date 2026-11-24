@@ -190,3 +190,38 @@ export async function refreshSatelliteGroup(
 
   return { source: "fresh", count: records.length };
                     }
+
+/** Write a full group payload fetched outside the Worker (GitHub Actions ingest). */
+export async function writeCatalogPayload(
+  group: string,
+  records: unknown[],
+): Promise<{ source: string; count: number }> {
+  if (records.length === 0) throw new Error(`Empty payload for group ${group}`);
+  const sb = await admin();
+  const fetchedAt = new Date().toISOString();
+  const { error: blobErr } = await (sb as any).from("satellite_catalog_blob").upsert(
+    {
+      group_id: group,
+      payload: records,
+      object_count: records.length,
+      fetched_at: fetchedAt,
+    } as any,
+    { onConflict: "group_id" },
+  );
+  if (blobErr) {
+    await setStatus(group, {
+      status: "error",
+      error: blobErr.message.slice(0, 400),
+      finished_at: new Date().toISOString(),
+    });
+    throw new Error(blobErr.message);
+  }
+  await setStatus(group, {
+    status: "ready",
+    loaded_count: records.length,
+    expected_total: records.length,
+    error: null,
+    finished_at: fetchedAt,
+  });
+  return { source: "fresh", count: records.length };
+}

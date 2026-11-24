@@ -537,7 +537,7 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
         const err =
           r.error ??
           (src === "stale"
-            ? "Source unavailable, showing last saved copy"
+            ? `${sourceNameFor(f.name)} did not respond. Showing the last saved copy.`
             : src === "none"
               ? "No data"
               : null);
@@ -592,4 +592,15 @@ export async function runRefreshCycle(opts?: { force?: boolean; only?: string })
     forceRefresh = false;
     forceOnly = null;
   }
+}
+
+/** Plain-language name of the upstream source for a feed, used in admin messages. */
+function sourceNameFor(feed: string): string {
+  if (feed.startsWith("satellites")) return "CelesTrak";
+  if (feed === "iss-position" || feed === "iss") return "The ISS position service";
+  if (["kp-index", "solar-wind", "xray-flux", "space-weather-alerts"].includes(feed)) return "NOAA space weather";
+  if (["asteroids", "mars-perseverance", "picture-of-the-day"].includes(feed)) return "NASA";
+  if (["launches", "past-launches"].includes(feed)) return "Launch Library 2";
+  if (feed === "space-news") return "The news feeds";
+  return "The source";
 }
