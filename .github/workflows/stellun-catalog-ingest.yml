@@ -11,9 +11,28 @@ on:
   workflow_dispatch:
     inputs:
       group:
-        description: "One CelesTrak group to test (leave empty for all groups)"
+        description: "Pick one group to test, or all"
         required: false
-        type: string
+        default: "all"
+        type: choice
+        options:
+          - "all"
+          - "galileo"
+          - "glo-ops"
+          - "beidou"
+          - "visual"
+          - "19820"
+          - "stations"
+          - "iridium-NEXT"
+          - "weather"
+          - "science"
+          - "resource"
+          - "gps-ops"
+          - "starlink"
+          - "active"
+          - "geo"
+          - "cosmos-2251-debris"
+          - "iridium-33-debris"
 
 permissions:
   contents: read
@@ -41,6 +60,23 @@ jobs:
           BASE="${BASE:-https://stellun.space}"
           BASE="${BASE%/}"
 
+          ALL="stations iridium-NEXT weather science resource gps-ops galileo glo-ops beidou visual 19820 starlink active geo cosmos-2251-debris iridium-33-debris"
+          REQ="${ONLY:-all}"
+          if [ -z "$REQ" ] || [ "$REQ" = "all" ]; then
+            GROUPS="$ALL"
+          else
+            GROUPS="$REQ"
+          fi
+
+          # Reject unknown names before contacting CelesTrak.
+          for G in $GROUPS; do
+            case " $ALL " in
+              *" $G "*) ;;
+              *) echo "Unknown group '$G'. Allowed: $ALL"; exit 1 ;;
+            esac
+          done
+          echo "Groups this run: $GROUPS"
+
           cat > /tmp/wrap.py <<'PY'
           import json, sys
           group = sys.argv[1]
@@ -57,9 +93,6 @@ jobs:
               json.dump({"group": group, "payload": data}, f)
           print(f"{group}: {len(data)} records from CelesTrak")
           PY
-
-          GROUPS="stations iridium-NEXT weather science resource gps-ops galileo glo-ops beidou visual 19820 starlink active geo cosmos-2251-debris iridium-33-debris"
-          if [ -n "${ONLY:-}" ]; then GROUPS="$ONLY"; fi
 
           FAILED=""
           for G in $GROUPS; do
