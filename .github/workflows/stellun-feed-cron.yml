@@ -1,7 +1,7 @@
-# STELLUN staggered feeds — one slot per run (no Refresh-all, no ISS)
-# ISS has its own workflow: stellun-iss-refresh.yml
-# Launches seed: stellun-ll2-seed.yml
-#
+# STELLUN staggered feeds: one slot per run.
+# Each run takes the next slot from a 14-slot rotation keyed on the clock (every 15 minutes), so each
+# slot comes round every 3.5 hours. CelesTrak groups are fetched by "Stellun CelesTrak ingest" (every
+# 2 hours), and the ISS by its own workflow (every minute).
 # Secrets: STELLUN_CRON_SECRET, STELLUN_SITE_URL (= https://stellun.space)
 
 name: Stellun feed refresh
@@ -12,14 +12,21 @@ on:
   workflow_dispatch:
     inputs:
       slot:
-        description: "stations | starlink | space-weather | iridium | resource | geo | weather | science | gps | launches | news | mars"
+        description: "Slot to run (leave empty for the scheduled rotation)"
         required: false
-        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stellun-feed-cron
+  cancel-in-progress: false
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Refresh one slot
         env:
@@ -35,30 +42,16 @@ jobs:
           BASE="${BASE:-https://stellun.space}"
           BASE="${BASE%/}"
 
+          SLOTS=(stations starlink space-weather iridium resource geo weather science gps launches news mars sso asteroids)
           if [ -n "${MANUAL_SLOT:-}" ]; then
             SLOT="$MANUAL_SLOT"
           else
-            H=$(date -u +%H)
-            M=$(date -u +%M)
-            IDX=$(( (10#$H * 4 + 10#$M / 15) % 12 ))
-            case "$IDX" in
-              0) SLOT=stations ;;
-              1) SLOT=starlink ;;
-              2) SLOT=space-weather ;;
-              3) SLOT=iridium ;;
-              4) SLOT=resource ;;
-              5) SLOT=geo ;;
-              6) SLOT=weather ;;
-              7) SLOT=science ;;
-              8) SLOT=gps ;;
-              9) SLOT=launches ;;
-              10) SLOT=news ;;
-              *) SLOT=mars ;;
-            esac
+            Q=$(( $(date -u +%s) / 900 ))
+            SLOT="${SLOTS[$(( Q % ${#SLOTS[@]} ))]}"
           fi
 
-          echo "Slot=$SLOT Base=$BASE"
-          BODY=$(curl -fsS -X POST \
+          echo "Slot=$SLOT Base=$BASE at $(date -u +%H:%M:%S) UTC"
+          BODY=$(curl -fsS --max-time 240 -X POST \
             -H "Authorization: Bearer ${SECRET}" \
             -H "Content-Type: application/json" \
             "${BASE}/api/public/refresh?slot=${SLOT}")
