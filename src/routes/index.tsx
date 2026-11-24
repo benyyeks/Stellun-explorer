@@ -1096,6 +1096,8 @@ function ApodSection() {
 
   const mediaRef = useRef<HTMLDivElement | null>(null);
   const [fs, setFs] = useState(false);
+  const [viewer, setViewer] = useState(false);
+  const [rotated, setRotated] = useState(false);
   const [shareNote, setShareNote] = useState<string | null>(null);
 
   if (!apod?.url && !apod?.hdurl) {
@@ -1132,6 +1134,12 @@ function ApodSection() {
     .join("\n");
 
   async function enterFullscreen() {
+    // Phones: a full-screen viewer that rotates and keeps pinch zoom working.
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 899px)").matches) {
+      setRotated(false);
+      setViewer(true);
+      return;
+    }
     const el = mediaRef.current;
     if (!el) return;
     try {
@@ -1208,6 +1216,21 @@ function ApodSection() {
           <span className="eyebrow">NASA · Daily</span>
           <h2>Astronomy Picture of the Day</h2>
         </div>
+        {viewer ? (
+          <div className="apod-viewer" role="dialog" aria-modal="true" aria-label={`${title}, full screen`}>
+            <div className="apod-viewer-bar">
+              <button type="button" className="apod-viewer-btn" onClick={() => setRotated((r) => !r)}>
+                {rotated ? "Upright" : "Rotate"}
+              </button>
+              <button type="button" className="apod-viewer-btn" onClick={() => setViewer(false)}>
+                Close
+              </button>
+            </div>
+            <div className={`apod-viewer-stage${rotated ? " is-rotated" : ""}`}>
+              <img src={img} alt={title} draggable={false} />
+            </div>
+          </div>
+        ) : null}
         <article className="glass glass-card apod-card">
           <div className={`apod-media${fs ? " apod-media-fs" : ""}`} ref={mediaRef}>
             {isVideo ? (

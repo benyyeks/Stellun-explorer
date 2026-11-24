@@ -75,22 +75,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "STELLUN - Space Intelligence Dashboard" },
+      { title: "STELLUN: Learn astronomy, aviation, aerospace and STEM" },
       {
         name: "description",
         content:
-          "An independent space intelligence dashboard. Live data from NASA, NOAA, CelesTrak, and JPL, with nothing invented.",
+          "STELLUN is a learning platform and hub for astronomy, aviation, aerospace and STEM enthusiasts to build and test their knowledge. Space data comes from NASA, NOAA, CelesTrak and JPL.",
       },
       { name: "author", content: "STELLUN" },
       { name: "theme-color", content: "#f2f0ea", media: "(prefers-color-scheme: light)" },
       { name: "theme-color", content: "#16140f", media: "(prefers-color-scheme: dark)" },
-      { property: "og:title", content: "STELLUN - Space Intelligence Dashboard" },
+      { property: "og:title", content: "STELLUN: Learn astronomy, aviation, aerospace and STEM" },
       {
         property: "og:description",
         content:
-          "Live data from NASA, NOAA, CelesTrak, and JPL, with nothing invented.",
+          "A learning platform for astronomy, aviation, aerospace and STEM, with space data from NASA, NOAA, CelesTrak and JPL.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "STELLUN" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
@@ -107,7 +108,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:image", content: "https://stellun.space/og-image.png" },
       { property: "og:image:width", content: "1200" },
       { property: "og:image:height", content: "630" },
-      { property: "og:image:alt", content: "STELLUN — Space intelligence dashboard" },
+      { property: "og:image:alt", content: "STELLUN: a learning platform for astronomy, aviation, aerospace and STEM" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:image", content: "https://stellun.space/og-image.png" },
     ],
