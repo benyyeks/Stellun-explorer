@@ -35,7 +35,7 @@ function TermsPage() {
               These terms govern your use of STELLUN. By using the site or creating an
               account, you agree to them. If you do not agree, do not use STELLUN.
             </p>
-            <p className="scaffold-note">Last updated: 25 October 2026</p>
+            <p className="scaffold-note">Last updated: 24 November 2026</p>
           </div>
 
           <div className="glass glass-card scaffold-card">
@@ -204,6 +204,28 @@ function TermsPage() {
               Nigeria</strong>, without regard to conflict-of-law rules, except where
               mandatory consumer protections in your country of residence say otherwise.
               Courts in Nigeria shall have jurisdiction, subject to those mandatory rights.
+            </p>
+          </div>
+
+          <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
+            <h2>13A. Independence and data sources</h2>
+            <p>
+              STELLUN is an independent project. It is not affiliated with, endorsed by, or
+              operated by NASA, NOAA, ESA, JPL, CelesTrak, or any other space agency or data
+              provider. The data shown comes from those public sources and is used under their
+              published terms; their names are given so you can check the originals.
+            </p>
+          </div>
+
+          <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
+            <h2>13B. Academy study content and competitions</h2>
+            <p>
+              Study material, quizzes, explanations and plans are for learning. They are not a
+              substitute for a course, an instructor, or a primary source, and they can contain
+              errors. Book entries describe titles and link to publishers or libraries; we do not
+              host book texts. Competition listings are provided for information only. Always read
+              the official rules and deadlines on the organiser's site, because we are not the
+              organiser and do not decide eligibility.
             </p>
           </div>
 

@@ -6,6 +6,10 @@ export const Route = createFileRoute("/privacy")({
   head: () => ({
     meta: [
       { title: "Privacy Policy - STELLUN" },
+      { property: "og:title", content: "Privacy Policy - STELLUN" },
+      { property: "og:description", content: "How STELLUN handles your data: what we keep, on your device or ours, and your choices." },
+      { property: "og:image", content: "https://stellun.space/og-privacy.png" },
+      { name: "twitter:image", content: "https://stellun.space/og-privacy.png" },
       {
         name: "description",
         content:
@@ -35,7 +39,7 @@ function PrivacyPage() {
               you can control or delete it. It is meant to match the product as it runs
               today—not an earlier, account-free draft.
             </p>
-            <p className="scaffold-note">Last updated: 25 October 2026</p>
+            <p className="scaffold-note">Last updated: 24 November 2026</p>
           </div>
 
           <div className="glass glass-card scaffold-card">
@@ -134,6 +138,32 @@ function PrivacyPage() {
           </div>
 
           <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
+            <h3>3.4 Academy and learning data</h3>
+            <ul>
+              <li>
+                <strong>On your device.</strong> Study workspaces, notes, highlights, reading
+                positions, flashcard and word-match progress, homework entries, and Stellun AI
+                chats from the reader are stored in your browser. Books you add to the shelf
+                are stored on your device only; their text is not uploaded to us. Clearing your
+                browser data removes them.
+              </li>
+              <li>
+                <strong>On our servers (signed-in learners).</strong> Each day we keep a copy of
+                your study plan, the day's quiz set, and your quiz attempts with their scores and
+                the categories of the questions. The planner uses your recent attempts and a short
+                summary of your workspaces, books and homework to choose what you study next.
+                These copies are kept while your account exists. You can ask us to delete them.
+              </li>
+              <li>
+                <strong>AI processing.</strong> When you use a plan, a quiz explanation or Stellun
+                AI, the summary or question you send is passed to an AI model provider through
+                OpenRouter. Excerpts from a book are sent only for the question you ask about it.
+                We do not use these inputs to train models of our own.
+              </li>
+            </ul>
+          </div>
+
+          <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
             <h2>4. Why we process data</h2>
             <ul>
               <li>Provide and secure the website and accounts</li>
@@ -169,6 +199,11 @@ function PrivacyPage() {
               <li>
                 <strong>Supabase</strong> — authentication, database, and file storage
                 (accounts, profiles, saved chats, feedback, caches).
+              </li>
+              <li>
+                <strong>OpenRouter</strong> — routes questions and study requests to AI model
+                providers for plans, quiz explanations and Stellun AI. Only the content needed for
+                that request is sent.
               </li>
               <li>
                 <strong>Cloudflare</strong> — hosting and delivery of the application
