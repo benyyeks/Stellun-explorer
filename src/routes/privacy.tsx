@@ -64,8 +64,7 @@ function PrivacyPage() {
           <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
             <h2>2. Who operates STELLUN</h2>
             <p>
-              STELLUN is an independent educational dashboard. It is not affiliated with
-              NASA, NOAA, ESA, or any other space agency. For privacy requests, use the
+              STELLUN is an educational platform. For privacy requests, use the
               contact method in section 12 below.
             </p>
           </div>

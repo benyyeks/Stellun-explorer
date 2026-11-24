@@ -60,13 +60,17 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "STELLUN · Space intelligence dashboard" },
+      { title: "STELLUN · Learn astronomy, aviation, aerospace and STEM" },
       {
         name: "description",
         content:
-          "Independent space dashboard: orbit tracking, sky conditions, space weather, launches, missions, and study tools. Not affiliated with NASA, NOAA, or ESA.",
+          "An open-access platform for students, researchers and enthusiasts in aerospace, aviation, astronomy and STEM. Track the ISS and satellites, follow space weather and launches, and learn with the Academy.",
       },
-      { property: "og:title", content: "STELLUN · Space intelligence dashboard" },
+      { property: "og:title", content: "STELLUN · Learn astronomy, aviation, aerospace and STEM" },
+      { property: "og:url", content: "https://stellun.space/" },
+      { property: "og:image", content: "https://stellun.space/og-home.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://stellun.space/og-home.png" },
       {
         property: "og:description",
         content:
@@ -1319,11 +1323,7 @@ function LandingPage() {
             <h1>
               See beyond the <span>sky</span>
             </h1>
-            <p className="hero-lede">
-              STELLUN brings live satellite tracking, space weather, near-Earth object
-              watch, and deep-space mission data into one dashboard built for students,
-              researchers, and anyone who wants the real numbers, not a simulation.
-            </p>
+            <p className="hero-lede">STELLUN is an open-access platform for students, researchers and enthusiasts in aerospace, aviation, astronomy and STEM. It connects you with live space data from NASA, NOAA, CelesTrak and JPL, so theory meets real exploration.</p>
             <div className="hero-actions">
               {signedOut ? (
                 <>
