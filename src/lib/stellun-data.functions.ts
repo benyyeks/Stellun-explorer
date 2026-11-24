@@ -772,7 +772,7 @@ export const getMarsGallery = createServerFn({ method: "GET" })
     const { craft, sol, page } = data;
     // Historical sols never change, so they are cached for a day; the live
     // "latest frames" view refreshes every half hour.
-    const ttl = sol === null ? 1800 : 86400;
+    const ttl = sol === null ? 7200 : 86400;
     return cached<MarsGalleryPayload>("mars-gallery", { craft, sol, page }, ttl, async () => {
       if (craft === "perseverance") {
         const url =
