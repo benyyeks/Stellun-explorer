@@ -406,7 +406,24 @@ function SkyPage() {
               >
                 {loc.status === "requesting" ? "Locating..." : "Use my location"}
               </button>
+              {loc.location ? (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => {
+                    if (loc.location) loc.setManual(loc.location.lat, loc.location.lon);
+                  }}
+                >
+                  Save my location
+                </button>
+              ) : null}
             </div>
+            {loc.location ? (
+              <p className="text-muted" style={{ marginTop: 10, marginBottom: 0 }}>
+                Using {locLabel}. Coordinates stay on this device for Sky Tonight
+                and related tools. Sign in if you want the same place on other devices.
+              </p>
+            ) : null}
             {loc.error ? (
               <p className="text-muted" role="alert" style={{ marginTop: 10, marginBottom: 0 }}>
                 {loc.error}

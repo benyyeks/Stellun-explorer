@@ -37,7 +37,8 @@ import { AnswerText } from "@/components/site/answer-text";
  * Stellun: a chat thread. Each question is sent with the part of the book that
  * matches it, so Stellun can read the book, not only its title.
  * Study panel: docked on tablets and laptops (900px and up). On phones it
- * slides in from the right; "Hide" closes it and the Study tab brings it back.
+ * slides in from the right; "Hide" closes it and the edge arrow brings it back.
+ * Section tabs (Stellun, Highlights, Notes, Plan, …) stay visible whenever the panel is open.
  */
 
 export const Route = createFileRoute("/_authenticated/academy/workspace/$workspaceId")({
@@ -998,11 +999,11 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
                       className="ac-textarea"
                       rows={10}
                       maxLength={MAX_NOTES}
-                      value={ws.notes}
+                      value={typeof ws.notes === "string" ? ws.notes : ""}
                       placeholder="Write notes, or save passages and answers from the book."
                       onChange={(e) => update(ws.id, { notes: e.target.value })}
                     />
-                    <span className="ac-hint">{ws.notes.length} of {MAX_NOTES} characters</span>
+                    <span className="ac-hint">{(typeof ws.notes === "string" ? ws.notes.length : 0)} of {MAX_NOTES} characters</span>
                   </label>
                 </div>
               )}
@@ -1056,9 +1057,8 @@ function WorkspaceReader({ workspaceId }: { workspaceId: string }) {
         )}
 
         {doc && !panelOpen && (
-          <button type="button" className="ac-pulltab" onClick={() => setPanelOpen(true)} aria-label="Open the study panel">
+          <button type="button" className="ac-pulltab" onClick={() => setPanelOpen(true)} aria-label="Open study panel">
             <span aria-hidden="true">‹</span>
-            <span>Study</span>
           </button>
         )}
       </div>
