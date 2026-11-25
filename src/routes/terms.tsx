@@ -96,9 +96,12 @@ function TermsPage() {
           <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
             <h2>5. Accounts</h2>
             <p>
-              Some features require an account. You must provide accurate information, keep
-              your password confidential, and notify us if you believe your account is
-              compromised. You are responsible for activity under your account.
+              Live data tools on STELLUN are available without an account. An account is
+              required for Academy (study workspaces, progress, quizzes), saved Stellun AI
+              chats, site settings, and admin access. When you create an account you must
+              provide accurate information, keep your password confidential, and notify us
+              if you believe your account is compromised. You are responsible for activity
+              under your account.
             </p>
             <p>
               You must be at least <strong>16 years old</strong> (or the digital consent age
