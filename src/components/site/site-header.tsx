@@ -108,7 +108,7 @@ export function SiteHeader() {
     closeTimer.current = setTimeout(() => setOpenPillar(null), 140);
   };
 
-  /** Guest links go through /auth with redirect; signed-in users go direct. */
+  /** Live tools are open to everyone. Academy / progress stay behind sign-in. */
   const renderToolLink = (link: NavLink, withHint: boolean) => {
     const active = isMatch(pathname, link.to);
     const common = {
@@ -128,14 +128,6 @@ export function SiteHeader() {
     ) : (
       link.label
     );
-
-    if (!signedIn && !loading) {
-      return (
-        <Link key={link.id} to="/auth" search={{ redirect: link.to }} {...common}>
-          {body}
-        </Link>
-      );
-    }
 
     return (
       <Link key={link.id} to={link.to} {...common}>
@@ -220,11 +212,9 @@ export function SiteHeader() {
               </Link>
             )}
 
-            {signedIn && (
-              <Link to="/about" aria-current={isMatch(pathname, "/about") ? "page" : undefined}>
-                About
-              </Link>
-            )}
+            <Link to="/about" aria-current={isMatch(pathname, "/about") ? "page" : undefined}>
+              About
+            </Link>
           </nav>
 
           <div className="header-actions">
@@ -261,7 +251,7 @@ export function SiteHeader() {
 
         {!signedIn && !loading ? (
           <p className="nav-guest-note">
-            Sign in to open tools, save lists, and get results for your location.
+            Tools below are open to browse. Sign in to save Academy workspaces, progress, and AI chats.
           </p>
         ) : null}
 
