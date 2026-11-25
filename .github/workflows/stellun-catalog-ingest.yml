@@ -117,21 +117,33 @@ jobs:
           PY
 
           FAILED=""
+          SKIPPED=""
           for G in $CT_GROUPS; do
             case "$G" in
               ''|*[!0-9]*) URL="https://celestrak.org/NORAD/elements/gp.php?GROUP=${G}&FORMAT=json" ;;
               *)           URL="https://celestrak.org/NORAD/elements/gp.php?CATNR=${G}&FORMAT=json" ;;
             esac
             FETCH_OK=0
+            SKIP_THIS=0
             for TRY in 1 2; do
               CODE=$(curl -sS -o /tmp/ct.json -w "%{http_code}" --max-time 180 "$URL" || echo "000")
               if [ "$CODE" = "200" ] && python3 /tmp/wrap.py "$G"; then
                 FETCH_OK=1
                 break
               fi
+              if [ "$CODE" = "404" ]; then
+                echo "$G: CelesTrak has no current orbit record for this item (HTTP 404). Skipped, not a failure."
+                SKIP_THIS=1
+                break
+              fi
               echo "$G: no usable data from CelesTrak (HTTP $CODE, attempt $TRY). Waiting 60 s before any retry."
               sleep 60
             done
+            if [ "$SKIP_THIS" = "1" ]; then
+              SKIPPED="$SKIPPED $G"
+              sleep 10
+              continue
+            fi
             OK=0
             if [ "$FETCH_OK" = "1" ]; then
               for POST_TRY in 1 2 3; do
@@ -149,6 +161,7 @@ jobs:
             if [ "$OK" != "1" ]; then FAILED="$FAILED $G"; fi
             sleep 10
           done
+          if [ -n "$SKIPPED" ]; then echo "Skipped (no current CelesTrak record):$SKIPPED"; fi
 
           if [ "$DO_MARS" = "1" ]; then
             OKM=0
