@@ -45,11 +45,9 @@ function PrivacyPage() {
           <div className="glass glass-card scaffold-card">
             <h2>1. Summary</h2>
             <p>
-              Many Most STELLUN tools (launches, orbital tracker, sky tonight, space weather,
-              mission intelligence, and similar live data pages) are open without an account.
-              You only need to sign in for features that store your own data: Academy
-              workspaces and progress, saved Stellun AI chats, profile settings, and
-              optional sync of a preferred observer location across devices.
+              Many STELLUN tools work in the browser with public scientific data. An
+              account is optional for core browsing of public pages, but signing in unlocks
+              saved chats, profile features, and cross-device sync for some items.
             </p>
             <p>
               When you create an account we store your email and authentication data. If you
@@ -291,9 +289,8 @@ function PrivacyPage() {
           <div className="glass glass-card scaffold-card" style={{ marginTop: 24 }}>
             <h2>10. Your choices</h2>
             <ul>
-              <li>Use live tools (tracker, launches, sky, weather, and similar) without an account</li>
+              <li>Use many features without creating an account</li>
               <li>Refuse or revoke browser location permission</li>
-              <li>Keep location only on this device, or sign in to sync it later</li>
               <li>Delete AI conversations from the Stellun AI page when signed in</li>
               <li>Update or clear profile avatar and display name when signed in</li>
               <li>Request account and personal data deletion (section 12)</li>

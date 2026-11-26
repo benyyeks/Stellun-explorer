@@ -1137,11 +1137,31 @@ function ApodSection() {
     .filter(Boolean)
     .join("\n");
 
+  function closeViewer() {
+    setViewer(false);
+    try {
+      (screen as unknown as { orientation?: { unlock?: () => void } }).orientation?.unlock?.();
+    } catch {
+      /* ignore */
+    }
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+  }
+
   async function enterFullscreen() {
     // Phones: a full-screen viewer that rotates and keeps pinch zoom working.
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 899px)").matches) {
       setRotated(false);
       setViewer(true);
+      // Android Chrome: go full screen and lock to landscape so the picture fills the phone.
+      try {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
+        }
+        await (screen as unknown as { orientation?: { lock?: (o: string) => Promise<void> } })
+          .orientation?.lock?.("landscape");
+      } catch {
+        // Not supported on this phone (for example iPhone): the rotate button still works.
+      }
       return;
     }
     const el = mediaRef.current;
@@ -1226,7 +1246,7 @@ function ApodSection() {
               <button type="button" className="apod-viewer-btn" onClick={() => setRotated((r) => !r)}>
                 {rotated ? "Upright" : "Rotate"}
               </button>
-              <button type="button" className="apod-viewer-btn" onClick={() => setViewer(false)}>
+              <button type="button" className="apod-viewer-btn" onClick={closeViewer}>
                 Close
               </button>
             </div>
@@ -1238,7 +1258,22 @@ function ApodSection() {
         <article className="glass glass-card apod-card">
           <div className={`apod-media${fs ? " apod-media-fs" : ""}`} ref={mediaRef}>
             {isVideo ? (
-              <span className="apod-video-link">Today's media is a video</span>
+              videoEmbedUrl(apod.url ?? "") ? (
+                <div className="apod-video-frame">
+                  <iframe
+                    src={videoEmbedUrl(apod.url ?? "") ?? undefined}
+                    title={title}
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+              ) : (
+                <a className="apod-video-link" href={apod.url ?? undefined} target="_blank" rel="noopener noreferrer">
+                  Open today's video
+                </a>
+              )
             ) : (
               <img
                 src={img}
@@ -1439,4 +1474,28 @@ function LandingPage() {
       <FeedbackSection />
     </main>
   );
+}
+
+/** Turns a YouTube or Vimeo page link into an embeddable player URL. */
+function videoEmbedUrl(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:") return null;
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const id = u.searchParams.get("v");
+      return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}` : null;
+    }
+    if (host === "youtu.be") {
+      const id = u.pathname.slice(1);
+      return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}` : null;
+    }
+    if (host === "vimeo.com") {
+      const id = u.pathname.split("/").filter(Boolean).pop();
+      return id && /^\d+$/.test(id) ? `https://player.vimeo.com/video/${id}` : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
