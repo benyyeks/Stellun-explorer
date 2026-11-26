@@ -371,6 +371,35 @@ function LaunchesError({ reset }: { reset: () => void }) {
   );
 }
 
+// Plain-language line for each launch. Launch Library 2's "net" is the scheduled liftoff time (UTC);
+// the broadcast usually starts before liftoff. The replay line appears once a video is posted.
+function LaunchMoment({ net, name, hasVideo }: { net: string; name: string; hasVideo: boolean }) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(t);
+  }, []);
+  if (now === null) return null;
+  const t0 = new Date(net).getTime();
+  if (!Number.isFinite(t0)) return null;
+  const ms = t0 - now;
+  const HOUR = 60 * 60 * 1000;
+  let text: string;
+  if (ms > 2 * HOUR) {
+    text = `See you then. ${name} is scheduled to lift off ${fmtNet(net)}. Come back closer to the time and join me to watch.`;
+  } else if (ms > 0) {
+    text = `Almost time. ${name} lifts off ${fmtNet(net)}. Join me and watch it live on STELLUN.`;
+  } else if (ms > -3 * HOUR) {
+    text = `It's launch time. Join me and watch ${name} live now.`;
+  } else if (hasVideo) {
+    text = `That's a wrap on ${name}. Watch the replay below.`;
+  } else {
+    text = `That's a wrap on ${name}. The replay link appears here once the provider posts it.`;
+  }
+  return <p className="launch-moment">{text}</p>;
+}
+
 function LaunchesPage() {
   const now = useNow(1000);
   const { data: res } = useSuspenseQuery(launchesQueryOptions);
@@ -448,6 +477,97 @@ const featured: Launch[] = active.filter((l) => {
       if (next.image && typeof navigator.canShare === "function") {
         try {
           const imgRes = await fetch(next.image, { mode: "cors" });
+          if (imgRes.ok) {
+            const blob = await imgRes.blob();
+            const type = blob.type || "image/jpeg";
+            const ext = type.indexOf("png") >= 0 ? "png" : "jpg";
+            const file = new File([blob], "stellun-launch." + ext, { type: type });
+            const withFile = { title: title, text: text, url: url, files: [file] };
+            if (navigator.canShare(withFile)) {
+              await navigator.share(withFile);
+              finish("Shared");
+              return;
+            }
+          }
+        } catch {
+          // CORS or share-with-files not supported — fall through
+        }
+      }
+
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title, text });
+// not: { title, text, url }
+        finish("Shared");
+        return;
+      }
+
+      await navigator.clipboard.writeText(text);
+      finish("Message copied");
+    } catch {
+      try {
+        await navigator.clipboard.writeText(text);
+        finish("Message copied");
+      } catch {
+        finish("Copy failed");
+      }
+    }
+  }
+
+  async function shareLaunch(launch: Launch) {
+    if (!launch) return;
+
+    const origin =
+      typeof window !== "undefined" ? window.location.origin : "https://stellun.space";
+    const url = origin + "/launches#next-launch";
+    const name = launch.name || "the next orbital launch";
+    const title = "STELLUN · " + name;
+
+    const ms = new Date(launch.net).getTime() - Date.now();
+    let text: string;
+    if (!Number.isFinite(ms)) {
+      text = "Check out " + name + " on STELLUN — countdown and live watch in one place.";
+    } else if (ms <= 0) {
+      text =
+        "Liftoff window for " +
+        name +
+        " is underway / just passed. Follow it on STELLUN: " +
+        url;
+    } else if (ms <= 30 * 60 * 1000) {
+      text =
+        "About 30 minutes (or less) to " +
+        name +
+        ". Join me and watch it live on STELLUN: " +
+        url;
+    } else if (ms <= 2 * 60 * 60 * 1000) {
+      text =
+        "A couple of hours to " +
+        name +
+        ". Countdown is live on STELLUN — watch with me: " +
+        url;
+    } else if (ms <= 24 * 60 * 60 * 1000) {
+      text =
+        "Today is launch day for " +
+        name +
+        ". Join me on STELLUN for the countdown and webcast: " +
+        url;
+    } else {
+      text =
+        "Hi — check out " +
+        name +
+        ". We can track the countdown and watch the launch on STELLUN: " +
+        url;
+    }
+    const finish = (msg: string) => {
+      setShareHint(msg);
+      window.setTimeout(() => setShareHint(""), 2500);
+    };
+
+    try {
+      // Prefer sharing the launch image as a real file when the OS allows it
+      // (Android Chrome + WhatsApp often shows the photo in the composer).
+      if (launch.image && typeof navigator.canShare === "function") {
+        try {
+          const imgRes = await fetch(launch.image, { mode: "cors" });
           if (imgRes.ok) {
             const blob = await imgRes.blob();
             const type = blob.type || "image/jpeg";
@@ -594,14 +714,15 @@ const featured: Launch[] = active.filter((l) => {
                     )}
                   </dl>
                   {item.missionDesc && <p className="next-launch-desc">{item.missionDesc}</p>}
+                  <LaunchMoment net={item.net} name={item.name} hasVideo={Array.isArray(item.vidURLs) && item.vidURLs.length > 0} />
                   <Countdown net={item.net} status={item.status} />
-                  {idx === 0 ? (
+                  {item ? (
                     <div className="next-launch-share-row" style={{ marginTop: 14 }}>
                       <button
                         type="button"
                         className="btn btn-primary"
-                        onClick={shareNextLaunch}
-                        disabled={!next}
+                        onClick={() => shareLaunch(item)}
+                        disabled={!item}
                       >
                         Share this launch
                       </button>
