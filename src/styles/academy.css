@@ -1243,24 +1243,8 @@
   overflow: hidden;
 }
 
-.ac-tools[data-open="true"] .ac-tools-tabs {
-  visibility: visible;
-  opacity: 1;
-}
-
 .ac-tools-tabs {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 4px;
-  padding: 0 12px 8px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--ac-border, rgba(127, 127, 127, 0.25));
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--ac-surface, inherit);
+  padding: 0 16px;
 }
 
 .ac-tools-body {
@@ -2500,23 +2484,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0;
-  min-width: 40px;
-  min-height: 48px;
-  padding: 14px 10px;
+  gap: 4px;
+  padding: 12px 8px;
   border: 0;
   border-radius: 14px 0 0 14px;
   background: var(--accent-panel);
   color: var(--accent-panel-text);
   box-shadow: var(--shadow-glass);
   font-family: inherit;
-  font-size: 1.25rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  line-height: 1;
   cursor: pointer;
 }
-.ac-pulltab span { font-size: 1.35rem; line-height: 1; }
+.ac-pulltab span:first-child { font-size: 1.3rem; line-height: 1; }
 
 @media (max-width: 899px) {
   .ac-tools[data-open="false"] {
