@@ -1,0 +1,205 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
+import {
+  AU_KM,
+  heliocentricEcliptic,
+  julianDateUTC,
+  planetEquatorial,
+  type Heliocentric,
+} from "@/lib/astronomy";
+import { fmtAU, fmtKm, lightTimeFromAU } from "@/lib/format";
+import { useNow } from "@/hooks/use-now";
+import { MarsImageGallery } from "@/components/mars/mars-image-gallery";
+
+export const Route = createFileRoute("/mars")({
+  ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Mars - STELLUN" },
+      {
+        name: "description",
+        content:
+          "Earth-Mars distance and light time from JPL elements, plus Perseverance and Curiosity surface imagery.",
+      },
+      { property: "og:title", content: "Mars - STELLUN" },
+      {
+        property: "og:description",
+        content: "Live Earth-Mars geometry and NASA rover imagery on STELLUN.",
+      },
+      { property: "og:type", content: "website" },
+    ],
+  }),
+  component: MarsPage,
+});
+
+function marsGeometry(now: Date) {
+  const jd = julianDateUTC(now);
+  const earth = heliocentricEcliptic("earth", jd);
+  const mars = heliocentricEcliptic("mars", jd);
+  const eq = planetEquatorial("mars", jd);
+  return {
+    earth,
+    mars,
+    au: eq.distanceAU,
+    km: eq.distanceAU * AU_KM,
+    raHours: eq.ra / 15,
+    dec: eq.dec,
+    elongation: eq.elongation,
+  };
+}
+
+function elongationNote(el: number): string {
+  if (el < 20) return "Near the Sun in the sky — hard to observe";
+  if (el > 150) return "Near opposition — up most of the night";
+  return "Visible for part of the night from a dark site";
+}
+
+function OrbitDiagram({
+  earth,
+  mars,
+  au,
+}: {
+  earth: Heliocentric;
+  mars: Heliocentric;
+  au: number;
+}) {
+  const C = 120;
+  const SCALE = 52;
+  const ex = C + earth.x * SCALE;
+  const ey = C - earth.y * SCALE;
+  const mx = C + mars.x * SCALE;
+  const my = C - mars.y * SCALE;
+
+  return (
+    <svg
+      viewBox="0 0 240 240"
+      className="mars-orbit-svg"
+      role="img"
+      aria-label={"Earth and Mars about " + fmtAU(au) + " apart"}
+    >
+      <circle cx={C} cy={C} r={earth.a * SCALE} className="mars-orbit-path" />
+      <circle cx={C} cy={C} r={mars.a * SCALE} className="mars-orbit-path" />
+      <line x1={ex} y1={ey} x2={mx} y2={my} className="mars-orbit-link" />
+      <circle cx={C} cy={C} r={6} className="mars-orbit-sun" />
+      <text x={C} y={C + 18} textAnchor="middle" className="mars-orbit-label">
+        Sun
+      </text>
+      <circle cx={ex} cy={ey} r={5} className="mars-orbit-earth" />
+      <text x={ex + 8} y={ey + 4} className="mars-orbit-label">
+        Earth
+      </text>
+      <circle cx={mx} cy={my} r={5} className="mars-orbit-mars" />
+      <text x={mx + 8} y={my + 4} className="mars-orbit-label">
+        Mars
+      </text>
+      <text x={C} y={228} textAnchor="middle" className="mars-orbit-value">
+        {fmtAU(au)}
+      </text>
+    </svg>
+  );
+}
+
+function MarsPage() {
+  const now = useNow(60_000);
+  const geo = useMemo(() => (now ? marsGeometry(now) : null), [now]);
+
+  const raLabel = geo
+    ? Math.floor(geo.raHours) +
+      "h " +
+      String(Math.floor((geo.raHours % 1) * 60)).padStart(2, "0") +
+      "m"
+    : "";
+  const decLabel = geo
+    ? (geo.dec >= 0 ? "+" : "") + geo.dec.toFixed(1) + "°"
+    : "";
+
+  return (
+    <main className="page-main mars-page">
+      <section className="page-hero">
+        <div className="container">
+          <span className="eyebrow">JPL elements · NASA imagery</span>
+          <h1>Mars</h1>
+          <p className="tagline">
+            Live Earth–Mars distance from orbital mechanics, and the latest public
+            frames from Perseverance, Curiosity, and other surface missions.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <div className="container">
+          <div className="stat-grid mars-stat-grid">
+            <div className="glass glass-card stat-card">
+              <div className="stat-label">Earth–Mars distance</div>
+              <div className="stat-value">{geo ? fmtAU(geo.au) : "—"}</div>
+              <div className="stat-unit">{geo ? fmtKm(geo.km) : "computing"}</div>
+            </div>
+            <div className="glass glass-card stat-card">
+              <div className="stat-label">One-way light time</div>
+              <div className="stat-value">{geo ? lightTimeFromAU(geo.au) : "—"}</div>
+              <div className="stat-unit">radio, Earth → Mars</div>
+            </div>
+            <div className="glass glass-card stat-card">
+              <div className="stat-label">Mars from the Sun</div>
+              <div className="stat-value">{geo ? fmtAU(geo.mars.r) : "—"}</div>
+              <div className="stat-unit">heliocentric distance</div>
+            </div>
+            <div className="glass glass-card stat-card">
+              <div className="stat-label">Elongation</div>
+              <div className="stat-value">
+                {geo ? geo.elongation.toFixed(0) + "°" : "—"}
+              </div>
+              <div className="stat-unit">
+                {geo ? elongationNote(geo.elongation) : "from the Sun"}
+              </div>
+            </div>
+          </div>
+
+          <div className="glass glass-card scaffold-card mars-panel mars-orbit-section">
+            <span className="eyebrow">Orbit sketch</span>
+            <h2>Where Mars is right now</h2>
+            <p className="text-muted mars-panel-lead">
+              Top-down view of the ecliptic plane. Positions update about once a
+              minute from approximate JPL Keplerian elements.
+            </p>
+            <div className="mars-orbit-wrap">
+              {geo ? (
+                <OrbitDiagram earth={geo.earth} mars={geo.mars} au={geo.au} />
+              ) : (
+                <p className="text-muted">Computing geometry…</p>
+              )}
+            </div>
+            {geo ? (
+              <div className="mars-sky-tags" aria-label="Approximate sky direction">
+                <span className="mars-tag">
+                  <span className="mars-tag-label">RA</span>
+                  <span className="mars-tag-value mono">{raLabel}</span>
+                </span>
+                <span className="mars-tag">
+                  <span className="mars-tag-label">Dec</span>
+                  <span className="mars-tag-value mono">{decLabel}</span>
+                </span>
+                <span className="mars-tag">
+                  <span className="mars-tag-label">Note</span>
+                  <span className="mars-tag-value">{elongationNote(geo.elongation)}</span>
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="glass glass-card scaffold-card mars-note">
+            <span className="eyebrow">About this page</span>
+            <p>
+              Distances and sky position are computed in your browser from published
+              elements. Surface photos come from NASA’s public
+              rover image APIs and may lag by sols. There is no live Mars weather panel
+              here; atmospheric data from landers is sparse and mission-specific.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <MarsImageGallery />
+    </main>
+  );
+}
