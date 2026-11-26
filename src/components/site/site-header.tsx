@@ -129,7 +129,7 @@ export function SiteHeader() {
       link.label
     );
 
-    if (!signedIn && !loading) {
+    if (!signedIn && !loading && needsSignIn(link.to)) {
       return (
         <Link key={link.id} to="/auth" search={{ redirect: link.to }} {...common}>
           {body}
@@ -338,4 +338,10 @@ export function SiteHeader() {
       </nav>
     </>
   );
+}
+
+// Only these areas need an account. Every other link opens directly, signed in or not.
+const SIGNED_IN_ONLY = ["/academy", "/ask", "/settings", "/study-desk", "/admin", "/research", "/resources"];
+function needsSignIn(to: string): boolean {
+  return SIGNED_IN_ONLY.some((p) => to === p || to.startsWith(p + "/"));
 }
