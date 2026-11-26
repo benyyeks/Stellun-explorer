@@ -45,7 +45,7 @@ export function launchStream(
   const msToNet = time - nowMs;
   const HOUR = 60 * 60 * 1000;
   const openEarly = 24 * HOUR; // was 24h — opens multi-launch days together
-  const openLate = 6 * HOUR;  // was 2h
+  const openLate = 7 * 24 * HOUR; // replay stays watchable for a week  // was 2h
 
   if (!webcastLive && (msToNet > openEarly || msToNet < -openLate)) {
     return null;
