@@ -8,8 +8,8 @@ on:
   schedule:
     # Upcoming every 2 hours (safe for free LL2)
     - cron: "15 */2 * * *"
-    # Past launches twice a day
-    - cron: "40 7,19 * * *"
+    # Past launches every 2 hours (replays are posted after liftoff)
+    - cron: "40 */2 * * *"
   workflow_dispatch:
     inputs:
       mode:
@@ -215,6 +215,31 @@ jobs:
               sb_upsert("launches", rows, "id")
               print(kind, "rows", len(rows), "cache", cache_key)
 
+          def mark_stale_upcoming(current_ids: list):
+              # Launches that have left the upcoming list and are past their NET move to "past",
+              # so a stored upcoming copy (without its replay) is never served as upcoming.
+              import urllib.parse
+              now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+              url = f"{BASE}/rest/v1/launches?kind=eq.upcoming&net=lt.{urllib.parse.quote(now_iso, safe='')}"
+              if current_ids:
+                  url += "&id=not.in.(" + ",".join(current_ids) + ")"
+              req = urllib.request.Request(
+                  url,
+                  data=json.dumps({"kind": "past"}).encode(),
+                  method="PATCH",
+                  headers={
+                      "apikey": KEY,
+                      "Authorization": f"Bearer {KEY}",
+                      "Content-Type": "application/json",
+                      "Prefer": "return=minimal",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(req, timeout=60) as r:
+                      print("launches moved to past:", r.status)
+              except urllib.error.HTTPError as e:
+                  print("launches stale check failed:", e.code, e.read().decode()[:300])
+
           do_up = MODE in ("upcoming", "both")
           do_past = MODE in ("past", "both")
 
@@ -222,7 +247,9 @@ jobs:
               raw = ll2(
                   "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=15&mode=detailed"
               )
-              write_kind("upcoming", normalize(raw), 7200, "launches")
+              payload_up = normalize(raw)
+              write_kind("upcoming", payload_up, 7200, "launches")
+              mark_stale_upcoming([str(x.get("id")) for x in (payload_up.get("results") or []) if x.get("id")])
 
           if do_past:
               raw = ll2(

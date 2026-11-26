@@ -113,7 +113,7 @@ jobs:
               raise SystemExit(2)
           with open("/tmp/mars_body.json", "w") as f:
               json.dump({"kind": "mars-perseverance-latest", "payload": data}, f)
-          print(f"mars: {len(images)} frames from NASA")
+          print(f"mars: {len(images)} frames from NASA; newest sol {images[0].get('sol')} taken {images[0].get('date_taken_utc')}")
           PY
 
           FAILED=""
