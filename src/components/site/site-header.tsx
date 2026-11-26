@@ -108,7 +108,7 @@ export function SiteHeader() {
     closeTimer.current = setTimeout(() => setOpenPillar(null), 140);
   };
 
-  /** Live tools are open to everyone. Academy / progress stay behind sign-in. */
+  /** Guest links go through /auth with redirect; signed-in users go direct. */
   const renderToolLink = (link: NavLink, withHint: boolean) => {
     const active = isMatch(pathname, link.to);
     const common = {
@@ -128,6 +128,14 @@ export function SiteHeader() {
     ) : (
       link.label
     );
+
+    if (!signedIn && !loading) {
+      return (
+        <Link key={link.id} to="/auth" search={{ redirect: link.to }} {...common}>
+          {body}
+        </Link>
+      );
+    }
 
     return (
       <Link key={link.id} to={link.to} {...common}>
@@ -212,9 +220,11 @@ export function SiteHeader() {
               </Link>
             )}
 
-            <Link to="/about" aria-current={isMatch(pathname, "/about") ? "page" : undefined}>
-              About
-            </Link>
+            {signedIn && (
+              <Link to="/about" aria-current={isMatch(pathname, "/about") ? "page" : undefined}>
+                About
+              </Link>
+            )}
           </nav>
 
           <div className="header-actions">
@@ -248,12 +258,6 @@ export function SiteHeader() {
             Home
           </Link>
         </div>
-
-        {!signedIn && !loading ? (
-          <p className="nav-guest-note">
-            Tools below are open to browse. Sign in to save Academy workspaces, progress, and AI chats.
-          </p>
-        ) : null}
 
         {PILLARS.map((pillar) => {
           const expanded = openSection === pillar.id;
