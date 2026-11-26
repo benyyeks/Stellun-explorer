@@ -6694,3 +6694,9 @@ main > section:nth-of-type(even) .section-lead {
   height: 100vw;
   transform: translate(-50%, -50%) rotate(90deg);
 }
+
+/* Picture of the Day: video player, pinch zoom in the viewer, and launch moment line */
+.apod-video-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; }
+.apod-video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.apod-viewer, .apod-viewer-stage, .apod-viewer-stage img { touch-action: pinch-zoom; }
+.launch-moment { margin: 12px 0 0; font-size: 0.95rem; opacity: 0.92; }
